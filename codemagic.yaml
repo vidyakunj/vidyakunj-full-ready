@@ -1,18 +1,10 @@
 workflows:
-  flutter-web-build:
-    name: Build Vidyakunj Flutter Web App
-    max_build_duration: 30
+  android-workflow:
+    name: Build Android APK
     environment:
       flutter: stable
     scripts:
-      - name: Go to Flutter app folder
-        script: |
-          cd vidyakunj
-      - name: Install Flutter dependencies
-        script: |
-          flutter pub get
-      - name: Build Flutter Web
-        script: |
-          flutter build web
+      - flutter pub get
+      - flutter build apk --release
     artifacts:
-      - vidyakunj/build/web/**
+      - build/app/outputs/flutter-apk/app-release.apk
