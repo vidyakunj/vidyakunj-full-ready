@@ -5,11 +5,15 @@ workflows:
     environment:
       flutter: stable
     scripts:
+      - name: Enable Flutter Web
+        script: |
+          flutter config --enable-web
+          flutter create . --platforms web
       - name: Get Flutter dependencies
         script: |
           flutter pub get
       - name: Build Flutter Web
         script: |
-          flutter build web
+          flutter build web --release
     artifacts:
       - build/web/**
