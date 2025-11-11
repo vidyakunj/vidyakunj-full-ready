@@ -1,4 +1,3 @@
-
 workflows:
   flutter-web-build:
     name: Build Vidyakunj Flutter Web App
@@ -6,6 +5,8 @@ workflows:
     environment:
       flutter: stable
     scripts:
+      - name: Go to Flutter app folder
+        script: cd flutter_app
       - name: Install Flutter dependencies
         script: |
           flutter pub get
@@ -13,4 +14,4 @@ workflows:
         script: |
           flutter build web
     artifacts:
-      - build/web/**
+      - flutter_app/build/web/**
