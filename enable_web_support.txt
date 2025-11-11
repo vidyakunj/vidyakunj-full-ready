@@ -1,0 +1,2 @@
+Run the following command locally or in Codemagic before building for web:
+flutter create . --platforms web
