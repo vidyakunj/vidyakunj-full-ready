@@ -14,6 +14,7 @@ workflows:
           flutter pub get
       - name: Build Flutter Web
         script: |
-          flutter build web --release
+         flutter build web --release -v
     artifacts:
       - build/web/**
+
