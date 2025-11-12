@@ -13,7 +13,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Vidyakunj Attendance',
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: const LoginScreen(),
+      home: const AttendanceScreen(className: 'default'),
       debugShowCheckedModeBanner: false,
     );
   }
