@@ -7,38 +7,48 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
+// TEST ROUTE
 app.get("/", (req, res) => {
   res.send("SMS Server is running");
 });
 
-// ************  SMS API ROUTE  ************
+// SEND SMS ROUTE
 app.post("/send-sms", async (req, res) => {
+  const { mobile, message } = req.body;
+
+  if (!mobile || !message) {
+    return res.status(400).json({ success: false, error: "Missing data" });
+  }
+
+  const apiUrl = "https://smslogin.secureapi.com/API/sendSMS";
+
+  const params = new URLSearchParams();
+  params.append("username", "2000176036");
+  params.append("msg_token", "Iken@123"); 
+  params.append("senderid", "VKSMIS");
+  params.append("message", message);
+  params.append("number", mobile);
+
   try {
-    const { phone, message } = req.body;
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      body: params
+    });
 
-    const USERID = "2000176036";
-    const PASSWORD = "Iken@123";
-    const SENDERID = "VKSMIS";
+    const result = await response.text();
 
-    // Encode message for URL
-    const encodedMessage = encodeURIComponent(message);
+    console.log("SMS API Response:", result);
 
-    const apiUrl =
-      `https://enterprise.smsgatewayhub.com/Enterprise/EnterpriseSMSAPI.jsp?` +
-      `UserId=${USERID}&Password=${PASSWORD}&SenderId=${SENDERID}` +
-      `&MobileNo=${phone}&Message=${encodedMessage}&EntityId=1701168990968610308&TemplateId=1707168991022513651`;
-
-    const response = await fetch(apiUrl);
-    const text = await response.text();
-
-    console.log("SMS API Response:", text);
-    res.json({ success: true, response: text });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.toString() });
+    if (result.includes("SMS Sent Successfully")) {
+      res.json({ success: true });
+    } else {
+      res.json({ success: false, response: result });
+    }
+  } catch (error) {
+    console.error("SMS ERROR:", error);
+    res.status(500).json({ success: false, error: "Server error" });
   }
 });
-// *******************************************
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log("Server running on " + PORT));
