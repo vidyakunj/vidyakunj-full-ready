@@ -1,31 +1,39 @@
-import express from "express";
-import fetch from "node-fetch";
-import bodyParser from "body-parser";
+const express = require("express");
+const fetch = require("node-fetch");
+const cors = require("cors");
 
 const app = express();
-const PORT = process.env.PORT || 10000;
+app.use(cors());
+app.use(express.json());
 
-app.use(bodyParser.json());
+// =============================
+// GUPSHUP CONFIG
+// =============================
+const USER_ID = "2000176036"; 
+const PASSWORD = process.env.GUPSHUP_PASSWORD; 
+const SENDER_ID = "VKSMIS";
 
+// =============================
+// SEND SMS API
+// =============================
 app.post("/send-sms", async (req, res) => {
-  const { phone, message } = req.body;
-
-  const userId = "2000176036";
-  const password = "rkbJIg7O0";
-  const senderId = "VKSNVS";
-
   try {
-    const response = await fetch(
-      `https://enterprise.smsgupshup.com/GatewayAPI/rest?method=SendMessage&send_to=${phone}&msg=${encodeURIComponent(
-        message
-      )}&msg_type=TEXT&userid=${userId}&auth_scheme=plain&password=${password}&v=1.1&format=text&mask=${senderId}`
-    );
+    const { phone, message } = req.body;
+
+    const url = `https://enterprise.smsgupshup.com/GatewayAPI/rest?method=SendMessage&send_to=${phone}&msg=${encodeURIComponent(
+      message
+    )}&msg_type=TEXT&userid=${USER_ID}&auth_scheme=plain&password=${PASSWORD}&v=1.1&format=text&extra=SenderId=${SENDER_ID}`;
+
+    const response = await fetch(url);
     const text = await response.text();
-    res.send(text);
+
+    res.json({ success: true, api_response: text });
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Error sending SMS");
+    res.json({ success: false, error: err.toString() });
   }
 });
 
-app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+// SERVER START
+app.listen(3000, () => {
+  console.log("SMS Server running on port 3000");
+});
