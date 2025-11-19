@@ -12,6 +12,11 @@ app.get("/", (req, res) => {
   res.send("SMS Server is running");
 });
 
+// HEALTH CHECK REQUIRED BY RENDER
+app.get("/healthz", (req, res) => {
+  res.status(200).send("OK");
+});
+
 // SEND SMS ROUTE
 app.post("/send-sms", async (req, res) => {
   const { mobile, message } = req.body;
