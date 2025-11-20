@@ -11,39 +11,40 @@ app.get("/", (req, res) => {
   res.send("SMS Server is running");
 });
 
-// SEND SMS ROUTE (GUPSHUP ENTERPRISE)
+// SEND SMS ROUTE
 app.post("/send-sms", async (req, res) => {
-  const { mobile, message } = req.body;
+  const { mobile, value } = req.body;
 
-  if (!mobile || !message) {
+  if (!mobile || !value) {
     return res.status(400).json({ success: false, error: "Missing data" });
   }
 
+  // MESSAGE MUST MATCH EXACT TEMPLATE EXACTLY
+  const message =
+    `Dear Parents,Your child, ${value}${value} remained absent in school today.,Vidyakunj School`;
+
   const apiUrl = "https://enterprise.smsgupshup.com/GatewayAPI/rest";
 
-  const params = new URLSearchParams();
-  params.append("method", "SendMessage");
-  params.append("send_to", mobile);
-  params.append("msg", message);
-  params.append("msg_type", "TEXT");
-  params.append("userid", "2000176036");
-  params.append("password", "rkbJIg7O0");   // <-- UPDATED PASSWORD
-  params.append("auth_scheme", "PLAIN");
-  params.append("v", "1.1");
+  const params = new URLSearchParams({
+    method: "SendMessage",
+    send_to: mobile,
+    msg: message,
+    msg_type: "TEXT",
+    userid: "2000176036",
+    password: "rkbJIg7O0",
+    auth_scheme: "PLAIN",
+    v: "1.1"
+  });
 
   try {
-    const fullUrl = apiUrl + "?" + params.toString();
-
-    console.log("Sending to URL:", fullUrl);
-
-    const response = await fetch(fullUrl, {
+    const response = await fetch(apiUrl + "?" + params.toString(), {
       method: "GET",
     });
 
     const result = await response.text();
-    console.log("SMS API Response:", result);
+    console.log("GupShup Response:", result);
 
-    if (result.toLowerCase().includes("success")) {
+    if (result.includes("success") || result.includes("SUCCESS")) {
       res.json({ success: true });
     } else {
       res.json({ success: false, response: result });
@@ -54,5 +55,6 @@ app.post("/send-sms", async (req, res) => {
   }
 });
 
+// PORT
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log("Server running on " + PORT));
