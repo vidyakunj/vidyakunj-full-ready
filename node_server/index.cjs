@@ -11,7 +11,7 @@ app.get("/", (req, res) => {
   res.send("SMS Server is running");
 });
 
-// SEND SMS ROUTE
+// SEND SMS ROUTE (GUPSHUP ENTERPRISE)
 app.post("/send-sms", async (req, res) => {
   const { mobile, message } = req.body;
 
@@ -19,33 +19,42 @@ app.post("/send-sms", async (req, res) => {
     return res.status(400).json({ success: false, error: "Missing data" });
   }
 
-  const apiUrl = "https://smslogin.secureapi.com/API/sendSMS";
+  const apiUrl = "https://enterprise.smsgupshup.com/GatewayAPI/rest";
 
   const params = new URLSearchParams();
-  params.append("username", "2000176036");
-  params.append("msg_token", "Iken@123");
-  params.append("senderid", "VKSMIS");
-  params.append("message", message);
-  params.append("number", mobile);
+  params.append("method", "SendMessage");
+  params.append("send_to", mobile);
+  params.append("msg", message);
+  params.append("msg_type", "TEXT");
+  params.append("userid", "2000176036");
+  params.append("password", "Iken@123");
+  params.append("auth_scheme", "PLAIN");
+  params.append("v", "1.1");
 
   try {
-    // Using Node 22 built-in fetch (NO node-fetch needed)
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      body: params
+    const fullUrl = apiUrl + "?" + params.toString();
+
+    console.log("Sending to URL:", fullUrl);
+
+    const response = await fetch(fullUrl, {
+      method: "GET",
     });
 
     const result = await response.text();
-
     console.log("SMS API Response:", result);
 
-    res.json({ success: true, response: result });
-
+    // Check success response format from GupShup
+    if (result.toLowerCase().includes("success")) {
+      res.json({ success: true });
+    } else {
+      res.json({ success: false, response: result });
+    }
   } catch (error) {
     console.error("SMS ERROR:", error);
     res.status(500).json({ success: false, error: "Server error" });
   }
 });
 
+// PORT
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log("Server running on " + PORT));
