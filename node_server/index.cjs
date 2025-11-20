@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
+const fetch = require("node-fetch");
 
 const app = express();
 app.use(cors());
@@ -13,15 +14,21 @@ app.get("/", (req, res) => {
 
 // SEND SMS ROUTE
 app.post("/send-sms", async (req, res) => {
-  const { mobile, value } = req.body;
+  const { mobile, studentName } = req.body;
 
-  if (!mobile || !value) {
+  if (!mobile || !studentName) {
     return res.status(400).json({ success: false, error: "Missing data" });
   }
 
-  // MESSAGE MUST MATCH EXACT TEMPLATE EXACTLY
+  // DLT TEMPLATE: @__123__@@__123__@
+  // Variable 1 = name
+  // Variable 2 = blank so name appears only once
+  const var1 = studentName;
+  const var2 = "";
+
+  // This matches EXACTLY your DLT template content
   const message =
-    `Dear Parents,Your child, ${value}${value} remained absent in school today.,Vidyakunj School`;
+    `Dear Parents,Your child, ${var1}${var2} remained absent in school today.,Vidyakunj School`;
 
   const apiUrl = "https://enterprise.smsgupshup.com/GatewayAPI/rest";
 
@@ -37,14 +44,12 @@ app.post("/send-sms", async (req, res) => {
   });
 
   try {
-    const response = await fetch(apiUrl + "?" + params.toString(), {
-      method: "GET",
-    });
-
+    const response = await fetch(apiUrl + "?" + params.toString());
     const result = await response.text();
+
     console.log("GupShup Response:", result);
 
-    if (result.includes("success") || result.includes("SUCCESS")) {
+    if (result.toLowerCase().includes("success")) {
       res.json({ success: true });
     } else {
       res.json({ success: false, response: result });
