@@ -1,7 +1,6 @@
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
-const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 
 const app = express();
 app.use(cors());
@@ -28,7 +27,7 @@ app.post("/send-sms", async (req, res) => {
   params.append("msg", message);
   params.append("msg_type", "TEXT");
   params.append("userid", "2000176036");
-  params.append("password", "Iken@123");
+  params.append("password", "rkbJIg7O0");   // <-- UPDATED PASSWORD
   params.append("auth_scheme", "PLAIN");
   params.append("v", "1.1");
 
@@ -44,7 +43,6 @@ app.post("/send-sms", async (req, res) => {
     const result = await response.text();
     console.log("SMS API Response:", result);
 
-    // Check success response format from GupShup
     if (result.toLowerCase().includes("success")) {
       res.json({ success: true });
     } else {
@@ -56,6 +54,5 @@ app.post("/send-sms", async (req, res) => {
   }
 });
 
-// PORT
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log("Server running on " + PORT));
