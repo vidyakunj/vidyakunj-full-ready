@@ -31,11 +31,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       Uri.parse('$SERVER_URL/send-sms'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
-        'phone': phone,
-        'message': 'Dear Parents, Your child, $name remained absent in school today., Vidyakunj School Navsari'
+        'mobile': phone,
+        'studentName': name,
       }),
     );
-    debugPrint(res.body);
+
+    debugPrint("SMS Response: ${res.body}");
   }
 
   void sendAllAbsentees() {
@@ -46,6 +47,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         sendSMS(name, phone);
       }
     }
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("Messages sent for all absentees!")),
     );
