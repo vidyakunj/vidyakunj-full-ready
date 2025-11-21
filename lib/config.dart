@@ -1,1 +1,1 @@
-const String SERVER_URL = "https://vidyakunj-server-sysu.onrender.com";
+const String SERVER_URL = "https://vidyakunj-sms-server.onrender.com";
