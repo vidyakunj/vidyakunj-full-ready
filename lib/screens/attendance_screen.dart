@@ -19,14 +19,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   Future<void> uploadCSV() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles();
-
     if (result != null) {
       final csvData = utf8.decode(result.files.single.bytes!);
-
       List<List<dynamic>> rows = const CsvToListConverter().convert(csvData);
-
-      // REMOVE HEADER ROW
-      setState(() => students = rows.sublist(1));
+      setState(() => students = rows.sublist(1)); // Skip header
     }
   }
 
@@ -35,7 +31,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       Uri.parse('$SERVER_URL/send-sms'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
-        'mobile': phone,
+        'mobile': phone.trim(),
         'studentName': name,
       }),
     );
@@ -45,10 +41,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   void sendAllAbsentees() {
     for (int i = 0; i < students.length; i++) {
-      if (attendance[i] == false) {
+      bool isPresent = attendance[i] ?? true;
+      if (!isPresent) {
         String name = students[i][1].toString();
-        String phone = students[i][5].toString(); // FIXED COLUMN INDEX
-
+        String phone = students[i][5].toString();
         sendSMS(name, phone);
       }
     }
@@ -65,30 +61,33 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         title: Text("Attendance - ${widget.className.toUpperCase()}"),
         actions: [
           IconButton(
-            onPressed: sendAllAbsentees,
-            icon: const Icon(Icons.send),
-          ),
+              onPressed: sendAllAbsentees,
+              icon: const Icon(Icons.send, size: 28))
         ],
       ),
-
       floatingActionButton: FloatingActionButton(
         onPressed: uploadCSV,
         child: const Icon(Icons.upload_file),
       ),
-
       body: students.isEmpty
           ? const Center(child: Text("Upload student CSV to start"))
           : ListView.builder(
+              padding: const EdgeInsets.all(12),
               itemCount: students.length,
               itemBuilder: (context, i) {
                 String name = students[i][1].toString();
-                String phone = students[i][5].toString(); // FIXED
+                String phone = students[i][5].toString();
 
-                return CheckboxListTile(
-                  title: Text(name),
-                  subtitle: Text("Phone: $phone"), // FIXED
-                  value: attendance[i] ?? true,
-                  onChanged: (v) => setState(() => attendance[i] = v!),
+                return Card(
+                  elevation: 0.8,
+                  child: CheckboxListTile(
+                    title: Text(name,
+                        style: const TextStyle(
+                            fontSize: 17, fontWeight: FontWeight.w500)),
+                    subtitle: Text("Phone: $phone"),
+                    value: attendance[i] ?? true,
+                    onChanged: (v) => setState(() => attendance[i] = v!),
+                  ),
                 );
               },
             ),
