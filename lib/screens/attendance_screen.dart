@@ -19,10 +19,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   Future<void> uploadCSV() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles();
+
     if (result != null) {
       final csvData = utf8.decode(result.files.single.bytes!);
+
       List<List<dynamic>> rows = const CsvToListConverter().convert(csvData);
-      setState(() => students = rows.sublist(1)); // Skip header row
+
+      // REMOVE HEADER ROW
+      setState(() => students = rows.sublist(1));
     }
   }
 
@@ -43,7 +47,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     for (int i = 0; i < students.length; i++) {
       if (attendance[i] == false) {
         String name = students[i][1].toString();
-        String phone = students[i][5].toString();
+        String phone = students[i][5].toString(); // FIXED COLUMN INDEX
+
         sendSMS(name, phone);
       }
     }
@@ -59,22 +64,29 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       appBar: AppBar(
         title: Text("Attendance - ${widget.className.toUpperCase()}"),
         actions: [
-          IconButton(onPressed: sendAllAbsentees, icon: const Icon(Icons.send))
+          IconButton(
+            onPressed: sendAllAbsentees,
+            icon: const Icon(Icons.send),
+          ),
         ],
       ),
+
       floatingActionButton: FloatingActionButton(
         onPressed: uploadCSV,
         child: const Icon(Icons.upload_file),
       ),
+
       body: students.isEmpty
           ? const Center(child: Text("Upload student CSV to start"))
           : ListView.builder(
               itemCount: students.length,
               itemBuilder: (context, i) {
                 String name = students[i][1].toString();
+                String phone = students[i][5].toString(); // FIXED
+
                 return CheckboxListTile(
                   title: Text(name),
-                  subtitle: Text("Phone: ${students[i][3]}"),
+                  subtitle: Text("Phone: $phone"), // FIXED
                   value: attendance[i] ?? true,
                   onChanged: (v) => setState(() => attendance[i] = v!),
                 );
@@ -83,4 +95,3 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 }
-
