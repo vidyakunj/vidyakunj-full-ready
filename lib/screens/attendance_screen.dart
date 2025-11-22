@@ -26,13 +26,33 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
-  Future<void> sendSMS(String name, String phone) async {
+  // AUTO-SPLIT NAME FOR DLT
+  Map<String, String> splitNameForDLT(String fullName) {
+    fullName = fullName.trim();
+
+    if (fullName.length <= 30) {
+      return {
+        "var1": fullName,
+        "var2": "",
+      };
+    } else {
+      return {
+        "var1": fullName.substring(0, 30),
+        "var2": fullName.substring(30),
+      };
+    }
+  }
+
+  Future<void> sendSMS(String fullName, String phone) async {
+    final parts = splitNameForDLT(fullName);
+
     final res = await http.post(
       Uri.parse('$SERVER_URL/send-sms'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'mobile': phone.trim(),
-        'studentName': name,
+        'var1': parts["var1"],   // send split names
+        'var2': parts["var2"],
       }),
     );
 
@@ -81,9 +101,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 return Card(
                   elevation: 0.8,
                   child: CheckboxListTile(
-                    title: Text(name,
-                        style: const TextStyle(
-                            fontSize: 17, fontWeight: FontWeight.w500)),
+                    title: Text(
+                      name,
+                      style: const TextStyle(
+                          fontSize: 17, fontWeight: FontWeight.w500),
+                    ),
                     subtitle: Text("Phone: $phone"),
                     value: attendance[i] ?? true,
                     onChanged: (v) => setState(() => attendance[i] = v!),
@@ -94,5 +116,3 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 }
-
-
