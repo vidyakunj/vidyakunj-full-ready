@@ -4,54 +4,39 @@ const bodyParser = require("body-parser");
 const fetch = require("node-fetch");
 
 const app = express();
-
-// CORS + JSON
 app.use(cors());
 app.use(bodyParser.json());
 
-// TEST
+// TEST ROUTE
 app.get("/", (req, res) => {
   res.send("SMS Server is running");
 });
 
-// MAIN SMS ROUTE
+// SEND SMS ROUTE
 app.post("/send-sms", async (req, res) => {
-  console.log("Received body:", req.body);
+  const { mobile, var1, var2 } = req.body;
 
-  const { mobile, studentName, phone, message } = req.body;
-
-  // Accept both formats:
-  const finalMobile = (mobile || phone || "").toString().trim();
-
-  // If Flutter sends full message, use it. Otherwise build from studentName.
-  let finalMessage = message;
-  if (!finalMessage) {
-    if (studentName) {
-      finalMessage = `Dear Parents, Your child, ${studentName} remained absent in school today., Vidyakunj School Navsari`;
-    } else {
-      finalMessage = `Dear Parents, Your child remained absent in school today., Vidyakunj School Navsari`;
-    }
-  }
-
-  if (!finalMobile || finalMobile.length < 10) {
+  if (!mobile || (!var1 && !var2)) {
     return res.status(400).json({
       success: false,
-      error: "Missing or invalid mobile number",
-      received: req.body,
+      error: "Missing data"
     });
   }
+
+  // Construct DLT message EXACTLY matching your approved template
+  const message = `Dear Parents,Your child, ${var1}${var2} remained absent in school today.,Vidyakunj School`;
 
   const apiUrl = "https://enterprise.smsgupshup.com/GatewayAPI/rest";
 
   const params = new URLSearchParams({
     method: "SendMessage",
-    send_to: finalMobile,
-    msg: finalMessage,
+    send_to: mobile,
+    msg: message,
     msg_type: "TEXT",
     userid: "2000176036",
     password: "rkbJIg7O0",
     auth_scheme: "PLAIN",
-    v: "1.1",
+    v: "1.1"
   });
 
   try {
@@ -61,15 +46,16 @@ app.post("/send-sms", async (req, res) => {
     console.log("GupShup Response:", result);
 
     if (result.toLowerCase().includes("success")) {
-      return res.json({ success: true, response: result });
+      res.json({ success: true, response: result });
     } else {
-      return res.json({ success: false, response: result });
+      res.json({ success: false, response: result });
     }
-  } catch (err) {
-    console.error("SMS ERROR:", err);
-    return res.status(500).json({ success: false, error: "Server error" });
+  } catch (error) {
+    console.error("SMS ERROR:", error);
+    res.status(500).json({ success: false, error: "Server error" });
   }
 });
 
+// PORT
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log("Server running on port " + PORT));
+app.listen(PORT, () => console.log("Server running on " + PORT));
