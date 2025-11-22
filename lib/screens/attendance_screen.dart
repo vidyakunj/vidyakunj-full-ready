@@ -43,7 +43,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     for (int i = 0; i < students.length; i++) {
       if (attendance[i] == false) {
         String name = students[i][1].toString();
-        String phone = students[i][3].toString();
+        String phone = students[i][5].toString();
         sendSMS(name, phone);
       }
     }
@@ -83,3 +83,4 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 }
+
