@@ -4,7 +4,14 @@ const bodyParser = require("body-parser");
 const fetch = require("node-fetch");
 
 const app = express();
-app.use(cors());
+
+// ✅ FIX CORS COMPLETELY
+app.use(cors({
+  origin: "*",
+  methods: "GET,POST",
+  allowedHeaders: "Content-Type",
+}));
+
 app.use(bodyParser.json());
 
 // TEST ROUTE
@@ -20,15 +27,7 @@ app.post("/send-sms", async (req, res) => {
     return res.status(400).json({ success: false, error: "Missing data" });
   }
 
-  // DLT TEMPLATE: @__123__@@__123__@
-  // Variable 1 = name
-  // Variable 2 = blank so name appears only once
-  const var1 = studentName;
-  const var2 = "";
-
-  // This matches EXACTLY your DLT template content
-  const message =
-    `Dear Parents,Your child, ${var1}${var2} remained absent in school today.,Vidyakunj School`;
+  const message = `Dear Parents, Your child, ${studentName} remained absent in school today., Vidyakunj School`;
 
   const apiUrl = "https://enterprise.smsgupshup.com/GatewayAPI/rest";
 
@@ -40,7 +39,7 @@ app.post("/send-sms", async (req, res) => {
     userid: "2000176036",
     password: "rkbJIg7O0",
     auth_scheme: "PLAIN",
-    v: "1.1"
+    v: "1.1",
   });
 
   try {
@@ -60,6 +59,5 @@ app.post("/send-sms", async (req, res) => {
   }
 });
 
-// PORT
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log("Server running on " + PORT));
