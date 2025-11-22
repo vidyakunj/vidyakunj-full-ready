@@ -7,12 +7,10 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// TEST ROUTE
 app.get("/", (req, res) => {
   res.send("SMS Server is running");
 });
 
-// SEND SMS ROUTE
 app.post("/send-sms", async (req, res) => {
   const { mobile, var1, var2 } = req.body;
 
@@ -23,7 +21,7 @@ app.post("/send-sms", async (req, res) => {
     });
   }
 
-  // Construct DLT message EXACTLY matching your approved template
+  // EXACT DLT APPROVED FORMAT
   const message = `Dear Parents,Your child, ${var1}${var2} remained absent in school today.,Vidyakunj School`;
 
   const apiUrl = "https://enterprise.smsgupshup.com/GatewayAPI/rest";
@@ -56,6 +54,5 @@ app.post("/send-sms", async (req, res) => {
   }
 });
 
-// PORT
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log("Server running on " + PORT));
