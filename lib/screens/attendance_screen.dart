@@ -44,7 +44,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       bool isPresent = attendance[i] ?? true;
       if (!isPresent) {
         String name = students[i][1].toString();
-        String phone = students[i][5].toString();
+        String phone = students[i][3].toString();
         sendSMS(name, phone);
       }
     }
@@ -94,3 +94,4 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 }
+
