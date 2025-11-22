@@ -76,7 +76,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               itemCount: students.length,
               itemBuilder: (context, i) {
                 String name = students[i][1].toString();
-                String phone = students[i][5].toString();
+                String phone = students[i][3].toString();
 
                 return Card(
                   elevation: 0.8,
@@ -94,4 +94,5 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 }
+
 
