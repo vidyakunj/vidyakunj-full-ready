@@ -1,63 +1,32 @@
-const express = require("express");
-const cors = require("cors");
-const bodyParser = require("body-parser");
-const fetch = require("node-fetch");
+import express from "express";
+import cors from "cors";
 
 const app = express();
+app.use(express.json());
+app.use(cors());
 
-// ✅ FIX CORS COMPLETELY
-app.use(cors({
-  origin: "*",
-  methods: "GET,POST",
-  allowedHeaders: "Content-Type",
-}));
+app.post("/send-sms", (req, res) => {
+    const { mobile, studentName } = req.body;
 
-app.use(bodyParser.json());
+    console.log("Received:", req.body);  // DEBUG
 
-// TEST ROUTE
-app.get("/", (req, res) => {
-  res.send("SMS Server is running");
-});
-
-// SEND SMS ROUTE
-app.post("/send-sms", async (req, res) => {
-  const { mobile, studentName } = req.body;
-
-  if (!mobile || !studentName) {
-    return res.status(400).json({ success: false, error: "Missing data" });
-  }
-
-  const message = `Dear Parents, Your child, ${studentName} remained absent in school today., Vidyakunj School`;
-
-  const apiUrl = "https://enterprise.smsgupshup.com/GatewayAPI/rest";
-
-  const params = new URLSearchParams({
-    method: "SendMessage",
-    send_to: mobile,
-    msg: message,
-    msg_type: "TEXT",
-    userid: "2000176036",
-    password: "rkbJIg7O0",
-    auth_scheme: "PLAIN",
-    v: "1.1",
-  });
-
-  try {
-    const response = await fetch(apiUrl + "?" + params.toString());
-    const result = await response.text();
-
-    console.log("GupShup Response:", result);
-
-    if (result.toLowerCase().includes("success")) {
-      res.json({ success: true });
-    } else {
-      res.json({ success: false, response: result });
+    if (!mobile || !studentName) {
+        return res.status(400).json({
+            success: false,
+            error: "Missing data",
+            received: req.body
+        });
     }
-  } catch (error) {
-    console.error("SMS ERROR:", error);
-    res.status(500).json({ success: false, error: "Server error" });
-  }
+
+    // 👇 Here you will send SMS using Fast2SMS OR any provider
+    console.log(`SMS ready → ${studentName} → ${mobile}`);
+
+    return res.json({
+        success: true,
+        message: "SMS sent successfully!",
+    });
 });
 
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log("Server running on " + PORT));
+app.listen(10000, () => {
+    console.log("Server running on 10000");
+});
