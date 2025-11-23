@@ -17,44 +17,58 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   List<List<dynamic>> students = [];
   Map<int, bool> attendance = {};
 
-  // Load CSV
+  // _____________________________
+  // UPLOAD CSV
+  // _____________________________
   Future<void> uploadCSV() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles();
+
     if (result != null) {
       final csvData = utf8.decode(result.files.single.bytes!);
-      List<List<dynamic>> rows = const CsvToListConverter().convert(csvData);
 
-      setState(() {
-  students = rows.sublist(1)
-      .where((row) => row.isNotEmpty && row[1].toString().trim().isNotEmpty)
-      .toList();
-});
+      List<List<dynamic>> rows =
+          const CsvToListConverter().convert(csvData, eol: "\n");
 
+      // Skip header
+      setState(() => students = rows.sublist(1));
     }
   }
 
-  // Send SMS using 1-variable DLT template
-  Future<void> sendSMS(String studentName, String phone) async {
+  // _____________________________
+  // NAME SPLIT LOGIC FOR 1 VARIABLE TEMPLATE (SAFE)
+  // _____________________________
+  String sanitizeName(String fullName) {
+    return fullName.trim();
+  }
+
+  // _____________________________
+  // SEND SMS
+  // _____________________________
+  Future<void> sendSMS(String fullName, String phone) async {
+    final cleanName = sanitizeName(fullName);
+
     final res = await http.post(
       Uri.parse('$SERVER_URL/send-sms'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         "mobile": phone.trim(),
-        "studentName": studentName.trim(),
+        "studentName": cleanName,
       }),
     );
 
     debugPrint("SMS Response: ${res.body}");
   }
 
+  // _____________________________
+  // SEND ALL ABSENTEES
+  // _____________________________
   void sendAllAbsentees() {
     for (int i = 0; i < students.length; i++) {
       bool isPresent = attendance[i] ?? true;
 
       if (!isPresent) {
-        // CSV COLUMNS → [0=roll, 1=name, 2=division, 3=parent_phone, ...]
-        String name = students[i][1].toString();   // student name
-        String phone = students[i][3].toString();  // parent_phone
+        String name = students[i][1].toString();      // name column
+        String phone = students[i][3].toString();     // parent_phone column
 
         sendSMS(name, phone);
       }
@@ -65,6 +79,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
+  // _____________________________
+  // UI
+  // _____________________________
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -77,12 +94,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           )
         ],
       ),
-
       floatingActionButton: FloatingActionButton(
         onPressed: uploadCSV,
         child: const Icon(Icons.upload_file),
       ),
-
       body: students.isEmpty
           ? const Center(child: Text("Upload student CSV to start"))
           : ListView.builder(
@@ -112,4 +127,3 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 }
-
