@@ -17,7 +17,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   List<List<dynamic>> students = [];
   Map<int, bool> attendance = {};
 
-  // Load CSV
   Future<void> uploadCSV() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles();
     if (result != null) {
@@ -27,12 +26,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
-  // SPLIT NAME INTO TWO DLT VARIABLES IF > 30 chars
+  // Split name for 2 DLT variables (var1 max 30 chars)
   Map<String, String> splitNameForDLT(String fullName) {
     fullName = fullName.trim();
 
     if (fullName.length <= 30) {
-      return {"var1": fullName, "var2": ""};
+      return {
+        "var1": fullName,
+        "var2": "",
+      };
     } else {
       return {
         "var1": fullName.substring(0, 30),
@@ -41,7 +43,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
-  // SEND SMS
   Future<void> sendSMS(String fullName, String phone) async {
     final parts = splitNameForDLT(fullName);
 
@@ -50,30 +51,29 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'mobile': phone.trim(),
-        'var1': parts["var1"],
-        'var2': parts["var2"],
+        'var1': parts["var1"] ?? "",
+        'var2': parts["var2"] ?? "",
       }),
     );
 
     debugPrint("SMS Response: ${res.body}");
   }
 
-  // SEND SMS FOR ALL ABSENTEES
   void sendAllAbsentees() {
-      for (int i = 0; i < students.length; i++) {
-        bool isPresent = attendance[i] ?? true;
+    for (int i = 0; i < students.length; i++) {
+      bool isPresent = attendance[i] ?? true;
 
-        if (!isPresent) {
-          String fullName = students[i][5].toString();  // parent_name (FULL)
-          String phone = students[i][3].toString();      // parent_phone
+      if (!isPresent) {
+        String name = students[i][1].toString();   // name
+        String phone = students[i][3].toString();  // parent_phone
 
-          sendSMS(fullName, phone);
-        }
+        sendSMS(name, phone);
       }
+    }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Messages sent for all absentees!")),
-      );
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Messages sent for all absentees!")),
+    );
   }
 
   @override
@@ -98,19 +98,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               padding: const EdgeInsets.all(12),
               itemCount: students.length,
               itemBuilder: (context, i) {
-                String fullName = students[i][5].toString();  // parent_name
-                String phone = students[i][3].toString();      // parent_phone
+                String name = students[i][1].toString();
+                String phone = students[i][3].toString();
 
                 return Card(
-                  elevation: 1,
+                  elevation: 0.8,
                   child: CheckboxListTile(
-                    title: Text(
-                      fullName,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    title: Text(name,
+                        style: const TextStyle(
+                            fontSize: 17, fontWeight: FontWeight.w500)),
                     subtitle: Text("Phone: $phone"),
                     value: attendance[i] ?? true,
                     onChanged: (v) => setState(() => attendance[i] = v!),
