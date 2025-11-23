@@ -7,6 +7,7 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
+// Home test route
 app.get("/", (req, res) => {
   res.send("SMS Server is running");
 });
@@ -14,15 +15,24 @@ app.get("/", (req, res) => {
 app.post("/send-sms", async (req, res) => {
   const { mobile, var1, var2 } = req.body;
 
-  if (!mobile || (!var1 && !var2)) {
+  // Basic validation
+  if (!mobile || !var1) {
     return res.status(400).json({
       success: false,
       error: "Missing data"
     });
   }
 
-  // EXACT DLT APPROVED FORMAT
-  const message = `Dear Parents,Your child, ${var1}${var2} remained absent in school today.,Vidyakunj School`;
+  // FIXED: Remove trailing/leading spaces
+  const cleanVar1 = (var1 || "").trim();
+  const cleanVar2 = (var2 || "").trim();
+
+  // EXACT DLT FORMAT (NO EXTRA SPACE ANYWHERE)
+  // Template: Dear Parents,Your child, #{var#}#{var#} remained absent in school today.,Vidyakunj School
+  const message =
+    `Dear Parents,Your child, ` +
+    `${cleanVar1}${cleanVar2}` +
+    ` remained absent in school today.,Vidyakunj School`;
 
   const apiUrl = "https://enterprise.smsgupshup.com/GatewayAPI/rest";
 
@@ -43,16 +53,16 @@ app.post("/send-sms", async (req, res) => {
 
     console.log("GupShup Response:", result);
 
-    if (result.toLowerCase().includes("success")) {
-      res.json({ success: true, response: result });
-    } else {
-      res.json({ success: false, response: result });
-    }
-  } catch (error) {
-    console.error("SMS ERROR:", error);
+    res.json({
+      success: result.toLowerCase().includes("success"),
+      response: result
+    });
+  } catch (err) {
+    console.error("SMS ERROR:", err);
     res.status(500).json({ success: false, error: "Server error" });
   }
 });
 
+// PORT
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log("Server running on " + PORT));
