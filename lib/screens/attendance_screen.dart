@@ -24,7 +24,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       final csvData = utf8.decode(result.files.single.bytes!);
       List<List<dynamic>> rows = const CsvToListConverter().convert(csvData);
 
-      setState(() => students = rows.sublist(1)); // Skip header row
+      setState(() {
+  students = rows.sublist(1)
+      .where((row) => row.isNotEmpty && row[1].toString().trim().isNotEmpty)
+      .toList();
+});
+
     }
   }
 
@@ -107,3 +112,4 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 }
+
