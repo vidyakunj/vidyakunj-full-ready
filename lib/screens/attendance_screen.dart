@@ -22,37 +22,17 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     if (result != null) {
       final csvData = utf8.decode(result.files.single.bytes!);
       List<List<dynamic>> rows = const CsvToListConverter().convert(csvData);
-      setState(() => students = rows.sublist(1)); // Skip header
+      setState(() => students = rows.sublist(1)); // Skip header row
     }
   }
 
-  // AUTO SPLIT NAME FOR DLT
-  Map<String, String> splitNameForDLT(String fullName) {
-    fullName = fullName.trim();
-
-    if (fullName.length <= 30) {
-      return {
-        "var1": fullName,
-        "var2": "",
-      };
-    } else {
-      return {
-        "var1": fullName.substring(0, 30),
-        "var2": fullName.substring(30),
-      };
-    }
-  }
-
-  Future<void> sendSMS(String fullName, String phone) async {
-    final parts = splitNameForDLT(fullName);
-
+  Future<void> sendSMS(String studentName, String phone) async {
     final res = await http.post(
       Uri.parse('$SERVER_URL/send-sms'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'mobile': phone.trim(),
-        'var1': parts["var1"],
-        'var2": parts["var2"],
+        'studentName': studentName.trim(),
       }),
     );
 
@@ -62,10 +42,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   void sendAllAbsentees() {
     for (int i = 0; i < students.length; i++) {
       bool isPresent = attendance[i] ?? true;
-
       if (!isPresent) {
-        String name = students[i][1].toString();  // correct
-        String phone = students[i][3].toString(); // correct → parent_phone column
+        String name = students[i][1].toString();   // Student name
+        String phone = students[i][3].toString();  // parent_phone column
 
         sendSMS(name, phone);
       }
@@ -98,7 +77,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               itemCount: students.length,
               itemBuilder: (context, i) {
                 String name = students[i][1].toString();
-                String phone = students[i][3].toString(); // correct
+                String phone = students[i][3].toString();
 
                 return Card(
                   elevation: 0.8,
