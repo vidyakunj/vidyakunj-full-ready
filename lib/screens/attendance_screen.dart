@@ -22,11 +22,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     if (result != null) {
       final csvData = utf8.decode(result.files.single.bytes!);
       List<List<dynamic>> rows = const CsvToListConverter().convert(csvData);
-      setState(() => students = rows.sublist(1)); // Skip header row
+      setState(() => students = rows.sublist(1)); // Skip header
     }
   }
 
-  // Split name for 2 DLT variables (var1 max 30 chars)
+  // AUTO SPLIT NAME FOR DLT
   Map<String, String> splitNameForDLT(String fullName) {
     fullName = fullName.trim();
 
@@ -51,8 +51,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'mobile': phone.trim(),
-        'var1': parts["var1"] ?? "",
-        'var2': parts["var2"] ?? "",
+        'var1': parts["var1"],
+        'var2": parts["var2"],
       }),
     );
 
@@ -64,8 +64,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       bool isPresent = attendance[i] ?? true;
 
       if (!isPresent) {
-        String name = students[i][1].toString();   // name
-        String phone = students[i][3].toString();  // parent_phone
+        String name = students[i][1].toString();  // correct
+        String phone = students[i][3].toString(); // correct → parent_phone column
 
         sendSMS(name, phone);
       }
@@ -83,9 +83,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         title: Text("Attendance - ${widget.className.toUpperCase()}"),
         actions: [
           IconButton(
-            onPressed: sendAllAbsentees,
-            icon: const Icon(Icons.send, size: 28),
-          )
+              onPressed: sendAllAbsentees,
+              icon: const Icon(Icons.send, size: 28))
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -99,14 +98,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               itemCount: students.length,
               itemBuilder: (context, i) {
                 String name = students[i][1].toString();
-                String phone = students[i][3].toString();
+                String phone = students[i][3].toString(); // correct
 
                 return Card(
                   elevation: 0.8,
                   child: CheckboxListTile(
-                    title: Text(name,
-                        style: const TextStyle(
-                            fontSize: 17, fontWeight: FontWeight.w500)),
+                    title: Text(
+                      name,
+                      style: const TextStyle(
+                          fontSize: 17, fontWeight: FontWeight.w500),
+                    ),
                     subtitle: Text("Phone: $phone"),
                     value: attendance[i] ?? true,
                     onChanged: (v) => setState(() => attendance[i] = v!),
