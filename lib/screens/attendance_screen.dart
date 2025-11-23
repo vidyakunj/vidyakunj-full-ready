@@ -17,6 +17,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   List<List<dynamic>> students = [];
   Map<int, bool> attendance = {};
 
+  // Load CSV
   Future<void> uploadCSV() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles();
     if (result != null) {
@@ -26,15 +27,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
-  // SPLIT NAME FOR 2 DLT VARIABLES
+  // SPLIT NAME INTO TWO DLT VARIABLES IF > 30 chars
   Map<String, String> splitNameForDLT(String fullName) {
     fullName = fullName.trim();
 
     if (fullName.length <= 30) {
-      return {
-        "var1": fullName,
-        "var2": "",
-      };
+      return {"var1": fullName, "var2": ""};
     } else {
       return {
         "var1": fullName.substring(0, 30),
@@ -43,6 +41,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
+  // SEND SMS
   Future<void> sendSMS(String fullName, String phone) async {
     final parts = splitNameForDLT(fullName);
 
@@ -59,20 +58,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     debugPrint("SMS Response: ${res.body}");
   }
 
+  // SEND SMS FOR ALL ABSENTEES
   void sendAllAbsentees() {
-    for (int i = 0; i < students.length; i++) {
-      bool isPresent = attendance[i] ?? true;
-      if (!isPresent) {
-        String name = students[i][1].toString();   // student name
-        String phone = students[i][4].toString();  // CORRECT COLUMN -> Mobile Number
+      for (int i = 0; i < students.length; i++) {
+        bool isPresent = attendance[i] ?? true;
 
-        sendSMS(name, phone);
+        if (!isPresent) {
+          String fullName = students[i][5].toString();  // parent_name (FULL)
+          String phone = students[i][3].toString();      // parent_phone
+
+          sendSMS(fullName, phone);
+        }
       }
-    }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Messages sent for all absentees!")),
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Messages sent for all absentees!")),
+      );
   }
 
   @override
@@ -97,14 +98,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               padding: const EdgeInsets.all(12),
               itemCount: students.length,
               itemBuilder: (context, i) {
-                String name = students[i][1].toString();
-                String phone = students[i][4].toString(); // CORRECT PHONE SHOWN
+                String fullName = students[i][5].toString();  // parent_name
+                String phone = students[i][3].toString();      // parent_phone
 
                 return Card(
-                  elevation: 0.8,
+                  elevation: 1,
                   child: CheckboxListTile(
                     title: Text(
-                      name,
+                      fullName,
                       style: const TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w500,
