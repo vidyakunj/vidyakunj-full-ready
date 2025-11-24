@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/login_screen.dart';
-import 'screens/test_sms.dart';   // <-- Add this import
+import 'screens/daily_attendance_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -14,18 +13,8 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Vidyakunj Attendance',
       theme: ThemeData(primarySwatch: Colors.blue),
-
-      // ROUTES FOR NAVIGATION
-      routes: {
-        '/test-sms': (context) => const TestSMS(),
-      },
-
-      // DEFAULT HOME SCREEN (YOUR ORIGINAL SCREEN)
-      home: const AttendanceScreen(className: 'default'),
-
+      home: const DailyAttendanceScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
 }
-
-
