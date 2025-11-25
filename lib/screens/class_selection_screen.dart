@@ -4,15 +4,20 @@ import 'daily_attendance_screen.dart';
 class ClassSelectionScreen extends StatelessWidget {
   const ClassSelectionScreen({super.key});
 
-  final List<String> classes = const [
-    "Nursery",
-    "LKG",
-    "UKG",
-    "1A",
-    "1B",
-    "2A",
-    "2B",
-  ];
+ final List<String> classes = const [
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
+  "7",
+  "8",
+  "9",
+  "10",
+  "11",
+  "12",
+];
 
   @override
   Widget build(BuildContext context) {
