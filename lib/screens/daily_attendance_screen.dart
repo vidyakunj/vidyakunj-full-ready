@@ -18,7 +18,13 @@ class Student {
 }
 
 class DailyAttendanceScreen extends StatefulWidget {
-  const DailyAttendanceScreen({super.key});
+  final String className;
+
+const DailyAttendanceScreen({
+  super.key,
+  required this.className,
+});
+
 
   @override
   State<DailyAttendanceScreen> createState() => _DailyAttendanceScreenState();
