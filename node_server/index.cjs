@@ -18,6 +18,36 @@ app.get("/divisions", (req, res) => {
   const stdNum = parseInt(std);
 
   let divisions = [];
+  
+// ---------------- STUDENTS API ----------------
+
+app.get("/students", (req, res) => {
+  const std = (req.query.std || "").trim();
+  const div = (req.query.div || "").trim();
+
+  // TEMP DEMO STUDENT DATA (Later connect to DB)
+  const demoStudents = {
+    "1-A": [
+      { roll: 1, name: "Patil Manohar", mobile: "8980994984" },
+      { roll: 2, name: "Diya Patil", mobile: "919265635968" }
+    ],
+
+    "2-A": [
+      { roll: 1, name: "Student 1", mobile: "9999999999" },
+      { roll: 2, name: "Student 2", mobile: "9999998888" }
+    ]
+  };
+
+  const key = `${std}-${div}`;
+  const students = demoStudents[key] || [];
+
+  return res.json({
+    success: true,
+    std,
+    div,
+    students
+  });
+});
 
   // Nursery, LKG, UKG → 2 divisions always
   if (std === "Nursery" || std === "LKG" || std === "UKG") {
