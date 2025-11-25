@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/daily_attendance_screen.dart';
+import 'screens/class_selection_screen.dart'; // NEW import
 
 void main() {
   runApp(const MyApp());
@@ -13,7 +13,10 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Vidyakunj Attendance',
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: const DailyAttendanceScreen(),
+
+      // ✅ Start app with Class Selection Screen
+      home: const ClassSelectionScreen(),
+
       debugShowCheckedModeBanner: false,
     );
   }
