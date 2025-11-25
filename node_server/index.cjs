@@ -7,70 +7,64 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// Test route
+// ---------------------------------------------------
+// TEST ROUTE
+// ---------------------------------------------------
 app.get("/", (req, res) => {
   res.send("SMS Server is running");
 });
-// ---------------- DIVISIONS API ----------------
 
+// ---------------------------------------------------
+// DIVISIONS API
+// ---------------------------------------------------
 app.get("/divisions", (req, res) => {
-  const std = (req.query.std || "").toString().trim();
-  const stdNum = parseInt(std);
+  const std = (req.query.std || "").trim();
+  const num = parseInt(std);
 
   let divisions = [];
-  
-// ---------------- STUDENTS API ----------------
+
+  if (num >= 1 && num <= 8) {
+    divisions = ["A", "B", "C", "D"];
+  } else if (num >= 9 && num <= 12) {
+    divisions = ["A", "B", "C"];
+  }
+
+  res.json({
+    success: true,
+    std,
+    divisions,
+  });
+});
+
+// ---------------------------------------------------
+// STUDENTS API (FULL STD 1–12 DATA)
+// ---------------------------------------------------
+const demoStudents = {
+
+  ### PASTE THE GENERATED STUDENT JSON HERE ###
+  ### (from the python result above) ###
+  ### It starts with "1-A": [ and ends with "12-C": [ ... ] ###
+
+};
 
 app.get("/students", (req, res) => {
   const std = (req.query.std || "").trim();
   const div = (req.query.div || "").trim();
 
-  // TEMP DEMO STUDENT DATA (Later connect to DB)
-  const demoStudents = {
-    "1-A": [
-      { roll: 1, name: "Patil Manohar", mobile: "8980994984" },
-      { roll: 2, name: "Diya Patil", mobile: "919265635968" }
-    ],
-
-    "2-A": [
-      { roll: 1, name: "Student 1", mobile: "9999999999" },
-      { roll: 2, name: "Student 2", mobile: "9999998888" }
-    ]
-  };
-
   const key = `${std}-${div}`;
   const students = demoStudents[key] || [];
 
-  return res.json({
+  res.json({
     success: true,
     std,
     div,
-    students
+    students,
   });
 });
 
-  // Nursery, LKG, UKG → 2 divisions always
-  if (std === "Nursery" || std === "LKG" || std === "UKG") {
-    divisions = ["A", "B"];
-  }
-
-  // STD 1 to 8 → 4 divisions (A, B, C, D)
-  else if (stdNum >= 1 && stdNum <= 8) {
-    divisions = ["A", "B", "C", "D"];
-  }
-
-  // STD 9, 10, 11, 12 → 3 divisions (A, B, C)
-  else if (stdNum >= 9 && stdNum <= 12) {
-    divisions = ["A", "B", "C"];
-  }
-
-  return res.json({
-    success: true,
-    class: std,
-    divisions: divisions,
-  });
-});
-
+// ---------------------------------------------------
+// SEND SMS API
+// ---------------------------------------------------
 app.post("/send-sms", async (req, res) => {
   const { mobile, studentName } = req.body;
 
@@ -78,10 +72,7 @@ app.post("/send-sms", async (req, res) => {
     return res.status(400).json({ success: false, error: "Missing data" });
   }
 
-  // EXACT DLT TEMPLATE (1 variable)
-  // Dear Parents,Your child, {#var#} remained absent in school today.,Vidyakunj School
-  const message =
-    `Dear Parents,Your child, ${studentName} remained absent in school today.,Vidyakunj School`;
+  const message = `Dear Parents,Your child, ${studentName} remained absent in school today.,Vidyakunj School`;
 
   const apiUrl = "https://enterprise.smsgupshup.com/GatewayAPI/rest";
 
@@ -93,24 +84,22 @@ app.post("/send-sms", async (req, res) => {
     userid: "2000176036",
     password: "rkbJIg7O0",
     auth_scheme: "PLAIN",
-    v: "1.1"
+    v: "1.1",
   });
 
   try {
     const response = await fetch(apiUrl + "?" + params.toString());
     const result = await response.text();
 
-    console.log("GupShup Response:", result);
-
     res.json({
       success: result.toLowerCase().includes("success"),
-      response: result
+      response: result,
     });
   } catch (err) {
-    console.error("SMS ERROR:", err);
     res.status(500).json({ success: false, error: "Server error" });
   }
 });
 
+// ---------------------------------------------------
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log("Server running on port " + PORT));
