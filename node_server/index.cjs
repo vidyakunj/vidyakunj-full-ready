@@ -11,6 +11,35 @@ app.use(bodyParser.json());
 app.get("/", (req, res) => {
   res.send("SMS Server is running");
 });
+// ---------------- DIVISIONS API ----------------
+
+app.get("/divisions", (req, res) => {
+  const std = (req.query.std || "").toString().trim();
+  const stdNum = parseInt(std);
+
+  let divisions = [];
+
+  // Nursery, LKG, UKG → 2 divisions always
+  if (std === "Nursery" || std === "LKG" || std === "UKG") {
+    divisions = ["A", "B"];
+  }
+
+  // STD 1 to 8 → 4 divisions (A, B, C, D)
+  else if (stdNum >= 1 && stdNum <= 8) {
+    divisions = ["A", "B", "C", "D"];
+  }
+
+  // STD 9, 10, 11, 12 → 3 divisions (A, B, C)
+  else if (stdNum >= 9 && stdNum <= 12) {
+    divisions = ["A", "B", "C"];
+  }
+
+  return res.json({
+    success: true,
+    class: std,
+    divisions: divisions,
+  });
+});
 
 app.post("/send-sms", async (req, res) => {
   const { mobile, studentName } = req.body;
