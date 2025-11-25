@@ -12,32 +12,18 @@ class NewAttendanceScreen extends StatefulWidget {
 }
 
 class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
-  String? selectedStd; // 1–12
-  String? selectedDiv; // A, B, C, D
+  String? selectedStd;
+  String? selectedDiv;
+
   bool isLoadingDivs = false;
+  bool isLoadingStudents = false;
+
   List<String> divisions = [];
+  List<_StudentRow> students = []; // real students
 
-  // Today’s date
-  final DateTime today = DateTime.now();
-
-  // Demo students for now (later we will load from backend)
-  final List<_StudentRow> students = [
-    _StudentRow(
-      name: 'Patil Manohar',
-      roll: 1,
-      mobile: '8980994984',
-      isPresent: true,
-    ),
-    _StudentRow(
-      name: 'Diya Patil',
-      roll: 2,
-      mobile: '919265635968',
-      isPresent: true,
-    ),
-  ];
-
-  // List of STD options 1–12
   final List<String> stdOptions = List<String>.generate(12, (i) => '${i + 1}');
+
+  final DateTime today = DateTime.now();
 
   String get formattedDate =>
       '${today.day.toString().padLeft(2, '0')}/${today.month.toString().padLeft(2, '0')}/${today.year}';
@@ -56,6 +42,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     return days[today.weekday];
   }
 
+  // ---------------------- LOAD DIVISIONS ----------------------
   Future<void> _loadDivisions() async {
     if (selectedStd == null) return;
 
@@ -63,12 +50,12 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
       isLoadingDivs = true;
       divisions = [];
       selectedDiv = null;
+      students = []; // reset students
     });
 
     try {
-      final uri = Uri.parse(
-        '$SERVER_URL/divisions?std=${Uri.encodeComponent(selectedStd!)}',
-      );
+      final uri =
+          Uri.parse('$SERVER_URL/divisions?std=${Uri.encodeComponent(selectedStd!)}');
       final res = await http.get(uri);
 
       if (res.statusCode == 200) {
@@ -76,42 +63,67 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
         final List<dynamic> list = data['divisions'] ?? [];
         setState(() {
           divisions = list.map((e) => e.toString()).toList();
-          if (divisions.isNotEmpty) {
-            selectedDiv = divisions.first;
-          }
         });
-      } else {
-        _showSnack('Error loading divisions (${res.statusCode})');
       }
     } catch (e) {
       _showSnack('Error loading divisions: $e');
-    } finally {
-      if (mounted) {
+    }
+
+    setState(() => isLoadingDivs = false);
+  }
+
+  // ---------------------- LOAD STUDENTS ----------------------
+  Future<void> _loadStudents() async {
+    if (selectedStd == null || selectedDiv == null) return;
+
+    setState(() {
+      isLoadingStudents = true;
+      students = [];
+    });
+
+    try {
+      final uri = Uri.parse(
+          '$SERVER_URL/students?std=$selectedStd&div=$selectedDiv');
+      final res = await http.get(uri);
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        final List<dynamic> list = data['students'] ?? [];
+
         setState(() {
-          isLoadingDivs = false;
+          students = list
+              .map((e) => _StudentRow(
+                    name: e['name'],
+                    roll: e['roll'],
+                    mobile: e['mobile'],
+                    isPresent: true,
+                  ))
+              .toList();
         });
       }
+    } catch (e) {
+      _showSnack('Error loading students: $e');
     }
+
+    setState(() => isLoadingStudents = false);
   }
 
-  void _showSnack(String msg) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg)),
-    );
-  }
-
+  // ---------------------- SMS ----------------------
   Future<void> _saveAttendance() async {
-    // Check STD & DIV selected
     if (selectedStd == null || selectedDiv == null) {
-      _showSnack('Please select STD and DIV');
+      _showSnack('Select STD & DIV');
       return;
     }
 
-    // Collect absentees
+    if (students.isEmpty) {
+      _showSnack('No students found');
+      return;
+    }
+
     final absentees = students.where((s) => !s.isPresent).toList();
+
     if (absentees.isEmpty) {
-      _showSnack('No absentees marked');
+      _showSnack('No absentees');
       return;
     }
 
@@ -131,8 +143,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
         if (res.statusCode == 200) {
           final data = jsonDecode(res.body);
-          final ok = data["success"] == true;
-          if (ok) {
+          if (data['success'] == true) {
             sent++;
           } else {
             failed++;
@@ -147,19 +158,24 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
     if (!mounted) return;
 
-    // Show summary dialog
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('SMS Summary'),
-        content: Text('$sent SMS sent\n$failed failed'),
+        title: const Text("SMS Summary"),
+        content: Text("$sent SMS sent\n$failed failed"),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('OK'),
-          ),
+            child: const Text("OK"),
+          )
         ],
       ),
+    );
+  }
+
+  void _showSnack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg)),
     );
   }
 
@@ -167,282 +183,185 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     Navigator.of(context).pop();
   }
 
+  // ---------------------- UI ----------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Daily Attendance'),
-      ),
+      appBar: AppBar(title: const Text("Daily Attendance")),
+
       body: Column(
         children: [
           const SizedBox(height: 8),
 
-          // HEADER: STD, DIV, DATE, DAY
+          // HEADER SECTION — STD, DIV, DATE, DAY
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: Card(
               elevation: 2,
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10),
+                padding: const EdgeInsets.all(12.0),
                 child: Column(
                   children: [
                     Row(
                       children: [
-                        // STD Dropdown
+                        // STD DROPDOWN
                         Expanded(
-                          child: Row(
-                            children: [
-                              const Text(
-                                'STD : ',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: DropdownButtonFormField<String>(
-                                  value: selectedStd,
-                                  hint: const Text('Select STD'),
-                                  items: stdOptions
-                                      .map(
-                                        (s) => DropdownMenuItem<String>(
-                                          value: s,
-                                          child: Text(s),
-                                        ),
-                                      )
-                                      .toList(),
-                                  onChanged: (val) {
-                                    setState(() {
-                                      selectedStd = val;
-                                    });
-                                    _loadDivisions();
-                                  },
-                                ),
-                              ),
-                            ],
+                          child: DropdownButtonFormField<String>(
+                            value: selectedStd,
+                            hint: const Text("Select STD"),
+                            items: stdOptions
+                                .map((s) => DropdownMenuItem(
+                                      value: s,
+                                      child: Text(s),
+                                    ))
+                                .toList(),
+                            onChanged: (val) {
+                              setState(() {
+                                selectedStd = val;
+                              });
+                              _loadDivisions();
+                            },
                           ),
                         ),
 
                         const SizedBox(width: 8),
 
-                        // DIV Dropdown
+                        // DIV DROPDOWN
                         Expanded(
-                          child: Row(
-                            children: [
-                              const Text(
-                                'DIV : ',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
+                          child: isLoadingDivs
+                              ? const Center(
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : DropdownButtonFormField<String>(
+                                  value: selectedDiv,
+                                  hint: const Text("Select DIV"),
+                                  items: divisions
+                                      .map((d) => DropdownMenuItem(
+                                            value: d,
+                                            child: Text(d),
+                                          ))
+                                      .toList(),
+                                  onChanged: (val) {
+                                    setState(() {
+                                      selectedDiv = val;
+                                    });
+                                    if (val != null) _loadStudents();
+                                  },
                                 ),
-                              ),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: isLoadingDivs
-                                    ? const Center(
-                                        child: SizedBox(
-                                          height: 20,
-                                          width: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                          ),
-                                        ),
-                                      )
-                                    : DropdownButtonFormField<String>(
-                                        value: selectedDiv,
-                                        hint: const Text('Select DIV'),
-                                        items: divisions
-                                            .map(
-                                              (d) => DropdownMenuItem<String>(
-                                                value: d,
-                                                child: Text(d),
-                                              ),
-                                            )
-                                            .toList(),
-                                        onChanged: divisions.isEmpty
-                                            ? null
-                                            : (val) {
-                                                setState(() {
-                                                  selectedDiv = val;
-                                                });
-                                              },
-                                      ),
-                              ),
-                            ],
-                          ),
                         ),
                       ],
                     ),
 
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
 
                     Row(
                       children: [
+                        Expanded(child: Text("Date: $formattedDate")),
                         Expanded(
                           child: Text(
-                            'Date : $formattedDate',
-                            style: const TextStyle(fontSize: 14),
-                          ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            'Day : $dayName',
-                            style: const TextStyle(fontSize: 14),
+                            "Day: $dayName",
                             textAlign: TextAlign.right,
                           ),
                         ),
                       ],
-                    ),
+                    )
                   ],
                 ),
               ),
             ),
           ),
 
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
 
           // TABLE HEADER
-          Padding
-            (padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-              color: Colors.grey.shade300,
-              child: Row(
-                children: const [
-                  Expanded(
-                    flex: 5,
-                    child: Text(
-                      'Student Name',
-                      style:
-                          TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      'Roll No',
-                      style:
-                          TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  Expanded(
-                    flex: 3,
-                    child: Text(
-                      'Present / Absent',
-                      style:
-                          TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ],
-              ),
+          Container(
+            color: Colors.grey.shade300,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: const [
+                Expanded(flex: 5, child: Text("Student Name", style: TextStyle(fontWeight: FontWeight.bold))),
+                Expanded(flex: 2, child: Text("Roll No", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold))),
+                Expanded(flex: 3, child: Text("Present / Absent", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold))),
+              ],
             ),
           ),
 
-          const SizedBox(height: 4),
-
-          // TABLE ROWS
+          // STUDENT LIST
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              itemCount: students.length,
-              itemBuilder: (context, index) {
-                final s = students[index];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 4),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    color:
-                        index.isEven ? Colors.grey.shade100 : Colors.grey[50],
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12.0,
-                    vertical: 6.0,
-                  ),
-                  child: Row(
-                    children: [
-                      // Student name
-                      Expanded(
-                        flex: 5,
-                        child: Text(
-                          s.name,
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                      ),
+            child: isLoadingStudents
+                ? const Center(child: CircularProgressIndicator())
+                : ListView.builder(
+                    itemCount: students.length,
+                    itemBuilder: (context, index) {
+                      final s = students[index];
 
-                      // Roll no
-                      Expanded(
-                        flex: 2,
-                        child: Text(
-                          s.roll.toString(),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 14),
+                      return Container(
+                        margin: const EdgeInsets.symmetric(vertical: 2),
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          color: index.isEven
+                              ? Colors.grey.shade100
+                              : Colors.grey.shade50,
                         ),
-                      ),
-
-                      // Present / Absent with checkbox
-                      Expanded(
-                        flex: 3,
                         child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  s.isPresent ? 'Present' : 'Absent',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                    color: s.isPresent
-                                        ? Colors.green
-                                        : Colors.red,
-                                  ),
-                                ),
-                                Checkbox(
-                                  value: s.isPresent,
-                                  onChanged: (v) {
-                                    setState(() {
-                                      s.isPresent = v ?? true;
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
+                            Expanded(flex: 5, child: Text(s.name)),
+                            Expanded(
+                                flex: 2,
+                                child: Text("${s.roll}",
+                                    textAlign: TextAlign.center)),
+                            Expanded(
+                              flex: 3,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Column(
+                                    children: [
+                                      Text(
+                                        s.isPresent ? "Present" : "Absent",
+                                        style: TextStyle(
+                                          color: s.isPresent
+                                              ? Colors.green
+                                              : Colors.red,
+                                        ),
+                                      ),
+                                      Checkbox(
+                                        value: s.isPresent,
+                                        onChanged: (v) {
+                                          setState(() {
+                                            s.isPresent = v ?? true;
+                                          });
+                                        },
+                                      )
+                                    ],
+                                  )
+                                ],
+                              ),
+                            )
                           ],
                         ),
-                      ),
-                    ],
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
 
-          // SAVE / EXIT buttons
+          // SAVE + EXIT
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
+            padding: const EdgeInsets.all(10),
             child: Row(
               children: [
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () {
-                      _saveAttendance();
-                    },
-                    child: const Text('SAVE'),
+                    onPressed: _saveAttendance,
+                    child: const Text("SAVE"),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
                   child: OutlinedButton(
                     onPressed: _exitScreen,
-                    child: const Text('EXIT'),
+                    child: const Text("EXIT"),
                   ),
                 ),
               ],
