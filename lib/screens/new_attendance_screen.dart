@@ -22,8 +22,18 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
   // Demo students for now (later we will load from backend)
   final List<_StudentRow> students = [
-    _StudentRow(name: 'Patil Manohar', roll: 1, isPresent: true),
-    _StudentRow(name: 'Diya Patil', roll: 2, isPresent: true),
+    _StudentRow(
+      name: 'Patil Manohar',
+      roll: 1,
+      mobile: '8980994984',
+      isPresent: true,
+    ),
+    _StudentRow(
+      name: 'Diya Patil',
+      roll: 2,
+      mobile: '919265635968',
+      isPresent: true,
+    ),
   ];
 
   // List of STD options 1–12
@@ -56,8 +66,9 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     });
 
     try {
-      final uri =
-          Uri.parse('$SERVER_URL/divisions?std=${Uri.encodeComponent(selectedStd!)}');
+      final uri = Uri.parse(
+        '$SERVER_URL/divisions?std=${Uri.encodeComponent(selectedStd!)}',
+      );
       final res = await http.get(uri);
 
       if (res.statusCode == 200) {
@@ -90,9 +101,66 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     );
   }
 
-  void _saveAttendance() {
-    // Later: send to backend
-    _showSnack('Attendance saved (demo only)');
+  Future<void> _saveAttendance() async {
+    // Check STD & DIV selected
+    if (selectedStd == null || selectedDiv == null) {
+      _showSnack('Please select STD and DIV');
+      return;
+    }
+
+    // Collect absentees
+    final absentees = students.where((s) => !s.isPresent).toList();
+    if (absentees.isEmpty) {
+      _showSnack('No absentees marked');
+      return;
+    }
+
+    int sent = 0;
+    int failed = 0;
+
+    for (final s in absentees) {
+      try {
+        final res = await http.post(
+          Uri.parse('$SERVER_URL/send-sms'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            "mobile": s.mobile.trim(),
+            "studentName": s.name.trim(),
+          }),
+        );
+
+        if (res.statusCode == 200) {
+          final data = jsonDecode(res.body);
+          final ok = data["success"] == true;
+          if (ok) {
+            sent++;
+          } else {
+            failed++;
+          }
+        } else {
+          failed++;
+        }
+      } catch (e) {
+        failed++;
+      }
+    }
+
+    if (!mounted) return;
+
+    // Show summary dialog
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('SMS Summary'),
+        content: Text('$sent SMS sent\n$failed failed'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _exitScreen() {
@@ -128,7 +196,9 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                               const Text(
                                 'STD : ',
                                 style: TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 14),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
                               ),
                               const SizedBox(width: 4),
                               Expanded(
@@ -164,7 +234,9 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                               const Text(
                                 'DIV : ',
                                 style: TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 14),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
                               ),
                               const SizedBox(width: 4),
                               Expanded(
@@ -232,8 +304,8 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
           const SizedBox(height: 8),
 
           // TABLE HEADER
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+          Padding
+            (padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: Container(
               padding:
                   const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
@@ -288,7 +360,9 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                         index.isEven ? Colors.grey.shade100 : Colors.grey[50],
                   ),
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 12.0, vertical: 6.0),
+                    horizontal: 12.0,
+                    vertical: 6.0,
+                  ),
                   child: Row(
                     children: [
                       // Student name
@@ -358,7 +432,9 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
               children: [
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: _saveAttendance,
+                    onPressed: () {
+                      _saveAttendance();
+                    },
                     child: const Text('SAVE'),
                   ),
                 ),
@@ -381,12 +457,13 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 class _StudentRow {
   final String name;
   final int roll;
+  final String mobile;
   bool isPresent;
 
   _StudentRow({
     required this.name,
     required this.roll,
+    required this.mobile,
     this.isPresent = true,
   });
 }
-
