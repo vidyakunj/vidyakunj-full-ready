@@ -370,6 +370,50 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
             ),
           ),
 
+          // ⭐⭐ --------------------- MARK ALL BUTTONS HERE ------------------
+          if (students.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          for (var s in students) {
+                            s.isPresent = true;
+                          }
+                        });
+                      },
+                      child: const Text("Mark All Present"),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          for (var s in students) {
+                            s.isPresent = false;
+                          }
+                        });
+                      },
+                      child: const Text("Mark All Absent"),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          // ⭐⭐ --------------------------------------------------------------
+
+          const SizedBox(height: 4),
+
           // TABLE HEADER
           Container(
             color: Colors.deepPurple.shade50,
@@ -472,7 +516,6 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                               ),
                               child: Row(
                                 children: [
-                                  // Student Name
                                   Expanded(
                                     flex: 5,
                                     child: Text(
@@ -484,7 +527,6 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                                     ),
                                   ),
 
-                                  // Roll Number
                                   Expanded(
                                     flex: 2,
                                     child: Text(
@@ -495,7 +537,6 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                                     ),
                                   ),
 
-                                  // Present / Absent
                                   Expanded(
                                     flex: 3,
                                     child: Column(
@@ -567,7 +608,7 @@ class _StudentRow {
   final String mobile;
   bool isPresent;
 
-  bool hover = false;    // ⭐ REQUIRED FOR HOVER EFFECT
+  bool hover = false;    
 
   _StudentRow({
     required this.name,
