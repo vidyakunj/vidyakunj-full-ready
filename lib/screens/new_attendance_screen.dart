@@ -20,6 +20,8 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
   List<String> divisions = [];
   List<_StudentRow> students = [];
+  TextEditingController searchController = TextEditingController();
+String searchQuery = "";
 
   final List<String> stdOptions = List<String>.generate(12, (i) => '${i + 1}');
 
