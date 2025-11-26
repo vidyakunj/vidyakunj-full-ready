@@ -344,13 +344,21 @@ String searchQuery = "";
           ),
 
           // STUDENT LIST
+          // FILTERED LIST BASED ON SEARCH
+final filteredStudents = students.where((s) {
+  final query = searchQuery.toLowerCase();
+  return s.name.toLowerCase().contains(query) ||
+         s.roll.toString().contains(query);
+}).toList();
+
           Expanded(
             child: isLoadingStudents
                 ? const Center(child: CircularProgressIndicator())
                 : ListView.builder(
-                    itemCount: students.length,
+                    itemCount: filteredStudents.length,
                     itemBuilder: (context, index) {
-                      final s = students[index];
+                      final s = filteredStudents[index];
+
 
                       return Container(
                         padding: const EdgeInsets.symmetric(
