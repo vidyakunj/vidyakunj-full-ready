@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
 import '../config.dart';
 
 class NewAttendanceScreen extends StatefulWidget {
@@ -21,10 +20,9 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
   List<String> divisions = [];
   List<_StudentRow> students = [];
   TextEditingController searchController = TextEditingController();
-String searchQuery = "";
+  String searchQuery = "";
 
   final List<String> stdOptions = List<String>.generate(12, (i) => '${i + 1}');
-
   final DateTime today = DateTime.now();
 
   String get formattedDate =>
@@ -56,8 +54,8 @@ String searchQuery = "";
     });
 
     try {
-      final uri =
-          Uri.parse('$SERVER_URL/divisions?std=${Uri.encodeComponent(selectedStd!)}');
+      final uri = Uri.parse(
+          '$SERVER_URL/divisions?std=${Uri.encodeComponent(selectedStd!)}');
       final res = await http.get(uri);
 
       if (res.statusCode == 200) {
@@ -176,16 +174,15 @@ String searchQuery = "";
   }
 
   void _showSnack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg)),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(msg)));
   }
 
   void _exitScreen() {
     Navigator.of(context).pop();
   }
 
-  // ---------------------- UI (NEW MODERN DESIGN) ----------------------
+  // ---------------------- UI ----------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -204,14 +201,12 @@ String searchQuery = "";
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12.0),
             child: Card(
-              color: Colors.white,
               child: Padding(
                 padding: const EdgeInsets.all(14.0),
                 child: Column(
                   children: [
                     Row(
                       children: [
-                        // STD DROPDOWN
                         Expanded(
                           child: DropdownButtonFormField<String>(
                             value: selectedStd,
@@ -222,45 +217,45 @@ String searchQuery = "";
                               ),
                             ),
                             items: stdOptions
-                                .map((s) => DropdownMenuItem(
-                                      value: s,
-                                      child: Text(s),
-                                    ))
+                                .map(
+                                  (s) => DropdownMenuItem(
+                                    value: s,
+                                    child: Text(s),
+                                  ),
+                                )
                                 .toList(),
-                            onChanged: (val) {
-                              setState(() {
-                                selectedStd = val;
-                              });
+                            onChanged: (v) {
+                              setState(() => selectedStd = v);
                               _loadDivisions();
                             },
                           ),
                         ),
-
                         const SizedBox(width: 12),
-
-                        // DIV DROPDOWN
                         Expanded(
                           child: isLoadingDivs
                               ? const Center(
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                  child: CircularProgressIndicator(),
                                 )
                               : DropdownButtonFormField<String>(
                                   value: selectedDiv,
                                   decoration: InputDecoration(
                                     labelText: "Select DIV",
                                     border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius:
+                                          BorderRadius.circular(12),
                                     ),
                                   ),
                                   items: divisions
-                                      .map((d) => DropdownMenuItem(
-                                            value: d,
-                                            child: Text(d),
-                                          ))
+                                      .map(
+                                        (d) => DropdownMenuItem(
+                                          value: d,
+                                          child: Text(d),
+                                        ),
+                                      )
                                       .toList(),
-                                  onChanged: (val) {
-                                    setState(() => selectedDiv = val);
-                                    if (val != null) _loadStudents();
+                                  onChanged: (v) {
+                                    setState(() => selectedDiv = v);
+                                    if (v != null) _loadStudents();
                                   },
                                 ),
                         ),
@@ -269,15 +264,14 @@ String searchQuery = "";
 
                     const SizedBox(height: 12),
 
+                    // DATE + DAY
                     Row(
                       children: [
                         Expanded(
                           child: Text(
                             "Date: $formattedDate",
                             style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
+                                fontWeight: FontWeight.w600),
                           ),
                         ),
                         Expanded(
@@ -285,9 +279,7 @@ String searchQuery = "";
                             "Day: $dayName",
                             textAlign: TextAlign.right,
                             style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
+                                fontWeight: FontWeight.w600),
                           ),
                         ),
                       ],
@@ -300,15 +292,28 @@ String searchQuery = "";
 
           const SizedBox(height: 10),
 
+          // SEARCH BAR
+          Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: TextField(
+              controller: searchController,
+              decoration: InputDecoration(
+                hintText: "Search student...",
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onChanged: (value) {
+                setState(() => searchQuery = value);
+              },
+            ),
+          ),
+
           // TABLE HEADER
           Container(
-            decoration: BoxDecoration(
-              color: Colors.deepPurple.shade50,
-              border: Border(
-                bottom:
-                    BorderSide(color: Colors.deepPurple.shade200, width: 1.4),
-              ),
-            ),
+            color: Colors.deepPurple.shade50,
             padding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: Row(
@@ -318,7 +323,8 @@ String searchQuery = "";
                   child: Text(
                     "Student Name",
                     style: TextStyle(
-                        fontWeight: FontWeight.bold, color: Colors.black87),
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87),
                   ),
                 ),
                 Expanded(
@@ -327,7 +333,8 @@ String searchQuery = "";
                     "Roll No",
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                        fontWeight: FontWeight.bold, color: Colors.black87),
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87),
                   ),
                 ),
                 Expanded(
@@ -336,83 +343,91 @@ String searchQuery = "";
                     "Present / Absent",
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                        fontWeight: FontWeight.bold, color: Colors.black87),
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87),
                   ),
                 ),
               ],
             ),
           ),
 
-          // STUDENT LIST
-          // FILTERED LIST BASED ON SEARCH
-final filteredStudents = students.where((s) {
-  final query = searchQuery.toLowerCase();
-  return s.name.toLowerCase().contains(query) ||
-         s.roll.toString().contains(query);
-}).toList();
+          const SizedBox(height: 4),
 
+          // STUDENT LIST
           Expanded(
             child: isLoadingStudents
                 ? const Center(child: CircularProgressIndicator())
-                : ListView.builder(
-                    itemCount: filteredStudents.length,
-                    itemBuilder: (context, index) {
-                      final s = filteredStudents[index];
+                : Builder(
+                    builder: (context) {
+                      final filteredStudents = students.where((s) {
+                        if (searchQuery.isEmpty) return true;
+                        final q = searchQuery.toLowerCase();
+                        return s.name.toLowerCase().contains(q) ||
+                            s.roll.toString().contains(q);
+                      }).toList();
 
+                      return ListView.builder(
+                        itemCount: filteredStudents.length,
+                        itemBuilder: (context, index) {
+                          final s = filteredStudents[index];
 
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: index.isEven
-                              ? Colors.white
-                              : Colors.grey.shade100,
-                          border: Border(
-                            bottom:
-                                BorderSide(color: Colors.grey.shade300),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(flex: 5, child: Text(s.name)),
-                            Expanded(
-                              flex: 2,
-                              child: Text(
-                                "${s.roll}",
-                                textAlign: TextAlign.center,
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: index.isEven
+                                  ? Colors.white
+                                  : Colors.grey.shade100,
+                              border: Border(
+                                bottom: BorderSide(
+                                    color: Colors.grey.shade300),
                               ),
                             ),
-                            Expanded(
-                              flex: 3,
-                              child: Column(
-                                children: [
-                                  Text(
-                                    s.isPresent ? "Present" : "Absent",
-                                    style: TextStyle(
-                                      color: s.isPresent
-                                          ? Colors.green
-                                          : Colors.red,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                            child: Row(
+                              children: [
+                                Expanded(flex: 5, child: Text(s.name)),
+                                Expanded(
+                                  flex: 2,
+                                  child: Text(
+                                    "${s.roll}",
+                                    textAlign: TextAlign.center,
                                   ),
-                                  Checkbox(
-                                    value: s.isPresent,
-                                    onChanged: (v) {
-                                      setState(
-                                          () => s.isPresent = v ?? true);
-                                    },
+                                ),
+                                Expanded(
+                                  flex: 3,
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        s.isPresent
+                                            ? "Present"
+                                            : "Absent",
+                                        style: TextStyle(
+                                          color: s.isPresent
+                                              ? Colors.green
+                                              : Colors.red,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      Checkbox(
+                                        value: s.isPresent,
+                                        onChanged: (v) {
+                                          setState(() =>
+                                              s.isPresent = v ?? true);
+                                        },
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          );
+                        },
                       );
                     },
                   ),
           ),
 
-          // BUTTONS
+          // SAVE + EXIT BUTTONS
           Padding(
             padding: const EdgeInsets.all(14.0),
             child: Row(
@@ -423,7 +438,7 @@ final filteredStudents = students.where((s) {
                     child: const Text("SAVE"),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Expanded(
                   child: OutlinedButton(
                     onPressed: _exitScreen,
@@ -439,6 +454,7 @@ final filteredStudents = students.where((s) {
   }
 }
 
+// ---------------------- STUDENT MODEL ----------------------
 class _StudentRow {
   final String name;
   final int roll;
