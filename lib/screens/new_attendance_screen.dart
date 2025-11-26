@@ -108,7 +108,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     setState(() => isLoadingStudents = false);
   }
 
-  // ---------------------- SMS ----------------------
+  // ---------------------- SEND SMS ----------------------
   Future<void> _saveAttendance() async {
     if (selectedStd == null || selectedDiv == null) {
       _showSnack('Select STD & DIV');
@@ -186,94 +186,72 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-     appBar: PreferredSize(
-  preferredSize: const Size.fromHeight(92),
-  child: AppBar(
-    automaticallyImplyLeading: false,
-    elevation: 6,
-    centerTitle: false,
-    flexibleSpace: Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Color(0xFF5B21B6), // deep purple
-            Color(0xFF7C3AED), // lighter purple
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(18),
-          bottomRight: Radius.circular(18),
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black26,
-            offset: Offset(0, 3),
-            blurRadius: 8,
-          )
-        ],
-      ),
-    ),
-    backgroundColor: Colors.transparent,
-    title: Padding(
-      padding: const EdgeInsets.only(top: 8.0),
-      child: Row(
-        children: [
-          // small circular logo placeholder (replace with asset if you have one)
-          Container(
-            width: 44,
-            height: 44,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(92),
+        child: AppBar(
+          automaticallyImplyLeading: false,
+          elevation: 6,
+          centerTitle: false,
+          flexibleSpace: Container(
             decoration: BoxDecoration(
-              color: Colors.white24,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Center(
-              child: Icon(Icons.school, size: 26, color: Colors.white),
+              gradient: LinearGradient(
+                colors: [
+                  Color(0xFF5B21B6),
+                  Color(0xFF7C3AED),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(18),
+                bottomRight: Radius.circular(18),
+              ),
             ),
           ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Text(
-                "Vidyakunj Attendance",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
+          backgroundColor: Colors.transparent,
+          title: Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.school, size: 26, color: Colors.white),
+                  ),
                 ),
-              ),
-              SizedBox(height: 2),
-              Text(
-                "Daily Attendance",
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      "Vidyakunj Attendance",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      "Daily Attendance",
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ],
-      ),
-    ),
-    actions: [
-      Padding(
-        padding: const EdgeInsets.only(right: 12.0, top: 8),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(Icons.notifications, color: Colors.white),
-            SizedBox(height: 2),
-            Text("Admin", style: TextStyle(color: Colors.white70, fontSize: 10))
-          ],
         ),
-      )
-    ],
-  ),
-),
-
+      ),
 
       body: Column(
         children: [
@@ -346,7 +324,6 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
                     const SizedBox(height: 12),
 
-                    // DATE + DAY
                     Row(
                       children: [
                         Expanded(
@@ -435,7 +412,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
           const SizedBox(height: 4),
 
-          // STUDENT LIST
+          // STUDENT LIST WITH MODERN CARDS
           Expanded(
             child: isLoadingStudents
                 ? const Center(child: CircularProgressIndicator())
@@ -453,54 +430,101 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                         itemBuilder: (context, index) {
                           final s = filteredStudents[index];
 
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: index.isEven
-                                  ? Colors.white
-                                  : Colors.grey.shade100,
-                              border: Border(
-                                bottom: BorderSide(
-                                    color: Colors.grey.shade300),
+                          return MouseRegion(
+                            onEnter: (_) => setState(() => s.hover = true),
+                            onExit: (_) => setState(() => s.hover = false),
+                            child: AnimatedContainer(
+                              duration:
+                                  const Duration(milliseconds: 180),
+                              margin: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 14),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                boxShadow: s.hover
+                                    ? [
+                                        BoxShadow(
+                                          color: Colors.deepPurple
+                                              .shade200
+                                              .withOpacity(0.35),
+                                          blurRadius: 12,
+                                          spreadRadius: 1,
+                                          offset: const Offset(0, 4),
+                                        )
+                                      ]
+                                    : [
+                                        BoxShadow(
+                                          color: Colors.black12
+                                              .withOpacity(0.08),
+                                          blurRadius: 6,
+                                          spreadRadius: 1,
+                                          offset: const Offset(0, 2),
+                                        )
+                                      ],
+                                border: Border.all(
+                                  color: s.isPresent
+                                      ? Colors.green.withOpacity(0.25)
+                                      : Colors.red.withOpacity(0.25),
+                                  width: 1.2,
+                                ),
                               ),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(flex: 5, child: Text(s.name)),
-                                Expanded(
-                                  flex: 2,
-                                  child: Text(
-                                    "${s.roll}",
-                                    textAlign: TextAlign.center,
+                              child: Row(
+                                children: [
+                                  // Student Name
+                                  Expanded(
+                                    flex: 5,
+                                    child: Text(
+                                      s.name,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                                Expanded(
-                                  flex: 3,
-                                  child: Column(
-                                    children: [
-                                      Text(
-                                        s.isPresent
-                                            ? "Present"
-                                            : "Absent",
-                                        style: TextStyle(
-                                          color: s.isPresent
-                                              ? Colors.green
-                                              : Colors.red,
-                                          fontWeight: FontWeight.w600,
+
+                                  // Roll Number
+                                  Expanded(
+                                    flex: 2,
+                                    child: Text(
+                                      "${s.roll}",
+                                      textAlign: TextAlign.center,
+                                      style:
+                                          const TextStyle(fontSize: 15),
+                                    ),
+                                  ),
+
+                                  // Present / Absent
+                                  Expanded(
+                                    flex: 3,
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          s.isPresent
+                                              ? "Present"
+                                              : "Absent",
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            color: s.isPresent
+                                                ? Colors.green
+                                                : Colors.red,
+                                          ),
                                         ),
-                                      ),
-                                      Checkbox(
-                                        value: s.isPresent,
-                                        onChanged: (v) {
-                                          setState(() =>
-                                              s.isPresent = v ?? true);
-                                        },
-                                      ),
-                                    ],
+                                        Checkbox(
+                                          value: s.isPresent,
+                                          onChanged: (v) {
+                                            setState(() =>
+                                                s.isPresent =
+                                                    v ?? true);
+                                          },
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           );
                         },
@@ -542,6 +566,8 @@ class _StudentRow {
   final int roll;
   final String mobile;
   bool isPresent;
+
+  bool hover = false;    // ⭐ REQUIRED FOR HOVER EFFECT
 
   _StudentRow({
     required this.name,
