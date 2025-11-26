@@ -186,12 +186,94 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          "Daily Attendance",
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+     appBar: PreferredSize(
+  preferredSize: const Size.fromHeight(92),
+  child: AppBar(
+    automaticallyImplyLeading: false,
+    elevation: 6,
+    centerTitle: false,
+    flexibleSpace: Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Color(0xFF5B21B6), // deep purple
+            Color(0xFF7C3AED), // lighter purple
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(18),
+          bottomRight: Radius.circular(18),
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black26,
+            offset: Offset(0, 3),
+            blurRadius: 8,
+          )
+        ],
       ),
+    ),
+    backgroundColor: Colors.transparent,
+    title: Padding(
+      padding: const EdgeInsets.only(top: 8.0),
+      child: Row(
+        children: [
+          // small circular logo placeholder (replace with asset if you have one)
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Center(
+              child: Icon(Icons.school, size: 26, color: Colors.white),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Text(
+                "Vidyakunj Attendance",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              SizedBox(height: 2),
+              Text(
+                "Daily Attendance",
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+    actions: [
+      Padding(
+        padding: const EdgeInsets.only(right: 12.0, top: 8),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            Icon(Icons.notifications, color: Colors.white),
+            SizedBox(height: 2),
+            Text("Admin", style: TextStyle(color: Colors.white70, fontSize: 10))
+          ],
+        ),
+      )
+    ],
+  ),
+),
+
 
       body: Column(
         children: [
