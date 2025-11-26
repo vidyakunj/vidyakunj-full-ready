@@ -19,7 +19,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
   bool isLoadingStudents = false;
 
   List<String> divisions = [];
-  List<_StudentRow> students = []; // real students
+  List<_StudentRow> students = [];
 
   final List<String> stdOptions = List<String>.generate(12, (i) => '${i + 1}');
 
@@ -50,7 +50,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
       isLoadingDivs = true;
       divisions = [];
       selectedDiv = null;
-      students = []; // reset students
+      students = [];
     });
 
     try {
@@ -82,8 +82,8 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     });
 
     try {
-      final uri = Uri.parse(
-          '$SERVER_URL/students?std=$selectedStd&div=$selectedDiv');
+      final uri =
+          Uri.parse('$SERVER_URL/students?std=$selectedStd&div=$selectedDiv');
       final res = await http.get(uri);
 
       if (res.statusCode == 200) {
@@ -183,23 +183,28 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     Navigator.of(context).pop();
   }
 
-  // ---------------------- UI ----------------------
+  // ---------------------- UI (NEW MODERN DESIGN) ----------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Daily Attendance")),
+      appBar: AppBar(
+        title: const Text(
+          "Daily Attendance",
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+        ),
+      ),
 
       body: Column(
         children: [
           const SizedBox(height: 8),
 
-          // HEADER SECTION — STD, DIV, DATE, DAY
+          // HEADER CARD
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
             child: Card(
-              elevation: 2,
+              color: Colors.white,
               child: Padding(
-                padding: const EdgeInsets.all(12.0),
+                padding: const EdgeInsets.all(14.0),
                 child: Column(
                   children: [
                     Row(
@@ -208,7 +213,12 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                         Expanded(
                           child: DropdownButtonFormField<String>(
                             value: selectedStd,
-                            hint: const Text("Select STD"),
+                            decoration: InputDecoration(
+                              labelText: "Select STD",
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
                             items: stdOptions
                                 .map((s) => DropdownMenuItem(
                                       value: s,
@@ -224,7 +234,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                           ),
                         ),
 
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 12),
 
                         // DIV DROPDOWN
                         Expanded(
@@ -234,7 +244,12 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                                 )
                               : DropdownButtonFormField<String>(
                                   value: selectedDiv,
-                                  hint: const Text("Select DIV"),
+                                  decoration: InputDecoration(
+                                    labelText: "Select DIV",
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
                                   items: divisions
                                       .map((d) => DropdownMenuItem(
                                             value: d,
@@ -242,9 +257,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                                           ))
                                       .toList(),
                                   onChanged: (val) {
-                                    setState(() {
-                                      selectedDiv = val;
-                                    });
+                                    setState(() => selectedDiv = val);
                                     if (val != null) _loadStudents();
                                   },
                                 ),
@@ -252,15 +265,27 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                       ],
                     ),
 
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
 
                     Row(
                       children: [
-                        Expanded(child: Text("Date: $formattedDate")),
+                        Expanded(
+                          child: Text(
+                            "Date: $formattedDate",
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
                         Expanded(
                           child: Text(
                             "Day: $dayName",
                             textAlign: TextAlign.right,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ],
@@ -271,17 +296,47 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
             ),
           ),
 
-          const SizedBox(height: 6),
+          const SizedBox(height: 10),
 
           // TABLE HEADER
           Container(
-            color: Colors.grey.shade300,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.deepPurple.shade50,
+              border: Border(
+                bottom:
+                    BorderSide(color: Colors.deepPurple.shade200, width: 1.4),
+              ),
+            ),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: Row(
               children: const [
-                Expanded(flex: 5, child: Text("Student Name", style: TextStyle(fontWeight: FontWeight.bold))),
-                Expanded(flex: 2, child: Text("Roll No", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold))),
-                Expanded(flex: 3, child: Text("Present / Absent", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold))),
+                Expanded(
+                  flex: 5,
+                  child: Text(
+                    "Student Name",
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: Colors.black87),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    "Roll No",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: Colors.black87),
+                  ),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    "Present / Absent",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: Colors.black87),
+                  ),
+                ),
               ],
             ),
           ),
@@ -296,49 +351,50 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                       final s = students[index];
 
                       return Container(
-                        margin: const EdgeInsets.symmetric(vertical: 2),
-                        padding: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 12),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
                           color: index.isEven
-                              ? Colors.grey.shade100
-                              : Colors.grey.shade50,
+                              ? Colors.white
+                              : Colors.grey.shade100,
+                          border: Border(
+                            bottom:
+                                BorderSide(color: Colors.grey.shade300),
+                          ),
                         ),
                         child: Row(
                           children: [
                             Expanded(flex: 5, child: Text(s.name)),
                             Expanded(
-                                flex: 2,
-                                child: Text("${s.roll}",
-                                    textAlign: TextAlign.center)),
+                              flex: 2,
+                              child: Text(
+                                "${s.roll}",
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
                             Expanded(
                               flex: 3,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                              child: Column(
                                 children: [
-                                  Column(
-                                    children: [
-                                      Text(
-                                        s.isPresent ? "Present" : "Absent",
-                                        style: TextStyle(
-                                          color: s.isPresent
-                                              ? Colors.green
-                                              : Colors.red,
-                                        ),
-                                      ),
-                                      Checkbox(
-                                        value: s.isPresent,
-                                        onChanged: (v) {
-                                          setState(() {
-                                            s.isPresent = v ?? true;
-                                          });
-                                        },
-                                      )
-                                    ],
-                                  )
+                                  Text(
+                                    s.isPresent ? "Present" : "Absent",
+                                    style: TextStyle(
+                                      color: s.isPresent
+                                          ? Colors.green
+                                          : Colors.red,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  Checkbox(
+                                    value: s.isPresent,
+                                    onChanged: (v) {
+                                      setState(
+                                          () => s.isPresent = v ?? true);
+                                    },
+                                  ),
                                 ],
                               ),
-                            )
+                            ),
                           ],
                         ),
                       );
@@ -346,9 +402,9 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                   ),
           ),
 
-          // SAVE + EXIT
+          // BUTTONS
           Padding(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(14.0),
             child: Row(
               children: [
                 Expanded(
@@ -357,7 +413,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                     child: const Text("SAVE"),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 12),
                 Expanded(
                   child: OutlinedButton(
                     onPressed: _exitScreen,
