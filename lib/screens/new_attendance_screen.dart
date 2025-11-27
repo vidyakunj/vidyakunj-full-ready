@@ -29,16 +29,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
       '${today.day.toString().padLeft(2, '0')}/${today.month.toString().padLeft(2, '0')}/${today.year}';
 
   String get dayName {
-    const days = [
-      '',
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-      'Sunday',
-    ];
+    const days = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     return days[today.weekday];
   }
 
@@ -54,16 +45,13 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     });
 
     try {
-      final uri = Uri.parse(
-          '$SERVER_URL/divisions?std=${Uri.encodeComponent(selectedStd!)}');
+      final uri = Uri.parse('$SERVER_URL/divisions?std=${Uri.encodeComponent(selectedStd!)}');
       final res = await http.get(uri);
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         final List<dynamic> list = data['divisions'] ?? [];
-        setState(() {
-          divisions = list.map((e) => e.toString()).toList();
-        });
+        setState(() => divisions = list.map((e) => e.toString()).toList());
       }
     } catch (e) {
       _showSnack('Error loading divisions: $e');
@@ -82,8 +70,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     });
 
     try {
-      final uri =
-          Uri.parse('$SERVER_URL/students?std=$selectedStd&div=$selectedDiv');
+      final uri = Uri.parse('$SERVER_URL/students?std=$selectedStd&div=$selectedDiv');
       final res = await http.get(uri);
 
       if (res.statusCode == 200) {
@@ -96,7 +83,6 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                     name: e['name'],
                     roll: e['roll'],
                     mobile: e['mobile'],
-                    isPresent: true,
                   ))
               .toList();
         });
@@ -135,19 +121,12 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
         final res = await http.post(
           Uri.parse('$SERVER_URL/send-sms'),
           headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            "mobile": s.mobile.trim(),
-            "studentName": s.name.trim(),
-          }),
+          body: jsonEncode({"mobile": s.mobile.trim(), "studentName": s.name.trim()}),
         );
 
         if (res.statusCode == 200) {
           final data = jsonDecode(res.body);
-          if (data['success'] == true) {
-            sent++;
-          } else {
-            failed++;
-          }
+          data['success'] == true ? sent++ : failed++;
         } else {
           failed++;
         }
@@ -174,8 +153,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
   }
 
   void _showSnack(String msg) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   void _exitScreen() {
@@ -186,397 +164,81 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey.shade100,
+
+      // --------------------- HEADER ---------------------
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(92),
-        child: AppBar(
-          automaticallyImplyLeading: false,
-          elevation: 6,
-          centerTitle: false,
-          flexibleSpace: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFF5B21B6),
-                  Color(0xFF7C3AED),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(18),
-                bottomRight: Radius.circular(18),
-              ),
+        preferredSize: const Size.fromHeight(95),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF5B21B6), Color(0xFF7C3AED)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(20),
+              bottomRight: Radius.circular(20),
             ),
           ),
-          backgroundColor: Colors.transparent,
-          title: Padding(
-            padding: const EdgeInsets.only(top: 8.0),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Center(
-                    child: Icon(Icons.school, size: 26, color: Colors.white),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      "Vidyakunj Attendance",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      "Daily Attendance",
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+          child: AppBar(
+            title: const Text("Daily Attendance"),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            centerTitle: false,
           ),
         ),
       ),
 
+      // --------------------- BODY ---------------------
       body: Column(
         children: [
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
 
-          // HEADER CARD
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(14.0),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            value: selectedStd,
-                            decoration: InputDecoration(
-                              labelText: "Select STD",
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            items: stdOptions
-                                .map(
-                                  (s) => DropdownMenuItem(
-                                    value: s,
-                                    child: Text(s),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (v) {
-                              setState(() => selectedStd = v);
-                              _loadDivisions();
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: isLoadingDivs
-                              ? const Center(
-                                  child: CircularProgressIndicator(),
-                                )
-                              : DropdownButtonFormField<String>(
-                                  value: selectedDiv,
-                                  decoration: InputDecoration(
-                                    labelText: "Select DIV",
-                                    border: OutlineInputBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  items: divisions
-                                      .map(
-                                        (d) => DropdownMenuItem(
-                                          value: d,
-                                          child: Text(d),
-                                        ),
-                                      )
-                                      .toList(),
-                                  onChanged: (v) {
-                                    setState(() => selectedDiv = v);
-                                    if (v != null) _loadStudents();
-                                  },
-                                ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            "Date: $formattedDate",
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            "Day: $dayName",
-                            textAlign: TextAlign.right,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ],
-                    )
-                  ],
-                ),
-              ),
-            ),
+          // --------------------- COUNTERS ---------------------
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _infoCard("Total", students.length.toString(), Colors.blue.shade50, Colors.blue),
+              _infoCard(
+                  "Present",
+                  students.where((s) => s.isPresent).length.toString(),
+                  Colors.green.shade50,
+                  Colors.green),
+              _infoCard(
+                  "Absent",
+                  students.where((s) => !s.isPresent).length.toString(),
+                  Colors.red.shade50,
+                  Colors.red),
+            ],
           ),
 
           const SizedBox(height: 10),
 
-          // SEARCH BAR
+          // --------------------- SEARCH ---------------------
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: TextField(
               controller: searchController,
               decoration: InputDecoration(
                 hintText: "Search student...",
                 prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              onChanged: (value) {
-                setState(() => searchQuery = value);
-              },
+              onChanged: (v) => setState(() => searchQuery = v),
             ),
           ),
 
-          // ⭐⭐ --------------------- MARK ALL BUTTONS HERE ------------------
-          if (students.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          for (var s in students) {
-                            s.isPresent = true;
-                          }
-                        });
-                      },
-                      child: const Text("Mark All Present"),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          for (var s in students) {
-                            s.isPresent = false;
-                          }
-                        });
-                      },
-                      child: const Text("Mark All Absent"),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          // ⭐⭐ --------------------------------------------------------------
-
-          const SizedBox(height: 4),
-
-          // TABLE HEADER
-          Container(
-            color: Colors.deepPurple.shade50,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            child: Row(
-              children: const [
-                Expanded(
-                  flex: 5,
-                  child: Text(
-                    "Student Name",
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    "Roll No",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87),
-                  ),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    "Present / Absent",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 4),
-
-          // STUDENT LIST WITH MODERN CARDS
+          // --------------------- LIST ---------------------
           Expanded(
             child: isLoadingStudents
                 ? const Center(child: CircularProgressIndicator())
-                : Builder(
-                    builder: (context) {
-                      final filteredStudents = students.where((s) {
-                        if (searchQuery.isEmpty) return true;
-                        final q = searchQuery.toLowerCase();
-                        return s.name.toLowerCase().contains(q) ||
-                            s.roll.toString().contains(q);
-                      }).toList();
-
-                      return ListView.builder(
-                        itemCount: filteredStudents.length,
-                        itemBuilder: (context, index) {
-                          final s = filteredStudents[index];
-
-                          return MouseRegion(
-                            onEnter: (_) => setState(() => s.hover = true),
-                            onExit: (_) => setState(() => s.hover = false),
-                            child: AnimatedContainer(
-                              duration:
-                                  const Duration(milliseconds: 180),
-                              margin: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 14),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(14),
-                                boxShadow: s.hover
-                                    ? [
-                                        BoxShadow(
-                                          color: Colors.deepPurple
-                                              .shade200
-                                              .withOpacity(0.35),
-                                          blurRadius: 12,
-                                          spreadRadius: 1,
-                                          offset: const Offset(0, 4),
-                                        )
-                                      ]
-                                    : [
-                                        BoxShadow(
-                                          color: Colors.black12
-                                              .withOpacity(0.08),
-                                          blurRadius: 6,
-                                          spreadRadius: 1,
-                                          offset: const Offset(0, 2),
-                                        )
-                                      ],
-                                border: Border.all(
-                                  color: s.isPresent
-                                      ? Colors.green.withOpacity(0.25)
-                                      : Colors.red.withOpacity(0.25),
-                                  width: 1.2,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    flex: 5,
-                                    child: Text(
-                                      s.name,
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-
-                                  Expanded(
-                                    flex: 2,
-                                    child: Text(
-                                      "${s.roll}",
-                                      textAlign: TextAlign.center,
-                                      style:
-                                          const TextStyle(fontSize: 15),
-                                    ),
-                                  ),
-
-                                  Expanded(
-                                    flex: 3,
-                                    child: Column(
-                                      children: [
-                                        Text(
-                                          s.isPresent
-                                              ? "Present"
-                                              : "Absent",
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                            color: s.isPresent
-                                                ? Colors.green
-                                                : Colors.red,
-                                          ),
-                                        ),
-                                        Checkbox(
-                                          value: s.isPresent,
-                                          onChanged: (v) {
-                                            setState(() =>
-                                                s.isPresent =
-                                                    v ?? true);
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
+                : _buildStudentList(),
           ),
 
-          // SAVE + EXIT BUTTONS
+          // --------------------- BUTTONS ---------------------
           Padding(
-            padding: const EdgeInsets.all(14.0),
+            padding: const EdgeInsets.all(12),
             child: Row(
               children: [
                 Expanded(
@@ -585,7 +247,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                     child: const Text("SAVE"),
                   ),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 12),
                 Expanded(
                   child: OutlinedButton(
                     onPressed: _exitScreen,
@@ -599,6 +261,96 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
       ),
     );
   }
+
+  // ----------------- STUDENT LIST -----------------
+  Widget _buildStudentList() {
+    final filtered = students.where((s) {
+      if (searchQuery.isEmpty) return true;
+      final q = searchQuery.toLowerCase();
+      return s.name.toLowerCase().contains(q) || s.roll.toString().contains(q);
+    }).toList();
+
+    return ListView.builder(
+      padding: const EdgeInsets.only(bottom: 10),
+      itemCount: filtered.length,
+      itemBuilder: (context, index) {
+        final s = filtered[index];
+
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black12.withOpacity(0.08),
+                blurRadius: 6,
+                offset: const Offset(0, 3),
+              )
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                flex: 5,
+                child: Text(
+                  s.name,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  "${s.roll}",
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 15),
+                ),
+              ),
+              Expanded(
+                flex: 3,
+                child: Column(
+                  children: [
+                    Text(
+                      s.isPresent ? "Present" : "Absent",
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: s.isPresent ? Colors.green : Colors.red,
+                      ),
+                    ),
+                    Checkbox(
+                      value: s.isPresent,
+                      onChanged: (v) => setState(() => s.isPresent = v ?? true),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ----------------- COUNTER CARD -----------------
+  Widget _infoCard(String title, String value, Color bg, Color color) {
+    return Container(
+      width: 110,
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        children: [
+          Text(value, style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.bold)),
+          Text(title, style: TextStyle(color: color.withOpacity(0.8), fontSize: 12)),
+        ],
+      ),
+    );
+  }
 }
 
 // ---------------------- STUDENT MODEL ----------------------
@@ -606,14 +358,11 @@ class _StudentRow {
   final String name;
   final int roll;
   final String mobile;
-  bool isPresent;
-
-  bool hover = false;    
+  bool isPresent = true;
 
   _StudentRow({
     required this.name,
     required this.roll,
     required this.mobile,
-    this.isPresent = true,
   });
 }
