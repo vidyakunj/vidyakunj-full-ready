@@ -1,6 +1,6 @@
-// PART 1 of 3
-// new_attendance_screen.dart
+// lib/screens/new_attendance_screen.dart
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../config.dart';
@@ -13,28 +13,27 @@ class NewAttendanceScreen extends StatefulWidget {
 }
 
 class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
-  // --- selection state
   String? selectedStd;
   String? selectedDiv;
 
-  // --- loading flags
   bool isLoadingDivs = false;
   bool isLoadingStudents = false;
 
-  // --- data
   List<String> divisions = [];
   List<_StudentRow> students = [];
 
-  // --- search
-  TextEditingController searchController = TextEditingController();
+  final TextEditingController searchController = TextEditingController();
   String searchQuery = "";
 
-  // --- other
   final List<String> stdOptions = List<String>.generate(12, (i) => '${i + 1}');
   final DateTime today = DateTime.now();
 
-  String get formattedDate =>
-      '${today.day.toString().padLeft(2, '0')}/${today.month.toString().padLeft(2, '0')}/${today.year}';
+  String get formattedDate {
+    final d = today.day.toString().padLeft(2, "0");
+    final m = today.month.toString().padLeft(2, "0");
+    final y = today.year.toString();
+    return "$d/$m/$y";
+  }
 
   String get dayName {
     const days = [
@@ -58,12 +57,11 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
       isLoadingDivs = true;
       divisions = [];
       selectedDiv = null;
-      students = []; // clear students when std changes
+      students = [];
     });
 
     try {
-      final uri =
-          Uri.parse('$SERVER_URL/divisions?std=${Uri.encodeComponent(selectedStd!)}');
+      final uri = Uri.parse('$SERVER_URL/divisions?std=${Uri.encodeComponent(selectedStd!)}');
       final res = await http.get(uri);
 
       if (res.statusCode == 200) {
@@ -92,8 +90,8 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     });
 
     try {
-      final uri =
-          Uri.parse('$SERVER_URL/students?std=${Uri.encodeComponent(selectedStd!)}&div=${Uri.encodeComponent(selectedDiv!)}');
+      final uri = Uri.parse(
+          '$SERVER_URL/students?std=${Uri.encodeComponent(selectedStd!)}&div=${Uri.encodeComponent(selectedDiv!)}');
       final res = await http.get(uri);
 
       if (res.statusCode == 200) {
@@ -103,9 +101,9 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
         setState(() {
           students = list
               .map((e) => _StudentRow(
-                    name: e['name'] ?? '',
-                    roll: (e['roll'] is int) ? e['roll'] : int.tryParse('${e['roll']}') ?? 0,
-                    mobile: e['mobile'] ?? '',
+                    name: (e['name'] ?? '').toString(),
+                    roll: (e['roll'] is int) ? e['roll'] as int : int.tryParse('${e['roll']}') ?? 0,
+                    mobile: (e['mobile'] ?? '').toString(),
                   ))
               .toList();
         });
@@ -141,8 +139,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     int sent = 0;
     int failed = 0;
 
-    setState(() {}); // ensure UI reflects sending state if you add a flag later
-
+    // Optionally you can set a sending flag here to disable the UI while sending
     for (final s in absentees) {
       try {
         final res = await http.post(
@@ -188,38 +185,93 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     Navigator.of(context).pop();
   }
 
-  // ---------------------- UI (start) ----------------------
+  // MARK ALL PRESENT / ABSENT
+  void _markAllPresent() {
+    setState(() {
+      for (var s in students) {
+        s.isPresent = true;
+      }
+    });
+  }
+
+  void _markAllAbsent() {
+    setState(() {
+      for (var s in students) {
+        s.isPresent = false;
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    // filtered list for search
+    final filteredStudents = students.where((s) {
+      if (searchQuery.trim().isEmpty) return true;
+      final q = searchQuery.toLowerCase();
+      return s.name.toLowerCase().contains(q) || s.roll.toString().contains(q);
+    }).toList();
+
+    final total = students.length;
+    final presentCount = students.where((s) => s.isPresent).length;
+    final absentCount = students.where((s) => !s.isPresent).length;
+
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
-
-      // --- Gradient header
+      // Header
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(95),
         child: Container(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: const [Color(0xFF5B21B6), Color(0xFF7C3AED)],
+            gradient: const LinearGradient(
+              colors: [Color(0xFF5B21B6), Color(0xFF7C3AED)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(20), bottomRight: Radius.circular(20)),
           ),
           child: AppBar(
-            title: const Text("Daily Attendance"),
             backgroundColor: Colors.transparent,
             elevation: 0,
-            centerTitle: false,
+            title: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(12)),
+                  child: const Icon(Icons.school, color: Colors.white, size: 26),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text("Vidyakunj Attendance", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
+                    SizedBox(height: 2),
+                    Text("Daily Attendance", style: TextStyle(color: Colors.white70, fontSize: 12)),
+                  ],
+                ),
+              ],
+            ),
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: 12.0, top: 8),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    Icon(Icons.notifications, color: Colors.white),
+                    SizedBox(height: 2),
+                    Text("Admin", style: TextStyle(color: Colors.white70, fontSize: 10)),
+                  ],
+                ),
+              )
+            ],
           ),
         ),
       ),
-
       body: Column(
         children: [
           const SizedBox(height: 10),
 
-          // ----------------- STD + DIV card (Option A: Modern White Rounded Card) -----------------
+          // STD + DIV card
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12.0),
             child: Card(
@@ -244,18 +296,17 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                             onChanged: (val) {
                               setState(() {
                                 selectedStd = val;
+                                selectedDiv = null;
                               });
                               _loadDivisions();
                             },
                           ),
                         ),
-
                         const SizedBox(width: 12),
-
                         // DIV dropdown
                         Expanded(
                           child: isLoadingDivs
-                              ? const SizedBox(height: 48, child: Center(child: CircularProgressIndicator()))
+                              ? SizedBox(height: 48, child: Center(child: CircularProgressIndicator()))
                               : DropdownButtonFormField<String>(
                                   value: selectedDiv,
                                   decoration: InputDecoration(
@@ -265,19 +316,14 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                                   ),
                                   items: divisions.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
                                   onChanged: (val) {
-                                    setState(() {
-                                      selectedDiv = val;
-                                    });
+                                    setState(() => selectedDiv = val);
                                     if (val != null) _loadStudents();
                                   },
                                 ),
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 10),
-
-                    // Date + Day
                     Row(
                       children: [
                         Expanded(child: Text("Date: $formattedDate", style: const TextStyle(fontWeight: FontWeight.w600))),
@@ -292,41 +338,67 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
           const SizedBox(height: 12),
 
-          // PART 1 ends here; PART 2 will continue with counters, search, and student list...
-        ],
-      ),
-    );
-  }
-}
-
-// Note: PART 2 will include the counters (Total / Present / Absent), search bar, student list UI and hover cards.
-// Reply "SEND PART 2" and I'll send the next chunk.
-// -------- PART 2 of 3 (Attendance Counters + Search + Student List) --------
-
-          // ----------------- ATTENDANCE COUNTERS -----------------
+          // COUNTERS (pastel style)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
-                _buildCounterCard(
-                  title: "Total",
-                  value: students.length,
-                  color: Colors.blue.shade50,
-                  textColor: Colors.blue.shade700,
+                _counterCard("Total", total, Colors.blue.shade50, Colors.blue.shade800),
+                const SizedBox(width: 10),
+                _counterCard("Present", presentCount, Colors.green.shade50, Colors.green.shade800),
+                const SizedBox(width: 10),
+                _counterCard("Absent", absentCount, Colors.red.shade50, Colors.red.shade800),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // SEARCH + MARK ALL buttons row
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                // Search expanded
+                Expanded(
+                  flex: 6,
+                  child: TextField(
+                    controller: searchController,
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.search),
+                      hintText: "Search student by name or roll...",
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onChanged: (v) => setState(() => searchQuery = v),
+                  ),
                 ),
-                const SizedBox(width: 12),
-                _buildCounterCard(
-                  title: "Present",
-                  value: students.where((s) => s.isPresent).length,
-                  color: Colors.green.shade50,
-                  textColor: Colors.green.shade700,
-                ),
-                const SizedBox(width: 12),
-                _buildCounterCard(
-                  title: "Absent",
-                  value: students.where((s) => !s.isPresent).length,
-                  color: Colors.red.shade50,
-                  textColor: Colors.red.shade700,
+
+                const SizedBox(width: 10),
+
+                // Mark all buttons
+                Expanded(
+                  flex: 4,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.green.shade700),
+                          onPressed: students.isEmpty ? null : _markAllPresent,
+                          child: const Text("Mark All Present"),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade600),
+                          onPressed: students.isEmpty ? null : _markAllAbsent,
+                          child: const Text("Mark All Absent"),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -334,169 +406,114 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
           const SizedBox(height: 12),
 
-          // ----------------- SEARCH BAR -----------------
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: TextField(
-              controller: searchController,
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.search),
-                hintText: "Search student...",
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              onChanged: (value) {
-                setState(() => searchQuery = value);
-              },
-            ),
-          ),
-
-          const SizedBox(height: 10),
-
-          // ----------------- TABLE HEADER -----------------
+          // TABLE HEADER
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.deepPurple.shade50,
-              border: Border(
-                bottom: BorderSide(color: Colors.deepPurple.shade200),
-              ),
-            ),
+            decoration: BoxDecoration(color: Colors.deepPurple.shade50, border: Border(bottom: BorderSide(color: Colors.deepPurple.shade200))),
             child: Row(
               children: const [
-                Expanded(flex: 5, child: Text("Student Name",
-                    style: TextStyle(fontWeight: FontWeight.bold))),
-                Expanded(flex: 2, child: Text("Roll No",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontWeight: FontWeight.bold))),
-                Expanded(flex: 3, child: Text("Present / Absent",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontWeight: FontWeight.bold))),
+                Expanded(flex: 5, child: Text("Student Name", style: TextStyle(fontWeight: FontWeight.bold))),
+                Expanded(flex: 2, child: Text("Roll No", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold))),
+                Expanded(flex: 3, child: Text("Present / Absent", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold))),
               ],
             ),
           ),
 
-          // ----------------- STUDENT LIST -----------------
+          const SizedBox(height: 6),
+
+          // STUDENT LIST
           Expanded(
             child: isLoadingStudents
                 ? const Center(child: CircularProgressIndicator())
-                : Builder(
-                    builder: (context) {
-                      // APPLY SEARCH FILTER
-                      final filteredStudents = students.where((s) {
-                        if (searchQuery.isEmpty) return true;
-
-                        final q = searchQuery.toLowerCase();
-                        return s.name.toLowerCase().contains(q) ||
-                            s.roll.toString().contains(q);
-                      }).toList();
-
-                      return ListView.builder(
+                : filteredStudents.isEmpty
+                    ? Center(child: Text(selectedStd == null || selectedDiv == null ? "Select STD & DIV to load students" : "No students found"))
+                    : ListView.builder(
+                        padding: const EdgeInsets.only(bottom: 12),
                         itemCount: filteredStudents.length,
                         itemBuilder: (context, index) {
                           final s = filteredStudents[index];
 
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 14),
-                            margin: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: s.isPresent
-                                    ? Colors.green.withOpacity(0.25)
-                                    : Colors.red.withOpacity(0.25),
+                          return MouseRegion(
+                            onEnter: (_) {
+                              if (kIsWeb || defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux) {
+                                setState(() => s.hover = true);
+                              }
+                            },
+                            onExit: (_) {
+                              if (kIsWeb || defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux) {
+                                setState(() => s.hover = false);
+                              }
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 140),
+                              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: s.isPresent ? Colors.green.withOpacity(0.18) : Colors.red.withOpacity(0.18)),
+                                boxShadow: s.hover
+                                    ? [
+                                        BoxShadow(
+                                          color: Colors.deepPurple.shade100.withOpacity(0.35),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 6),
+                                        )
+                                      ]
+                                    : [
+                                        BoxShadow(
+                                          color: Colors.black12.withOpacity(0.04),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 2),
+                                        )
+                                      ],
                               ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black12.withOpacity(0.06),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 3),
-                                )
-                              ],
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  flex: 5,
-                                  child: Text(
-                                    s.name,
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    flex: 5,
+                                    child: Text(s.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                                  ),
+                                  Expanded(
+                                    flex: 2,
+                                    child: Text("${s.roll}", textAlign: TextAlign.center, style: const TextStyle(fontSize: 15)),
+                                  ),
+                                  Expanded(
+                                    flex: 3,
+                                    child: Column(
+                                      children: [
+                                        Text(s.isPresent ? "Present" : "Absent", style: TextStyle(fontWeight: FontWeight.bold, color: s.isPresent ? Colors.green : Colors.red)),
+                                        Checkbox(value: s.isPresent, onChanged: (v) => setState(() => s.isPresent = v ?? true)),
+                                      ],
                                     ),
                                   ),
-                                ),
-                                Expanded(
-                                  flex: 2,
-                                  child: Text(
-                                    "${s.roll}",
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w500),
-                                  ),
-                                ),
-                                Expanded(
-                                  flex: 3,
-                                  child: Column(
-                                    children: [
-                                      Text(
-                                        s.isPresent ? "Present" : "Absent",
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: s.isPresent
-                                              ? Colors.green
-                                              : Colors.red,
-                                        ),
-                                      ),
-                                      Checkbox(
-                                        value: s.isPresent,
-                                        onChanged: (v) {
-                                          setState(() => s.isPresent = v ?? true);
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           );
                         },
-                      );
-                    },
-                  ),
+                      ),
           ),
 
-          // ----------------- SAVE + EXIT BUTTONS -----------------
+          // SAVE + EXIT
           Padding(
             padding: const EdgeInsets.all(14.0),
             child: Row(
               children: [
                 Expanded(
                   child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepPurple,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple),
                     onPressed: _saveAttendance,
-                    child: const Text("SAVE",
-                        style: TextStyle(color: Colors.white)),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 14.0),
+                      child: Text("SAVE", style: TextStyle(color: Colors.white)),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 12),
                 Expanded(
                   child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      side: BorderSide(color: Colors.deepPurple.shade300),
-                    ),
+                    style: OutlinedButton.styleFrom(side: BorderSide(color: Colors.deepPurple.shade300), padding: const EdgeInsets.symmetric(vertical: 14)),
                     onPressed: _exitScreen,
                     child: const Text("EXIT"),
                   ),
@@ -509,54 +526,29 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     );
   }
 
-  // ---------------------- COUNTER CARD WIDGET ----------------------
-  Widget _buildCounterCard({
-    required String title,
-    required int value,
-    required Color color,
-    required Color textColor,
-  }) {
+  // ---------------------- COUNTER CARD ----------------------
+  Widget _counterCard(String title, int value, Color bgColor, Color textColor) {
     return Expanded(
       child: Container(
-        height: 70,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              value.toString(),
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: textColor,
-              ),
-            ),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 12,
-                color: textColor,
-              ),
-            ),
-          ],
-        ),
+        height: 72,
+        decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(12)),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Text(value.toString(), style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: textColor)),
+          const SizedBox(height: 4),
+          Text(title, style: TextStyle(fontSize: 12, color: textColor.withOpacity(0.9))),
+        ]),
       ),
     );
   }
 }
 
 // ---------------------- STUDENT MODEL ----------------------
-
 class _StudentRow {
   final String name;
   final int roll;
   final String mobile;
-
   bool isPresent;
-  bool hover = false;  // Required for hover animation
+  bool hover = false;
 
   _StudentRow({
     required this.name,
