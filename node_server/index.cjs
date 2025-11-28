@@ -8,6 +8,7 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 require("dotenv").config();
+const axios = require("axios");
 
 // ---------------------------
 // APP SETUP
@@ -19,7 +20,7 @@ app.use(bodyParser.json());
 // ---------------------------
 // MONGO CONNECTION
 // ---------------------------
-const MONGO_URL = process.env.MONGO_URL;
+const MONGO_URL = process.env.MONGODB_URI;  // ✔ FIXED NAME
 
 mongoose
   .connect(MONGO_URL)
@@ -58,7 +59,6 @@ app.get("/divisions", async (req, res) => {
 app.get("/students", async (req, res) => {
   try {
     const { std, div } = req.query;
-
     const students = await Student.find({ std, div }).sort({ roll: 1 });
 
     return res.json({ students });
@@ -70,13 +70,14 @@ app.get("/students", async (req, res) => {
 // ---------------------------
 // API — Send SMS (FAST 2 SMS)
 // ---------------------------
-const axios = require("axios");
-
 app.post("/send-sms", async (req, res) => {
   try {
     const { mobile, studentName } = req.body;
 
     const apiKey = process.env.FAST2SMS_KEY;
+    if (!apiKey) {
+      return res.json({ success: false, error: "FAST2SMS_KEY not set" });
+    }
 
     const response = await axios.post(
       "https://www.fast2sms.com/dev/bulkV2",
