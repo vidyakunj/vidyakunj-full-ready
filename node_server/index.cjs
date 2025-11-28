@@ -20,12 +20,19 @@ app.use(bodyParser.json());
 // ---------------------------
 // MONGO CONNECTION
 // ---------------------------
-const MONGO_URL = process.env.MONGODB_URI;  // 🔥 CORRECT ENV NAME
+// IMPORTANT: your Render variable name is MONGODB_URI
+const MONGO_URL = process.env.MONGODB_URI;
+
+if (!MONGO_URL) {
+  console.log("❌ MONGODB_URI NOT FOUND");
+} else {
+  console.log("🔄 Connecting to MongoDB...");
+}
 
 mongoose
   .connect(MONGO_URL)
-  .then(() => console.log("MongoDB Connected"))
-  .catch((err) => console.log("Mongo Error:", err));
+  .then(() => console.log("✅ MongoDB Connected Successfully"))
+  .catch((err) => console.log("❌ MongoDB Error:", err));
 
 // ---------------------------
 // STUDENT SCHEMA
@@ -41,34 +48,19 @@ const studentSchema = new mongoose.Schema({
 const Student = mongoose.model("students", studentSchema);
 
 // ---------------------------
-// ROOT ROUTE (fix Cannot GET /)
-// ---------------------------
-app.get("/", (req, res) => {
-  res.send("✅ Vidyakunj SMS Server is Running");
-});
-
-// ---------------------------
 // API — Get Divisions
 // ---------------------------
 app.get("/divisions", async (req, res) => {
   try {
     const { std } = req.query;
 
-    // TEMPORARY FIX (remove later)
-    const defaultDivs = ["A", "B", "C", "D"];
-
     const divisions = await Student.distinct("div", { std });
-
-    if (!divisions || divisions.length === 0) {
-      return res.json({ divisions: defaultDivs });
-    }
 
     return res.json({ divisions });
   } catch (err) {
-    return res.status(500).json({ error: err });
+    return res.status(500).json({ error: err.toString() });
   }
 });
-
 
 // ---------------------------
 // API — Get Students
@@ -81,38 +73,47 @@ app.get("/students", async (req, res) => {
 
     return res.json({ students });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.toString() });
   }
 });
 
 // ---------------------------
-// API — Send SMS (GUPSHUP)
+// API — Send SMS (Gupshup)
 // ---------------------------
 app.post("/send-sms", async (req, res) => {
   try {
-    const { mobile, studentName } = req.body;
+    const { mobile, message } = req.body;
 
-    const url = process.env.GUPSHUP_URL;
     const user = process.env.GUPSHUP_USER;
     const password = process.env.GUPSHUP_PASSWORD;
     const sender = process.env.GUPSHUP_SENDER;
+    const url = process.env.GUPSHUP_URL;
 
-    const smsText = `Your child ${studentName} is absent today.`;
+    const apiUrl =
+      `${url}?method=sendMessage` +
+      `&send_to=${mobile}` +
+      `&msg=${encodeURIComponent(message)}` +
+      `&userid=${user}` +
+      `&password=${password}` +
+      `&v=1.1&msg_type=TEXT&auth_scheme=PLAIN&extra=SID:${sender}`;
 
-    const fullUrl = `${url}?method=sendMessage&send_to=${mobile}&msg=${encodeURIComponent(
-      smsText
-    )}&format=json&userid=${user}&password=${password}&v=1.1&auth_scheme=plain&extra=SID:${sender}`;
+    const response = await axios.get(apiUrl);
 
-    const response = await axios.get(fullUrl);
-
-    return res.json({ success: true, data: response.data });
+    return res.json({ success: true, response: response.data });
   } catch (err) {
-    return res.json({ success: false, error: err.message });
+    return res.json({ success: false, error: err.toString() });
   }
+});
+
+// ---------------------------
+// DEFAULT HOME ROUTE
+// ---------------------------
+app.get("/", (req, res) => {
+  res.send("✅ Vidyakunj SMS Server is Running");
 });
 
 // ---------------------------
 // START SERVER
 // ---------------------------
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
