@@ -53,12 +53,22 @@ app.get("/", (req, res) => {
 app.get("/divisions", async (req, res) => {
   try {
     const { std } = req.query;
+
+    // TEMPORARY FIX (remove later)
+    const defaultDivs = ["A", "B", "C", "D"];
+
     const divisions = await Student.distinct("div", { std });
+
+    if (!divisions || divisions.length === 0) {
+      return res.json({ divisions: defaultDivs });
+    }
+
     return res.json({ divisions });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err });
   }
 });
+
 
 // ---------------------------
 // API — Get Students
