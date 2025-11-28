@@ -21,7 +21,8 @@ app.use(bodyParser.json());
 // MONGO CONNECTION
 // ---------------------------
 
-const MONGO_URL = process.env.MONGODB_URI;   // ✅ FIXED VARIABLE NAME
+const MONGO_URL = process.env.MONGO_URL || process.env.MONGODB_URI;
+
 
 mongoose
   .connect(MONGO_URL)
