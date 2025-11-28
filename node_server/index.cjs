@@ -7,8 +7,8 @@ const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
-const axios = require("axios");
 require("dotenv").config();
+const axios = require("axios");
 
 // ---------------------------
 // APP SETUP
@@ -20,19 +20,13 @@ app.use(bodyParser.json());
 // ---------------------------
 // MONGO CONNECTION
 // ---------------------------
-// IMPORTANT: your Render variable name is MONGODB_URI
-const MONGO_URL = process.env.MONGODB_URI;
 
-if (!MONGO_URL) {
-  console.log("❌ MONGODB_URI NOT FOUND");
-} else {
-  console.log("🔄 Connecting to MongoDB...");
-}
+const MONGO_URL = process.env.MONGODB_URI;   // ✅ FIXED VARIABLE NAME
 
 mongoose
   .connect(MONGO_URL)
-  .then(() => console.log("✅ MongoDB Connected Successfully"))
-  .catch((err) => console.log("❌ MongoDB Error:", err));
+  .then(() => console.log("MongoDB Connected"))
+  .catch((err) => console.log("Mongo Error:", err));
 
 // ---------------------------
 // STUDENT SCHEMA
@@ -53,12 +47,10 @@ const Student = mongoose.model("students", studentSchema);
 app.get("/divisions", async (req, res) => {
   try {
     const { std } = req.query;
-
     const divisions = await Student.distinct("div", { std });
-
     return res.json({ divisions });
   } catch (err) {
-    return res.status(500).json({ error: err.toString() });
+    return res.status(500).json({ error: err });
   }
 });
 
@@ -73,47 +65,41 @@ app.get("/students", async (req, res) => {
 
     return res.json({ students });
   } catch (err) {
-    return res.status(500).json({ error: err.toString() });
+    return res.status(500).json({ error: err });
   }
 });
 
 // ---------------------------
-// API — Send SMS (Gupshup)
+// API — Send SMS
 // ---------------------------
 app.post("/send-sms", async (req, res) => {
   try {
-    const { mobile, message } = req.body;
+    const { mobile, studentName } = req.body;
 
-    const user = process.env.GUPSHUP_USER;
-    const password = process.env.GUPSHUP_PASSWORD;
-    const sender = process.env.GUPSHUP_SENDER;
-    const url = process.env.GUPSHUP_URL;
+    const apiKey = process.env.FAST2SMS_KEY;
 
-    const apiUrl =
-      `${url}?method=sendMessage` +
-      `&send_to=${mobile}` +
-      `&msg=${encodeURIComponent(message)}` +
-      `&userid=${user}` +
-      `&password=${password}` +
-      `&v=1.1&msg_type=TEXT&auth_scheme=PLAIN&extra=SID:${sender}`;
+    const response = await axios.post(
+      "https://www.fast2sms.com/dev/bulkV2",
+      {
+        route: "v3",
+        sender_id: "TXTIND",
+        message: `Your child ${studentName} is absent today.`,
+        language: "english",
+        flash: 0,
+        numbers: mobile,
+      },
+      { headers: { authorization: apiKey } }
+    );
 
-    const response = await axios.get(apiUrl);
+    return res.json({ success: true, data: response.data });
 
-    return res.json({ success: true, response: response.data });
   } catch (err) {
-    return res.json({ success: false, error: err.toString() });
+    return res.json({ success: false, error: err.message });
   }
-});
-
-// ---------------------------
-// DEFAULT HOME ROUTE
-// ---------------------------
-app.get("/", (req, res) => {
-  res.send("✅ Vidyakunj SMS Server is Running");
 });
 
 // ---------------------------
 // START SERVER
 // ---------------------------
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
