@@ -73,31 +73,46 @@ app.get("/students", async (req, res) => {
 // ---------------------------
 // API — Send SMS
 // ---------------------------
+// ---------------------------------------------------
+// SEND SMS API  (GUPSHUP)
+// ---------------------------------------------------
 app.post("/send-sms", async (req, res) => {
   try {
     const { mobile, studentName } = req.body;
 
-    const apiKey = process.env.FAST2SMS_KEY;
+    if (!mobile || !studentName) {
+      return res.status(400).json({ success: false, error: "Missing data" });
+    }
 
-    const response = await axios.post(
-      "https://www.fast2sms.com/dev/bulkV2",
-      {
-        route: "v3",
-        sender_id: "TXTIND",
-        message: `Your child ${studentName} is absent today.`,
-        language: "english",
-        flash: 0,
-        numbers: mobile,
-      },
-      { headers: { authorization: apiKey } }
-    );
+    const message = `Dear Parents, Your child ${studentName} remained absent today. - Vidyakunj School`;
 
-    return res.json({ success: true, data: response.data });
+    const params = new URLSearchParams({
+      method: "SendMessage",
+      send_to: mobile,
+      msg: message,
+      msg_type: "TEXT",
+      userid: process.env.GUPSHUP_USER,
+      password: process.env.GUPSHUP_PASSWORD,
+      auth_scheme: "PLAIN",
+      v: "1.1",
+      format: "text",
+    });
+
+    const apiUrl = process.env.GUPSHUP_URL;
+
+    const response = await fetch(apiUrl + "?" + params.toString());
+    const result = await response.text();
+
+    return res.json({
+      success: result.toLowerCase().includes("success"),
+      response: result,
+    });
 
   } catch (err) {
-    return res.json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
+
 
 // ---------------------------
 // START SERVER
