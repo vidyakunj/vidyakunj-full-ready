@@ -1,14 +1,14 @@
 // ---------------------------
 // Vidyakunj SMS Backend
-// Node.js + Express + MongoDB
+// Node.js + Express + MongoDB + Gupshup SMS
 // ---------------------------
 
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
-require("dotenv").config();
 const axios = require("axios");
+require("dotenv").config();
 
 // ---------------------------
 // APP SETUP
@@ -20,9 +20,7 @@ app.use(bodyParser.json());
 // ---------------------------
 // MONGO CONNECTION
 // ---------------------------
-
 const MONGO_URL = process.env.MONGO_URL || process.env.MONGODB_URI;
-
 
 mongoose
   .connect(MONGO_URL)
@@ -61,61 +59,66 @@ app.get("/divisions", async (req, res) => {
 app.get("/students", async (req, res) => {
   try {
     const { std, div } = req.query;
-
     const students = await Student.find({ std, div }).sort({ roll: 1 });
-
     return res.json({ students });
   } catch (err) {
     return res.status(500).json({ error: err });
   }
 });
 
-// ---------------------------
-// API — Send SMS
-// ---------------------------
 // ---------------------------------------------------
-// SEND SMS API  (GUPSHUP)
+// SEND SMS — GUPSHUP
 // ---------------------------------------------------
 app.post("/send-sms", async (req, res) => {
   try {
     const { mobile, studentName } = req.body;
 
     if (!mobile || !studentName) {
-      return res.status(400).json({ success: false, error: "Missing data" });
+      return res
+        .status(400)
+        .json({ success: false, error: "Missing SMS data" });
     }
 
-    const message = `Dear Parents, Your child ${studentName} remained absent today. - Vidyakunj School`;
+    const msg = `Dear Parents, Your child ${studentName} is absent today. - Vidyakunj School`;
 
-    const params = new URLSearchParams({
-      method: "SendMessage",
-      send_to: mobile,
-      msg: message,
-      msg_type: "TEXT",
-      userid: process.env.GUPSHUP_USER,
-      password: process.env.GUPSHUP_PASSWORD,
-      auth_scheme: "PLAIN",
-      v: "1.1",
-      format: "text",
-    });
-
+    // Read from Render Environment Variables
+    const userid = process.env.GUPSHUP_USER;
+    const password = process.env.GUPSHUP_PASSWORD;
+    const sender = process.env.GUPSHUP_SENDER;
     const apiUrl = process.env.GUPSHUP_URL;
 
-    const response = await fetch(apiUrl + "?" + params.toString());
-    const result = await response.text();
+    const url =
+      apiUrl +
+      "?" +
+      new URLSearchParams({
+        method: "SendMessage",
+        send_to: mobile,
+        msg: msg,
+        msg_type: "TEXT",
+        userid: userid,
+        password: password,
+        auth_scheme: "PLAIN",
+        v: "1.1",
+        format: "text",
+        extra: `sender=${sender}`,
+      }).toString();
+
+    const response = await axios.get(url);
 
     return res.json({
-      success: result.toLowerCase().includes("success"),
-      response: result,
+      success: true,
+      response: response.data,
     });
-
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.json({
+      success: false,
+      error: err.message,
+    });
   }
 });
-
 
 // ---------------------------
 // START SERVER
 // ---------------------------
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
