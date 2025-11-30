@@ -1,23 +1,13 @@
-def localPropertiesFile = new File(rootProject.projectDir, "local.properties")
-def properties = new Properties()
-if (localPropertiesFile.exists()) {
-    localPropertiesFile.withInputStream { instr ->
-        properties.load(instr)
-    }
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
 }
 
-def flutterRoot = properties.getProperty("flutter.sdk")
-assert flutterRoot != null, "flutter.sdk not set in local.properties"
-
-apply plugin: "com.android.application"
-apply plugin: "kotlin-android"
-apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
-
 android {
+    namespace "com.vidyakunj.app"
     compileSdkVersion flutter.compileSdkVersion
     ndkVersion flutter.ndkVersion
-
-    namespace "com.vidyakunj.app"
 
     defaultConfig {
         applicationId "com.vidyakunj.app"
@@ -36,4 +26,8 @@ android {
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+}
+
+flutter {
+    source '../..'
 }
