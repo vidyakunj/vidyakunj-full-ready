@@ -1,41 +1,25 @@
 workflows:
-  build_web:
-    name: Build Vidyakunj Flutter Web App
-    max_build_duration: 60
+  build_android:
+    name: Build Vidyakunj Android APK
+    max_build_duration: 120
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: "main"
+          include: true
+          source: true
+
     environment:
       flutter: stable
+      java: openjdk17
+
     scripts:
-      - name: Enable Flutter Web
-        script: |
-          flutter config --enable-web
-          flutter create . --platforms web
-      - name: Get Flutter dependencies
-        script: |
-          flutter pub get
-      - name: Build Flutter Web
-        script: |
-         flutter build web --release -v
+      - name: Install Flutter dependencies
+        script: flutter pub get
+
+      - name: Build APK
+        script: flutter build apk --release
+
     artifacts:
-      - build/web/**
-      build_android:
-  name: "Build Vidyakunj Android APK"
-  max_build_duration: 60
-  environment:
-    flutter: stable
-    java: openjdk17
-  scripts:
-    - name: Get Flutter packages
-      script: |
-        flutter pub get
-    - name: Build Android APK
-      script: |
-        flutter build apk --release
-  artifacts:
-    - build/app/outputs/flutter-apk/app-release.apk
-  publishing:
-    email:
-      recipients:
-        - "vidyakunjnavsari1969@gmail.com"
-
-
-
+      - build/app/outputs/flutter-apk/app-release.apk
