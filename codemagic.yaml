@@ -17,4 +17,25 @@ workflows:
          flutter build web --release -v
     artifacts:
       - build/web/**
+      build_android:
+  name: "Build Vidyakunj Android APK"
+  max_build_duration: 60
+  environment:
+    flutter: stable
+    java: openjdk17
+  scripts:
+    - name: Get Flutter packages
+      script: |
+        flutter pub get
+    - name: Build Android APK
+      script: |
+        flutter build apk --release
+  artifacts:
+    - build/app/outputs/flutter-apk/app-release.apk
+  publishing:
+    email:
+      recipients:
+        - "vidyakunjnavsari1969@gmail.com"
+
+
 
