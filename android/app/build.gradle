@@ -1,33 +1,22 @@
-plugins {
-    id "com.android.application"
-    id "kotlin-android"
-    id "dev.flutter.flutter-gradle-plugin"
-}
-
-android {
-    namespace "com.vidyakunj.app"
-    compileSdkVersion flutter.compileSdkVersion
-    ndkVersion flutter.ndkVersion
-
-    defaultConfig {
-        applicationId "com.vidyakunj.app"
-        minSdkVersion flutter.minSdkVersion
-        targetSdkVersion flutter.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+buildscript {
+    ext.kotlin_version = "1.9.23"
+    repositories {
+        google()
+        mavenCentral()
     }
-
-    buildTypes {
-        release {
-            signingConfig signingConfigs.debug
-        }
+    dependencies {
+        classpath "com.android.tools.build:gradle:8.1.2"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
 }
 
-dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
 }
 
-flutter {
-    source '../..'
+task clean(type: Delete) {
+    delete rootProject.buildDir
 }
