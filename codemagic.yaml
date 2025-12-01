@@ -5,7 +5,6 @@ workflows:
     environment:
       flutter: stable
     scripts:
+      - chmod +x android/gradlew
       - flutter pub get
-      - flutter build apk --release
-    artifacts:
-      - build/app/outputs/flutter-apk/app-release.apk
+      - flutter build apk --releas
