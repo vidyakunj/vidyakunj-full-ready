@@ -1,13 +1,3 @@
-pluginManagement {
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
-    }
-}
+rootProject.name = "vidyakunj"
 
-plugins {
-    id "dev.flutter.flutter-gradle-plugin" version "1.0.0"
-}
-
-include ":app"
+include(":app")
