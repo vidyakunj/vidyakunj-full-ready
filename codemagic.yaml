@@ -7,4 +7,4 @@ workflows:
     scripts:
       - chmod +x android/gradlew
       - flutter pub get
-      - flutter build apk --releas
+      - flutter build apk --release
