@@ -27,7 +27,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
   TextEditingController searchController = TextEditingController();
   String searchQuery = "";
 
-  // <-- NEW: list to keep absent roll numbers (keeps UI in sync)
+  // Keep track of absent roll numbers
   List<int> absentRollNumbers = [];
 
   final List<String> stdOptions = List<String>.generate(12, (i) => '${i + 1}');
@@ -96,8 +96,6 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                     isPresent: true,
                   ))
               .toList();
-          // start with empty absent list (all present by default)
-          absentRollNumbers = students.where((s) => !s.isPresent).map((s) => s.roll).toList();
         });
       }
     } catch (e) {
@@ -235,13 +233,14 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
           const SizedBox(height: 10),
 
-          // ------------------------------ SEARCH BAR + ABSENT (RIGHT) ------------------------------
+          // ------------------------------ RESIZED SEARCH BAR + ABSENT NUMBERS ------------------------------
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
-                // SEARCH BAR (left, small)
-                Expanded(
+                // Search bar with fixed small width
+                SizedBox(
+                  width: 230,  // <<--- RESIZED SEARCH BAR WIDTH
                   child: TextField(
                     controller: searchController,
                     decoration: _inputDeco("Search student...").copyWith(
@@ -253,10 +252,8 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
                 const SizedBox(width: 12),
 
-                // ABSENT NUMBERS (right side)
-                // Constrain width so it doesn't push the search field too small.
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 220),
+                // Absent roll numbers (right side)
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
@@ -264,17 +261,19 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                         "Absent:",
                         style: TextStyle(
                           color: Colors.red.shade700,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                       const SizedBox(height: 4),
+
+                      // Scroll horizontally if long list
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Text(
                           absentRollNumbers.isEmpty ? "-" : absentRollNumbers.join(","),
                           style: const TextStyle(
                             color: Colors.red,
-                            fontSize: 15,
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -288,131 +287,4 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
           const SizedBox(height: 10),
 
-          // ------------------------------ COLUMN HEADER ------------------------------
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            color: Colors.deepPurple.shade50,
-            child: Row(
-              children: const [
-                Expanded(flex: 5, child: Text("Student Name", style: TextStyle(fontWeight: FontWeight.bold))),
-                Expanded(flex: 2, child: Text("Roll No", textAlign: TextAlign.center)),
-                Expanded(flex: 3, child: Text("Present / Absent", textAlign: TextAlign.center)),
-              ],
-            ),
-          ),
-
-          // ------------------------------ STUDENT LIST ------------------------------
-          Expanded(
-            child: isLoadingStudents
-                ? const Center(child: CircularProgressIndicator())
-                : ListView(
-                    children: students.where((s) {
-                      if (searchQuery.isEmpty) return true;
-                      return s.name.toLowerCase().contains(searchQuery) ||
-                          s.roll.toString().contains(searchQuery);
-                    }).map((s) => _studentTile(s)).toList(),
-                  ),
-          ),
-
-          // ------------------------------ SAVE / EXIT ------------------------------
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple),
-                    onPressed: _saveAttendance,
-                    child: const Text("SAVE"),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text("EXIT"),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ------------------------------ WIDGET HELPERS ------------------------------
-
-  InputDecoration _inputDeco(String label) => InputDecoration(
-        labelText: label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      );
-
-  Widget _buildCounter(String title, int value, Color bg, Color textColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 18),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
-      child: Column(
-        children: [
-          Text("$value", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: textColor)),
-          Text(title, style: TextStyle(color: textColor)),
-        ],
-      ),
-    );
-  }
-
-  Widget _studentTile(_StudentRow s) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      decoration: BoxDecoration(
-        color: s.isPresent ? Colors.green.shade50 : Colors.red.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-            color: s.isPresent ? Colors.green.shade200 : Colors.red.shade200),
-      ),
-      child: Row(
-        children: [
-          Expanded(flex: 5, child: Text(s.name)),
-          Expanded(flex: 2, child: Text("${s.roll}", textAlign: TextAlign.center)),
-          Expanded(
-            flex: 3,
-            child: Checkbox(
-              value: s.isPresent,
-              onChanged: (v) {
-                // Update present/absent and keep absentRollNumbers list in sync
-                setState(() {
-                  s.isPresent = v ?? true;
-                  if (!s.isPresent) {
-                    if (!absentRollNumbers.contains(s.roll)) {
-                      absentRollNumbers.add(s.roll);
-                      // keep numbers sorted by roll (optional)
-                      absentRollNumbers.sort();
-                    }
-                  } else {
-                    absentRollNumbers.remove(s.roll);
-                  }
-                });
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// MODEL
-class _StudentRow {
-  final String name;
-  final int roll;
-  final String mobile;
-  bool isPresent;
-
-  _StudentRow({
-    required this.name,
-    required this.roll,
-    required this.mobile,
-    this.isPresent = true,
-  });
-}
+          // ----
