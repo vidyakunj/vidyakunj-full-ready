@@ -1,4 +1,4 @@
-workflows:
+   workflows:
   build_android:
     name: Build Vidyakunj Android APK
     max_build_duration: 60
@@ -7,5 +7,6 @@ workflows:
 
     scripts:
       - chmod +x android/gradlew
+      - chmod +rwx android/gradle/wrapper/gradle-wrapper.jar
       - flutter pub get
       - flutter build apk --release
