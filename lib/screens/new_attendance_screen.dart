@@ -27,6 +27,9 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
   TextEditingController searchController = TextEditingController();
   String searchQuery = "";
 
+  // <-- NEW: list to keep absent roll numbers (keeps UI in sync)
+  List<int> absentRollNumbers = [];
+
   final List<String> stdOptions = List<String>.generate(12, (i) => '${i + 1}');
   final DateTime today = DateTime.now();
 
@@ -47,6 +50,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
       divisions = [];
       selectedDiv = null;
       students = [];
+      absentRollNumbers = [];
     });
 
     try {
@@ -72,6 +76,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     setState(() {
       isLoadingStudents = true;
       students = [];
+      absentRollNumbers = [];
     });
 
     try {
@@ -91,6 +96,8 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                     isPresent: true,
                   ))
               .toList();
+          // start with empty absent list (all present by default)
+          absentRollNumbers = students.where((s) => !s.isPresent).map((s) => s.roll).toList();
         });
       }
     } catch (e) {
@@ -228,15 +235,54 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
           const SizedBox(height: 10),
 
-          // ------------------------------ SEARCH BAR ------------------------------
+          // ------------------------------ SEARCH BAR + ABSENT (RIGHT) ------------------------------
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: TextField(
-              controller: searchController,
-              decoration: _inputDeco("Search student...").copyWith(
-                prefixIcon: const Icon(Icons.search),
-              ),
-              onChanged: (v) => setState(() => searchQuery = v.toLowerCase()),
+            child: Row(
+              children: [
+                // SEARCH BAR (left, small)
+                Expanded(
+                  child: TextField(
+                    controller: searchController,
+                    decoration: _inputDeco("Search student...").copyWith(
+                      prefixIcon: const Icon(Icons.search),
+                    ),
+                    onChanged: (v) => setState(() => searchQuery = v.toLowerCase()),
+                  ),
+                ),
+
+                const SizedBox(width: 12),
+
+                // ABSENT NUMBERS (right side)
+                // Constrain width so it doesn't push the search field too small.
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 220),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        "Absent:",
+                        style: TextStyle(
+                          color: Colors.red.shade700,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Text(
+                          absentRollNumbers.isEmpty ? "-" : absentRollNumbers.join(","),
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
 
@@ -333,7 +379,21 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
             flex: 3,
             child: Checkbox(
               value: s.isPresent,
-              onChanged: (v) => setState(() => s.isPresent = v ?? true),
+              onChanged: (v) {
+                // Update present/absent and keep absentRollNumbers list in sync
+                setState(() {
+                  s.isPresent = v ?? true;
+                  if (!s.isPresent) {
+                    if (!absentRollNumbers.contains(s.roll)) {
+                      absentRollNumbers.add(s.roll);
+                      // keep numbers sorted by roll (optional)
+                      absentRollNumbers.sort();
+                    }
+                  } else {
+                    absentRollNumbers.remove(s.roll);
+                  }
+                });
+              },
             ),
           ),
         ],
