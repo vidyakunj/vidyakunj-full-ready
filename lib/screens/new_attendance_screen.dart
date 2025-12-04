@@ -100,7 +100,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                     mobile: e['mobile'],
                   ))
               .toList();
-      });
+        });
       }
     } catch (e) {
       _showSnack('Error loading students: $e');
@@ -254,30 +254,28 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
           const SizedBox(height: 10),
 
-          // ------------------------------ SEARCH BAR + ABSENT LIST ------------------------------
+          // ------------------------------ RESPONSIVE SEARCH BAR + ABSENT LIST ------------------------------
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              children: [
-                // Small search bar
-                SizedBox(
-                  width: 230,
-                  child: TextField(
-                    controller: searchController,
-                    decoration: _inputDeco("Search student...")
-                        .copyWith(prefixIcon: const Icon(Icons.search)),
-                    onChanged: (v) =>
-                        setState(() => searchQuery = v.toLowerCase()),
-                  ),
-                ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                bool isMobile = constraints.maxWidth < 600;
 
-                const SizedBox(width: 10),
-
-                // Absent numbers right side
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                if (isMobile) {
+                  // ---------------- MOBILE LAYOUT -----------------
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      TextField(
+                        controller: searchController,
+                        decoration: _inputDeco("Search student...")
+                            .copyWith(prefixIcon: const Icon(Icons.search)),
+                        onChanged: (v) =>
+                            setState(() => searchQuery = v.toLowerCase()),
+                      ),
+
+                      const SizedBox(height: 10),
+
                       Text(
                         "Absent:",
                         style: TextStyle(
@@ -298,11 +296,58 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                      )
+                      ),
                     ],
-                  ),
-                ),
-              ],
+                  );
+                } else {
+                  // ---------------- WEB / LARGE SCREEN -----------------
+                  return Row(
+                    children: [
+                      SizedBox(
+                        width: 230,
+                        child: TextField(
+                          controller: searchController,
+                          decoration: _inputDeco("Search student...")
+                              .copyWith(prefixIcon: const Icon(Icons.search)),
+                          onChanged: (v) =>
+                              setState(() => searchQuery = v.toLowerCase()),
+                        ),
+                      ),
+
+                      const SizedBox(width: 10),
+
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              "Absent:",
+                              style: TextStyle(
+                                color: Colors.red.shade700,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Text(
+                                absentRollNumbers.isEmpty
+                                    ? "-"
+                                    : absentRollNumbers.join(","),
+                                style: const TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                }
+              },
             ),
           ),
 
