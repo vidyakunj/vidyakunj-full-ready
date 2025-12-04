@@ -3,10 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../config.dart';
 
-// ****************************************************************************************
-// * NEW MODERN ATTENDANCE SCREEN (Stable for Flutter Web)
-// ****************************************************************************************
-
 class NewAttendanceScreen extends StatefulWidget {
   const NewAttendanceScreen({super.key});
 
@@ -27,7 +23,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
   TextEditingController searchController = TextEditingController();
   String searchQuery = "";
 
-  // Keep track of absent roll numbers
+  // Absent student roll numbers
   List<int> absentRollNumbers = [];
 
   final List<String> stdOptions = List<String>.generate(12, (i) => '${i + 1}');
@@ -37,7 +33,16 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
       '${today.day.toString().padLeft(2, '0')}/${today.month.toString().padLeft(2, '0')}/${today.year}';
 
   String get dayName {
-    const days = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const days = [
+      '',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday'
+    ];
     return days[today.weekday];
   }
 
@@ -93,10 +98,9 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                     name: e['name'],
                     roll: e['roll'],
                     mobile: e['mobile'],
-                    isPresent: true,
                   ))
               .toList();
-        });
+      });
       }
     } catch (e) {
       _showSnack('Error loading students: $e');
@@ -112,7 +116,8 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
       return;
     }
 
-    final absentees = students.where((s) => !s.isPresent).toList();
+    final absentees =
+        students.where((s) => !s.isPresent).toList();
 
     if (absentees.isEmpty) {
       _showSnack("No absentees");
@@ -130,8 +135,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
           body: jsonEncode({"mobile": s.mobile, "studentName": s.name}),
         );
 
-        if (res.statusCode == 200 &&
-            jsonDecode(res.body)['success'] == true) {
+        if (res.statusCode == 200 && jsonDecode(res.body)['success'] == true) {
           sent++;
         } else {
           failed++;
@@ -182,7 +186,9 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                   child: DropdownButtonFormField<String>(
                     value: selectedStd,
                     decoration: _inputDeco("Select STD"),
-                    items: stdOptions.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                    items: stdOptions
+                        .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                        .toList(),
                     onChanged: (v) {
                       setState(() => selectedStd = v);
                       _loadDivisions();
@@ -196,7 +202,9 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                       : DropdownButtonFormField<String>(
                           value: selectedDiv,
                           decoration: _inputDeco("Select DIV"),
-                          items: divisions.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                          items: divisions
+                              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                              .toList(),
                           onChanged: (v) {
                             setState(() => selectedDiv = v);
                             _loadStudents();
@@ -209,50 +217,63 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
           const SizedBox(height: 10),
 
-          // ------------------------------ COUNTER CARDS ------------------------------
+          // ------------------------------ COUNTERS ------------------------------
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
-                Expanded(child: _buildCounter("Total", students.length, Colors.blue.shade100, Colors.blue.shade700)),
+                Expanded(
+                  child: _buildCounter(
+                    "Total",
+                    students.length,
+                    Colors.blue.shade100,
+                    Colors.blue.shade700,
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
-                    child: _buildCounter("Present",
-                        students.where((e) => e.isPresent).length,
-                        Colors.green.shade100,
-                        Colors.green.shade700)),
+                  child: _buildCounter(
+                    "Present",
+                    students.where((e) => e.isPresent).length,
+                    Colors.green.shade100,
+                    Colors.green.shade700,
+                  ),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
-                    child: _buildCounter("Absent",
-                        students.where((e) => !e.isPresent).length,
-                        Colors.red.shade100,
-                        Colors.red.shade700)),
+                  child: _buildCounter(
+                    "Absent",
+                    students.where((e) => !e.isPresent).length,
+                    Colors.red.shade100,
+                    Colors.red.shade700,
+                  ),
+                ),
               ],
             ),
           ),
 
           const SizedBox(height: 10),
 
-          // ------------------------------ RESIZED SEARCH BAR + ABSENT NUMBERS ------------------------------
+          // ------------------------------ SEARCH BAR + ABSENT LIST ------------------------------
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
-                // Search bar with fixed small width
+                // Small search bar
                 SizedBox(
-                  width: 230,  // <<--- RESIZED SEARCH BAR WIDTH
+                  width: 230,
                   child: TextField(
                     controller: searchController,
-                    decoration: _inputDeco("Search student...").copyWith(
-                      prefixIcon: const Icon(Icons.search),
-                    ),
-                    onChanged: (v) => setState(() => searchQuery = v.toLowerCase()),
+                    decoration: _inputDeco("Search student...")
+                        .copyWith(prefixIcon: const Icon(Icons.search)),
+                    onChanged: (v) =>
+                        setState(() => searchQuery = v.toLowerCase()),
                   ),
                 ),
 
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
 
-                // Absent roll numbers (right side)
+                // Absent numbers right side
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
@@ -265,19 +286,19 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                         ),
                       ),
                       const SizedBox(height: 4),
-
-                      // Scroll horizontally if long list
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Text(
-                          absentRollNumbers.isEmpty ? "-" : absentRollNumbers.join(","),
+                          absentRollNumbers.isEmpty
+                              ? "-"
+                              : absentRollNumbers.join(","),
                           style: const TextStyle(
                             color: Colors.red,
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ),
+                      )
                     ],
                   ),
                 ),
@@ -287,4 +308,149 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
           const SizedBox(height: 10),
 
-          // ----
+          // ------------------------------ HEADER ------------------------------
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            color: Colors.deepPurple.shade50,
+            child: Row(
+              children: const [
+                Expanded(flex: 5, child: Text("Student Name", style: TextStyle(fontWeight: FontWeight.bold))),
+                Expanded(flex: 2, child: Text("Roll No", textAlign: TextAlign.center)),
+                Expanded(flex: 3, child: Text("Present / Absent", textAlign: TextAlign.center)),
+              ],
+            ),
+          ),
+
+          // ------------------------------ STUDENT LIST ------------------------------
+          Expanded(
+            child: isLoadingStudents
+                ? const Center(child: CircularProgressIndicator())
+                : ListView(
+                    children: students
+                        .where((s) =>
+                            searchQuery.isEmpty ||
+                            s.name.toLowerCase().contains(searchQuery) ||
+                            s.roll.toString().contains(searchQuery))
+                        .map((s) => _studentTile(s))
+                        .toList(),
+                  ),
+          ),
+
+          // ------------------------------ SAVE / EXIT ------------------------------
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    style:
+                        ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple),
+                    onPressed: _saveAttendance,
+                    child: const Text("SAVE"),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text("EXIT"),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ------------------------------ HELPERS ------------------------------
+
+  InputDecoration _inputDeco(String label) => InputDecoration(
+        labelText: label,
+        border:
+            OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      );
+
+  Widget _buildCounter(
+      String title, int value, Color bg, Color textColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      decoration:
+          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        children: [
+          Text(
+            "$value",
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: textColor,
+            ),
+          ),
+          Text(title, style: TextStyle(color: textColor)),
+        ],
+      ),
+    );
+  }
+
+  Widget _studentTile(_StudentRow s) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      decoration: BoxDecoration(
+        color: s.isPresent ? Colors.green.shade50 : Colors.red.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color:
+              s.isPresent ? Colors.green.shade200 : Colors.red.shade200,
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(flex: 5, child: Text(s.name)),
+          Expanded(
+              flex: 2,
+              child:
+                  Text("${s.roll}", textAlign: TextAlign.center)),
+          Expanded(
+            flex: 3,
+            child: Checkbox(
+              value: s.isPresent,
+              onChanged: (v) {
+                setState(() {
+                  s.isPresent = v ?? true;
+
+                  if (!s.isPresent) {
+                    if (!absentRollNumbers.contains(s.roll)) {
+                      absentRollNumbers.add(s.roll);
+                      absentRollNumbers.sort();
+                    }
+                  } else {
+                    absentRollNumbers.remove(s.roll);
+                  }
+                });
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// MODEL -----------------------------------------------------------------
+
+class _StudentRow {
+  final String name;
+  final int roll;
+  final String mobile;
+  bool isPresent;
+
+  _StudentRow({
+    required this.name,
+    required this.roll,
+    required this.mobile,
+    this.isPresent = true,
+  });
+}
