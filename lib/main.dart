@@ -34,12 +34,11 @@ class MyApp extends StatelessWidget {
           elevation: 4,
         ),
 
-        cardTheme: CardTheme(
-          elevation: 4,
-          shadowColor: Colors.black26,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+        // UPDATED CARD THEME
+        cardTheme: const CardThemeData(
+          color: Colors.white,
+          elevation: 2,
+          margin: EdgeInsets.all(8),
         ),
 
         elevatedButtonTheme: ElevatedButtonThemeData(
