@@ -382,13 +382,15 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                 setState(() {
                   s.isPresent = v ?? true;
 
-                  if (!s.isPresent) {
+                 if (!s.isPresent) {
                     if (!absentRollNumbers.contains(s.roll)) {
-                      absentRollNumbers.add(s.roll)..sort();
-                    }
-                  } else {
-                    absentRollNumbers.remove(s.roll);
-                  }
+                        absentRollNumbers.add(s.roll);
+                        absentRollNumbers.sort();
+  }
+}               else {
+                        absentRollNumbers.remove(s.roll);
+}
+
                 });
               },
             ),
