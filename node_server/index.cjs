@@ -1,7 +1,7 @@
-// ---------------------------------------
-// Vidyakunj SMS Backend
-// Node.js + Express + MongoDB + Gupshup
-// ---------------------------------------
+/* =======================================================
+   VIDYAKUNJ SMS + ATTENDANCE BACKEND
+   Node.js + Express + MongoDB + Gupshup
+   ======================================================= */
 
 const express = require("express");
 const cors = require("cors");
@@ -10,16 +10,25 @@ const mongoose = require("mongoose");
 require("dotenv").config();
 const axios = require("axios");
 
-// ---------------------------------------
-// APP SETUP
-// ---------------------------------------
+/* =======================================================
+   SIMPLE LOGIN USERS (Option 1)
+   ======================================================= */
+const users = [
+  { username: "teacher1", password: "1234", role: "teacher" },
+  { username: "mamta", password: "1234", role: "teacher" },
+  { username: "admin", password: "admin123", role: "admin" }
+];
+
+/* =======================================================
+   APP SETUP
+   ======================================================= */
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// ---------------------------------------
-// MONGO CONNECTION
-// ---------------------------------------
+/* =======================================================
+   MONGO CONNECTION
+   ======================================================= */
 const MONGO_URL = process.env.MONGO_URL || process.env.MONGODB_URI;
 
 mongoose
@@ -27,9 +36,9 @@ mongoose
   .then(() => console.log("✅ MongoDB Connected"))
   .catch((err) => console.log("❌ Mongo Error:", err));
 
-// ---------------------------------------
-// STUDENT SCHEMA
-// ---------------------------------------
+/* =======================================================
+   STUDENT SCHEMA
+   ======================================================= */
 const studentSchema = new mongoose.Schema({
   std: String,
   div: String,
@@ -40,9 +49,9 @@ const studentSchema = new mongoose.Schema({
 
 const Student = mongoose.model("students", studentSchema);
 
-// ---------------------------------------
-// GET DIVISIONS
-// ---------------------------------------
+/* =======================================================
+   GET DIVISIONS
+   ======================================================= */
 app.get("/divisions", async (req, res) => {
   try {
     const { std } = req.query;
@@ -53,9 +62,9 @@ app.get("/divisions", async (req, res) => {
   }
 });
 
-// ---------------------------------------
-// GET STUDENTS
-// ---------------------------------------
+/* =======================================================
+   GET STUDENTS
+   ======================================================= */
 app.get("/students", async (req, res) => {
   try {
     const { std, div } = req.query;
@@ -66,9 +75,33 @@ app.get("/students", async (req, res) => {
   }
 });
 
-// ---------------------------------------
-// SEND SMS USING GUPSHUP
-// ---------------------------------------
+/* =======================================================
+   LOGIN API  (Simple Authentication)
+   ======================================================= */
+app.post("/login", (req, res) => {
+  const { username, password } = req.body;
+
+  const user = users.find(
+    (u) => u.username === username && u.password === password
+  );
+
+  if (!user) {
+    return res.json({
+      success: false,
+      message: "Invalid username or password",
+    });
+  }
+
+  return res.json({
+    success: true,
+    username: user.username,
+    role: user.role,
+  });
+});
+
+/* =======================================================
+   SEND SMS USING GUPSHUP
+   ======================================================= */
 app.post("/send-sms", async (req, res) => {
   const { mobile, studentName } = req.body;
 
@@ -101,8 +134,10 @@ app.post("/send-sms", async (req, res) => {
   }
 });
 
-// ---------------------------------------
-// START SERVER
-// ---------------------------------------
+/* =======================================================
+   START SERVER
+   ======================================================= */
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log("🚀 Server running on port " + PORT));
+app.listen(PORT, () =>
+  console.log("🚀 Vidyakunj Backend running on port " + PORT)
+);
