@@ -1,83 +1,174 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:http/http.dart' as http;
-import 'package:csv/csv.dart';
-import '../config.dart';
+import 'new_attendance_screen.dart'; // Make sure path is correct
 
-class AttendanceScreen extends StatefulWidget {
-  final String className;
-  const AttendanceScreen({super.key, required this.className});
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
 
   @override
-  State<AttendanceScreen> createState() => _AttendanceScreenState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _AttendanceScreenState extends State<AttendanceScreen> {
-  List<List<dynamic>> students = [];
-  Map<int, bool> attendance = {};
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
+  final TextEditingController _userCtrl = TextEditingController();
+  final TextEditingController _passCtrl = TextEditingController();
 
-  Future<void> uploadCSV() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles();
-    if (result != null) {
-      final csvData = utf8.decode(result.files.single.bytes!);
-      List<List<dynamic>> rows = const CsvToListConverter().convert(csvData);
-      setState(() => students = rows.sublist(1)); // Skip header row
-    }
-  }
+  bool isAdmin = false; // false = Teacher, true = Admin
 
-  Future<void> sendSMS(String name, String phone) async {
-    final res = await http.post(
-      Uri.parse('$SERVER_URL/send-sms'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'phone': phone,
-        'message': 'Dear Parents, Your child, $name remained absent in school today., Vidyakunj School Navsari'
-      }),
+  late AnimationController _anim;
+  late Animation<double> _fade;
+  late Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _anim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 450),
     );
-    debugPrint(res.body);
+    _fade = CurvedAnimation(parent: _anim, curve: Curves.easeOut);
+    _slide =
+        Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero).animate(_fade);
+
+    _anim.forward();
   }
 
-  void sendAllAbsentees() {
-    for (int i = 0; i < students.length; i++) {
-      if (attendance[i] == false) {
-        String name = students[i][1].toString();
-        String phone = students[i][3].toString();
-        sendSMS(name, phone);
-      }
+  @override
+  void dispose() {
+    _anim.dispose();
+    _userCtrl.dispose();
+    _passCtrl.dispose();
+    super.dispose();
+  }
+
+  void _showSnack(String msg) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+
+  void _onLoginPressed() {
+    if (_userCtrl.text.trim().isEmpty || _passCtrl.text.isEmpty) {
+      _showSnack("Please enter username & password");
+      return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Messages sent for all absentees!")),
+
+    // STEP 1: NO BACKEND YET
+    // Navigate directly to NEW attendance screen
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const NewAttendanceScreen()),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    const navy = Color(0xff003366);
+
     return Scaffold(
+      backgroundColor: const Color(0xffeef3ff),
+
       appBar: AppBar(
-        title: Text("Attendance - ${widget.className.toUpperCase()}"),
-        actions: [
-          IconButton(onPressed: sendAllAbsentees, icon: const Icon(Icons.send))
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: uploadCSV,
-        child: const Icon(Icons.upload_file),
-      ),
-      body: students.isEmpty
-          ? const Center(child: Text("Upload student CSV to start"))
-          : ListView.builder(
-              itemCount: students.length,
-              itemBuilder: (context, i) {
-                String name = students[i][1].toString();
-                return CheckboxListTile(
-                  title: Text(name),
-                  subtitle: Text("Phone: ${students[i][3]}"),
-                  value: attendance[i] ?? true,
-                  onChanged: (v) => setState(() => attendance[i] = v!),
-                );
-              },
+        backgroundColor: navy,
+        elevation: 4,
+        titleSpacing: 0,
+        title: Row(
+          children: [
+            const SizedBox(width: 10),
+            Image.asset("assets/logo.png", height: 38),
+            const SizedBox(width: 12),
+            const Text(
+              "VIDYAKUNJ SCHOOL",
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                letterSpacing: 1.1,
+              ),
             ),
-    );
-  }
-}
+          ],
+        ),
+      ),
+
+      body: FadeTransition(
+        opacity: _fade,
+        child: SlideTransition(
+          position: _slide,
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Card(
+                  elevation: 8,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          "Login to continue",
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        // ─────────── Teacher / Admin Toggle ───────────
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ChoiceChip(
+                              label: const Text("Teacher"),
+                              selected: !isAdmin,
+                              onSelected: (v) =>
+                                  setState(() => isAdmin = false),
+                            ),
+                            const SizedBox(width: 10),
+                            ChoiceChip(
+                              label: const Text("Admin"),
+                              selected: isAdmin,
+                              onSelected: (v) =>
+                                  setState(() => isAdmin = true),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 18),
+
+                        // ─────────── Username ───────────
+                        TextField(
+                          controller: _userCtrl,
+                          decoration: InputDecoration(
+                            labelText: "Username / Mobile",
+                            prefixIcon: const Icon(Icons.person),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          textInputAction: TextInputAction.next,
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        // ─────────── Password ───────────
+                        TextField(
+                          controller: _passCtrl,
+                          obscureText: true,
+                          decoration: InputDecoration(
+                            labelText: "Password",
+                            prefixIcon: const Icon(Icons.lock),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          onSubmitted: (_) => _onLoginPressed(),
+                        ),
+
+                        const SizedBox(height: 22),
+
+                        // ─────────── LOGIN BUTTON ───────────
+                        SizedBox(
+                          width: double.infinity,
