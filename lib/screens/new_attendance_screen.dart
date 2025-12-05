@@ -135,7 +135,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
       backgroundColor: const Color(0xffeef3ff),
 
       appBar: AppBar(
-        backgroundColor: const Color(0xff003366), // Navy Blue
+        backgroundColor: const Color(0xff003366), // NAVY BLUE
         elevation: 4,
         titleSpacing: 0,
         title: Row(
@@ -196,20 +196,20 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
           const SizedBox(height: 10),
 
-          // ------------------------------ COMPACT COUNTERS ------------------------------
+          // ------------------------------ ULTRA-COMPACT COUNTERS ------------------------------
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _compactCounter("Total", students.length, Colors.blue.shade700),
-                _compactCounter("Present", students.where((e) => e.isPresent).length, Colors.green.shade700),
-                _compactCounter("Absent", students.where((e) => !e.isPresent).length, Colors.red.shade700),
+                _tinyCounter("Total", students.length, Colors.blue.shade700),
+                _tinyCounter("Present", students.where((e) => e.isPresent).length, Colors.green.shade700),
+                _tinyCounter("Absent", students.where((e) => !e.isPresent).length, Colors.red.shade700),
               ],
             ),
           ),
 
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
 
           // ------------------------------ ABSENT NUMBERS ------------------------------
           Padding(
@@ -224,14 +224,14 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Text(
                     absentRollNumbers.isEmpty ? "-" : absentRollNumbers.join(", "),
                     style: const TextStyle(
                       color: Colors.red,
-                      fontSize: 16,
+                      fontSize: 15,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -287,7 +287,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
             ),
           ),
 
-          // ------------------------------ STYLISH FOOTER ------------------------------
+          // ------------------------------ FOOTER ------------------------------
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 12),
@@ -296,7 +296,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
             ),
             child: const Center(
               child: Text(
-                "Powered by: Vidyakunj School",
+                "Powered by Vidyakunj School",
                 style: TextStyle(
                   fontSize: 13,
                   color: Colors.white,
@@ -310,22 +310,32 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     );
   }
 
-  // ------------------------------ COMPACT COUNTER BOX ------------------------------
-  Widget _compactCounter(String title, int value, Color color) {
+  // ------------------------------ ULTRA SMALL COUNTER BOX ------------------------------
+  Widget _tinyCounter(String title, int value, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+      padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.4)),
+        color: color.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withOpacity(0.3), width: 0.8),
       ),
       child: Column(
         children: [
           Text(
             "$value",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
           ),
-          Text(title, style: TextStyle(fontSize: 12, color: color)),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 10,
+              color: color,
+            ),
+          ),
         ],
       ),
     );
