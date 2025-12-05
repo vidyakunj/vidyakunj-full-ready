@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'screens/new_attendance_screen.dart';
+import 'screens/login_screen.dart'; // ADD THIS
+import 'screens/new_attendance_screen.dart'; // keep this for navigation
 
 void main() {
   runApp(const MyApp());
@@ -64,7 +65,10 @@ class MyApp extends StatelessWidget {
         ),
       ),
 
-      home: const NewAttendanceScreen(),
+      // -----------------------------------------
+      // SHOW LOGIN SCREEN FIRST
+      // -----------------------------------------
+      home: const LoginScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
