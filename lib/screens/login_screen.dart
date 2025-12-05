@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'new_attendance_screen.dart'; // Make sure path is correct
+import 'new_attendance_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,7 +13,7 @@ class _LoginScreenState extends State<LoginScreen>
   final TextEditingController _userCtrl = TextEditingController();
   final TextEditingController _passCtrl = TextEditingController();
 
-  bool isAdmin = false; // false = Teacher, true = Admin
+  bool isAdmin = false;
 
   late AnimationController _anim;
   late Animation<double> _fade;
@@ -27,8 +27,10 @@ class _LoginScreenState extends State<LoginScreen>
       duration: const Duration(milliseconds: 450),
     );
     _fade = CurvedAnimation(parent: _anim, curve: Curves.easeOut);
-    _slide =
-        Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero).animate(_fade);
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.06),
+      end: Offset.zero,
+    ).animate(_fade);
 
     _anim.forward();
   }
@@ -42,7 +44,8 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   void _showSnack(String msg) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(msg)));
 
   void _onLoginPressed() {
     if (_userCtrl.text.trim().isEmpty || _passCtrl.text.isEmpty) {
@@ -50,8 +53,6 @@ class _LoginScreenState extends State<LoginScreen>
       return;
     }
 
-    // STEP 1: NO BACKEND YET
-    // Navigate directly to NEW attendance screen
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const NewAttendanceScreen()),
@@ -64,7 +65,6 @@ class _LoginScreenState extends State<LoginScreen>
 
     return Scaffold(
       backgroundColor: const Color(0xffeef3ff),
-
       appBar: AppBar(
         backgroundColor: navy,
         elevation: 4,
@@ -72,7 +72,7 @@ class _LoginScreenState extends State<LoginScreen>
         title: Row(
           children: [
             const SizedBox(width: 10),
-            Image.asset("assets/logo.png", height: 38),
+            Image.asset("assets/logo.png", height: 40),
             const SizedBox(width: 12),
             const Text(
               "VIDYAKUNJ SCHOOL",
@@ -99,7 +99,8 @@ class _LoginScreenState extends State<LoginScreen>
                 child: Card(
                   elevation: 8,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 20, vertical: 24),
@@ -113,10 +114,8 @@ class _LoginScreenState extends State<LoginScreen>
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-
                         const SizedBox(height: 14),
 
-                        // ─────────── Teacher / Admin Toggle ───────────
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -138,7 +137,6 @@ class _LoginScreenState extends State<LoginScreen>
 
                         const SizedBox(height: 18),
 
-                        // ─────────── Username ───────────
                         TextField(
                           controller: _userCtrl,
                           decoration: InputDecoration(
@@ -153,7 +151,6 @@ class _LoginScreenState extends State<LoginScreen>
 
                         const SizedBox(height: 14),
 
-                        // ─────────── Password ───────────
                         TextField(
                           controller: _passCtrl,
                           obscureText: true,
@@ -169,6 +166,41 @@ class _LoginScreenState extends State<LoginScreen>
 
                         const SizedBox(height: 22),
 
-                        // ─────────── LOGIN BUTTON ───────────
                         SizedBox(
                           width: double.infinity,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: navy,
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            onPressed: _onLoginPressed,
+                            child: const Text(
+                              "LOGIN",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        TextButton(
+                          onPressed: () =>
+                              _showSnack("Please contact school admin."),
+                          child: const Text("Forgot Password?"),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
