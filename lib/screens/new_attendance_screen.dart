@@ -286,6 +286,25 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
               ],
             ),
           ),
+
+          // ------------------------------ STYLISH FOOTER ------------------------------
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: const BoxDecoration(
+              color: Color(0xff003366), // Navy Blue Footer
+            ),
+            child: const Center(
+              child: Text(
+                "Powered by Vidyakunj School",
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.white,
+                  letterSpacing: 0.7,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
