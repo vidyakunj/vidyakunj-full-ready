@@ -23,28 +23,10 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
   TextEditingController searchController = TextEditingController();
   String searchQuery = "";
 
-  // Absent student roll numbers
   List<int> absentRollNumbers = [];
 
   final List<String> stdOptions = List<String>.generate(12, (i) => '${i + 1}');
   final DateTime today = DateTime.now();
-
-  String get formattedDate =>
-      '${today.day.toString().padLeft(2, '0')}/${today.month.toString().padLeft(2, '0')}/${today.year}';
-
-  String get dayName {
-    const days = [
-      '',
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-      'Sunday'
-    ];
-    return days[today.weekday];
-  }
 
   // ------------------------------ LOAD DIVISIONS ------------------------------
   Future<void> _loadDivisions() async {
@@ -64,8 +46,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
-        final List<dynamic> list = data['divisions'] ?? [];
-        setState(() => divisions = list.map((e) => e.toString()).toList());
+        divisions = (data['divisions'] ?? []).map<String>((e) => e.toString()).toList();
       }
     } catch (e) {
       _showSnack('Error loading divisions: $e');
@@ -90,17 +71,13 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
-        final List<dynamic> list = data['students'] ?? [];
-
-        setState(() {
-          students = list
-              .map((e) => _StudentRow(
-                    name: e['name'],
-                    roll: e['roll'],
-                    mobile: e['mobile'],
-                  ))
-              .toList();
-        });
+        students = (data['students'] ?? [])
+            .map<_StudentRow>((e) => _StudentRow(
+                  name: e['name'],
+                  roll: e['roll'],
+                  mobile: e['mobile'],
+                ))
+            .toList();
       }
     } catch (e) {
       _showSnack('Error loading students: $e');
@@ -116,16 +93,14 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
       return;
     }
 
-    final absentees =
-        students.where((s) => !s.isPresent).toList();
+    final absentees = students.where((s) => !s.isPresent).toList();
 
     if (absentees.isEmpty) {
       _showSnack("No absentees");
       return;
     }
 
-    int sent = 0;
-    int failed = 0;
+    int sent = 0, failed = 0;
 
     for (final s in absentees) {
       try {
@@ -135,11 +110,8 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
           body: jsonEncode({"mobile": s.mobile, "studentName": s.name}),
         );
 
-        if (res.statusCode == 200 && jsonDecode(res.body)['success'] == true) {
-          sent++;
-        } else {
-          failed++;
-        }
+        final success = (res.statusCode == 200 && jsonDecode(res.body)['success'] == true);
+        success ? sent++ : failed++;
       } catch (e) {
         failed++;
       }
@@ -159,15 +131,14 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     );
   }
 
-  void _showSnack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
+  void _showSnack(String msg) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
   // ------------------------------ UI BUILD ------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xffeef3ff), // Light navy background
+      backgroundColor: const Color(0xffeef3ff),
       appBar: AppBar(
         backgroundColor: const Color(0xff003366), // NAVY BLUE
         elevation: 4,
@@ -175,15 +146,8 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
         title: Row(
           children: [
             const SizedBox(width: 10),
-
-            // SCHOOL LOGO
-            Image.asset(
-              "assets/logo.png",
-              height: 40,
-            ),
-
+            Image.asset("assets/logo.png", height: 40),
             const SizedBox(width: 12),
-
             const Text(
               "VIDYAKUNJ SCHOOL",
               style: TextStyle(
@@ -210,9 +174,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                   child: DropdownButtonFormField<String>(
                     value: selectedStd,
                     decoration: _inputDeco("Select STD"),
-                    items: stdOptions
-                        .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                        .toList(),
+                    items: stdOptions.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
                     onChanged: (v) {
                       setState(() => selectedStd = v);
                       _loadDivisions();
@@ -226,9 +188,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                       : DropdownButtonFormField<String>(
                           value: selectedDiv,
                           decoration: _inputDeco("Select DIV"),
-                          items: divisions
-                              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                              .toList(),
+                          items: divisions.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
                           onChanged: (v) {
                             setState(() => selectedDiv = v);
                             _loadStudents();
@@ -241,44 +201,22 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
           const SizedBox(height: 10),
 
-          // ------------------------------ COUNTERS ------------------------------
+          // ------------------------------ COMPACT COUNTER BOXES ------------------------------
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: _buildCounter(
-                    "Total",
-                    students.length,
-                    Colors.blue.shade100,
-                    Colors.blue.shade700,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildCounter(
-                    "Present",
-                    students.where((e) => e.isPresent).length,
-                    Colors.green.shade100,
-                    Colors.green.shade700,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildCounter(
-                    "Absent",
-                    students.where((e) => !e.isPresent).length,
-                    Colors.red.shade100,
-                    Colors.red.shade700,
-                  ),
-                ),
+                _compactCounter("Total", students.length, Colors.blue.shade700),
+                _compactCounter("Present", students.where((e) => e.isPresent).length, Colors.green.shade700),
+                _compactCounter("Absent", students.where((e) => !e.isPresent).length, Colors.red.shade700),
               ],
             ),
           ),
 
           const SizedBox(height: 10),
 
-          // ------------------------------ RESPONSIVE SEARCH BAR + ABSENT LIST ------------------------------
+          // ------------------------------ RESPONSIVE SEARCH BAR ------------------------------
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: LayoutBuilder(
@@ -291,33 +229,17 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                     children: [
                       TextField(
                         controller: searchController,
-                        decoration: _inputDeco("Search student...")
-                            .copyWith(prefixIcon: const Icon(Icons.search)),
-                        onChanged: (v) =>
-                            setState(() => searchQuery = v.toLowerCase()),
+                        decoration: _inputDeco("Search student...").copyWith(prefixIcon: const Icon(Icons.search)),
+                        onChanged: (v) => setState(() => searchQuery = v.toLowerCase()),
                       ),
-
                       const SizedBox(height: 10),
-
-                      Text(
-                        "Absent:",
-                        style: TextStyle(
-                          color: Colors.red.shade700,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      Text("Absent:", style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Text(
-                          absentRollNumbers.isEmpty
-                              ? "-"
-                              : absentRollNumbers.join(","),
-                          style: const TextStyle(
-                            color: Colors.red,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          absentRollNumbers.isEmpty ? "-" : absentRollNumbers.join(","),
+                          style: const TextStyle(color: Colors.red, fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ],
@@ -329,38 +251,22 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                         width: 230,
                         child: TextField(
                           controller: searchController,
-                          decoration: _inputDeco("Search student...")
-                              .copyWith(prefixIcon: const Icon(Icons.search)),
-                          onChanged: (v) =>
-                              setState(() => searchQuery = v.toLowerCase()),
+                          decoration: _inputDeco("Search student...").copyWith(prefixIcon: const Icon(Icons.search)),
+                          onChanged: (v) => setState(() => searchQuery = v.toLowerCase()),
                         ),
                       ),
-
                       const SizedBox(width: 10),
-
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            Text(
-                              "Absent:",
-                              style: TextStyle(
-                                color: Colors.red.shade700,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                            Text("Absent:", style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.bold)),
                             const SizedBox(height: 4),
                             SingleChildScrollView(
                               scrollDirection: Axis.horizontal,
                               child: Text(
-                                absentRollNumbers.isEmpty
-                                    ? "-"
-                                    : absentRollNumbers.join(","),
-                                style: const TextStyle(
-                                  color: Colors.red,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                absentRollNumbers.isEmpty ? "-" : absentRollNumbers.join(","),
+                                style: const TextStyle(color: Colors.red, fontSize: 16, fontWeight: FontWeight.bold),
                               ),
                             ),
                           ],
@@ -410,8 +316,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
               children: [
                 Expanded(
                   child: ElevatedButton(
-                    style:
-                        ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade800),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade900),
                     onPressed: _saveAttendance,
                     child: const Text("SAVE"),
                   ),
@@ -431,35 +336,30 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     );
   }
 
-  // ------------------------------ HELPERS ------------------------------
-
-  InputDecoration _inputDeco(String label) => InputDecoration(
-        labelText: label,
-        border:
-            OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      );
-
-  Widget _buildCounter(
-      String title, int value, Color bg, Color textColor) {
+  // ------------------------------ COMPACT COUNTER BOX WIDGET ------------------------------
+  Widget _compactCounter(String title, int value, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 18),
-      decoration:
-          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
       child: Column(
         children: [
           Text(
             "$value",
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: textColor,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color),
           ),
-          Text(title, style: TextStyle(color: textColor)),
+          Text(title, style: TextStyle(fontSize: 12, color: color)),
         ],
       ),
     );
   }
+
+  // ------------------------------ HELPERS ------------------------------
+  InputDecoration _inputDeco(String label) =>
+      InputDecoration(labelText: label, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)));
 
   Widget _studentTile(_StudentRow s) {
     return Container(
@@ -468,18 +368,12 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
       decoration: BoxDecoration(
         color: s.isPresent ? Colors.green.shade50 : Colors.red.shade50,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color:
-              s.isPresent ? Colors.green.shade200 : Colors.red.shade200,
-        ),
+        border: Border.all(color: s.isPresent ? Colors.green.shade200 : Colors.red.shade200),
       ),
       child: Row(
         children: [
           Expanded(flex: 5, child: Text(s.name)),
-          Expanded(
-              flex: 2,
-              child:
-                  Text("${s.roll}", textAlign: TextAlign.center)),
+          Expanded(flex: 2, child: Text("${s.roll}", textAlign: TextAlign.center)),
           Expanded(
             flex: 3,
             child: Checkbox(
@@ -490,8 +384,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
                   if (!s.isPresent) {
                     if (!absentRollNumbers.contains(s.roll)) {
-                      absentRollNumbers.add(s.roll);
-                      absentRollNumbers.sort();
+                      absentRollNumbers.add(s.roll)..sort();
                     }
                   } else {
                     absentRollNumbers.remove(s.roll);
@@ -506,8 +399,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
   }
 }
 
-// MODEL -----------------------------------------------------------------
-
+// ------------------------------ MODEL ------------------------------
 class _StudentRow {
   final String name;
   final int roll;
