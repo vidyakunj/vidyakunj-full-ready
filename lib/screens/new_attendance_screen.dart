@@ -296,7 +296,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
             ),
             child: const Center(
               child: Text(
-                "Powered by Vidyakunj School",
+                "Powered by: Vidyakunj School",
                 style: TextStyle(
                   fontSize: 13,
                   color: Colors.white,
