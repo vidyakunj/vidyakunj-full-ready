@@ -15,5 +15,6 @@ dependencies:
 
 flutter:
   uses-material-design: true
-  assets:
-    - assets/school_logo.bmp
+assets:
+  - assets/logo.bmp
+
