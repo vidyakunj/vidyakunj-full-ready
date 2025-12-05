@@ -167,10 +167,34 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xfff7f4fb),
+      backgroundColor: const Color(0xffeef3ff), // Light navy background
       appBar: AppBar(
-        backgroundColor: const Color(0xff6a1b9a),
-        title: const Text("Daily Attendance"),
+        backgroundColor: const Color(0xff003366), // NAVY BLUE
+        elevation: 4,
+        titleSpacing: 0,
+        title: Row(
+          children: [
+            const SizedBox(width: 10),
+
+            // SCHOOL LOGO
+            Image.asset(
+              "assets/logo.png",
+              height: 40,
+            ),
+
+            const SizedBox(width: 12),
+
+            const Text(
+              "VIDYAKUNJ SCHOOL",
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                letterSpacing: 1.2,
+              ),
+            ),
+          ],
+        ),
       ),
 
       body: Column(
@@ -262,7 +286,6 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                 bool isMobile = constraints.maxWidth < 600;
 
                 if (isMobile) {
-                  // ---------------- MOBILE LAYOUT -----------------
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -300,7 +323,6 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                     ],
                   );
                 } else {
-                  // ---------------- WEB / LARGE SCREEN -----------------
                   return Row(
                     children: [
                       SizedBox(
@@ -356,7 +378,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
           // ------------------------------ HEADER ------------------------------
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            color: Colors.deepPurple.shade50,
+            color: Colors.blue.shade50,
             child: Row(
               children: const [
                 Expanded(flex: 5, child: Text("Student Name", style: TextStyle(fontWeight: FontWeight.bold))),
@@ -389,7 +411,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                 Expanded(
                   child: ElevatedButton(
                     style:
-                        ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple),
+                        ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade800),
                     onPressed: _saveAttendance,
                     child: const Text("SAVE"),
                   ),
