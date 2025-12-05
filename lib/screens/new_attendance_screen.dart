@@ -19,14 +19,9 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
   List<String> divisions = [];
   List<_StudentRow> students = [];
-
-  TextEditingController searchController = TextEditingController();
-  String searchQuery = "";
-
   List<int> absentRollNumbers = [];
 
   final List<String> stdOptions = List<String>.generate(12, (i) => '${i + 1}');
-  final DateTime today = DateTime.now();
 
   // ------------------------------ LOAD DIVISIONS ------------------------------
   Future<void> _loadDivisions() async {
@@ -94,7 +89,6 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     }
 
     final absentees = students.where((s) => !s.isPresent).toList();
-
     if (absentees.isEmpty) {
       _showSnack("No absentees");
       return;
@@ -123,7 +117,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text("SMS Summary"),
-        content: Text("$sent SMS Sent\n$failed Failed"),
+        content: Text("$sent Sent\n$failed Failed"),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("OK")),
         ],
@@ -139,8 +133,9 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xffeef3ff),
+
       appBar: AppBar(
-        backgroundColor: const Color(0xff003366), // NAVY BLUE
+        backgroundColor: const Color(0xff003366), // Navy Blue
         elevation: 4,
         titleSpacing: 0,
         title: Row(
@@ -201,7 +196,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
           const SizedBox(height: 10),
 
-          // ------------------------------ COMPACT COUNTER BOXES ------------------------------
+          // ------------------------------ COMPACT COUNTERS ------------------------------
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
@@ -214,68 +209,34 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
             ),
           ),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
 
-          // ------------------------------ RESPONSIVE SEARCH BAR ------------------------------
+          // ------------------------------ ABSENT NUMBERS ------------------------------
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                bool isMobile = constraints.maxWidth < 600;
-
-                if (isMobile) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      TextField(
-                        controller: searchController,
-                        decoration: _inputDeco("Search student...").copyWith(prefixIcon: const Icon(Icons.search)),
-                        onChanged: (v) => setState(() => searchQuery = v.toLowerCase()),
-                      ),
-                      const SizedBox(height: 10),
-                      Text("Absent:", style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Text(
-                          absentRollNumbers.isEmpty ? "-" : absentRollNumbers.join(","),
-                          style: const TextStyle(color: Colors.red, fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
-                  );
-                } else {
-                  return Row(
-                    children: [
-                      SizedBox(
-                        width: 230,
-                        child: TextField(
-                          controller: searchController,
-                          decoration: _inputDeco("Search student...").copyWith(prefixIcon: const Icon(Icons.search)),
-                          onChanged: (v) => setState(() => searchQuery = v.toLowerCase()),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text("Absent:", style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 4),
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Text(
-                                absentRollNumbers.isEmpty ? "-" : absentRollNumbers.join(","),
-                                style: const TextStyle(color: Colors.red, fontSize: 16, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  );
-                }
-              },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Absent:",
+                  style: TextStyle(
+                    color: Colors.red.shade700,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Text(
+                    absentRollNumbers.isEmpty ? "-" : absentRollNumbers.join(", "),
+                    style: const TextStyle(
+                      color: Colors.red,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
 
@@ -299,13 +260,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
             child: isLoadingStudents
                 ? const Center(child: CircularProgressIndicator())
                 : ListView(
-                    children: students
-                        .where((s) =>
-                            searchQuery.isEmpty ||
-                            s.name.toLowerCase().contains(searchQuery) ||
-                            s.roll.toString().contains(searchQuery))
-                        .map((s) => _studentTile(s))
-                        .toList(),
+                    children: students.map((s) => _studentTile(s)).toList(),
                   ),
           ),
 
@@ -336,7 +291,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     );
   }
 
-  // ------------------------------ COMPACT COUNTER BOX WIDGET ------------------------------
+  // ------------------------------ COMPACT COUNTER BOX ------------------------------
   Widget _compactCounter(String title, int value, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
@@ -382,15 +337,14 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                 setState(() {
                   s.isPresent = v ?? true;
 
-                 if (!s.isPresent) {
+                  if (!s.isPresent) {
                     if (!absentRollNumbers.contains(s.roll)) {
-                        absentRollNumbers.add(s.roll);
-                        absentRollNumbers.sort();
-  }
-}               else {
-                        absentRollNumbers.remove(s.roll);
-}
-
+                      absentRollNumbers.add(s.roll);
+                      absentRollNumbers.sort();
+                    }
+                  } else {
+                    absentRollNumbers.remove(s.roll);
+                  }
                 });
               },
             ),
