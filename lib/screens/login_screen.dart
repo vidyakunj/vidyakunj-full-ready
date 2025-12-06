@@ -1,4 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../config.dart';
 import 'new_attendance_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -47,16 +52,55 @@ class _LoginScreenState extends State<LoginScreen>
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(msg)));
 
-  void _onLoginPressed() {
-    if (_userCtrl.text.trim().isEmpty || _passCtrl.text.isEmpty) {
+  // =====================================================
+  // NEW LOGIN FUNCTION WITH BACKEND API + AUTO SESSION
+  // =====================================================
+  Future<void> _onLoginPressed() async {
+    final username = _userCtrl.text.trim();
+    final password = _passCtrl.text.trim();
+
+    if (username.isEmpty || password.isEmpty) {
       _showSnack("Please enter username & password");
       return;
     }
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const NewAttendanceScreen()),
+    final url = Uri.parse("$SERVER_URL/login");
+
+    final response = await http.post(
+      url,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"username": username, "password": password}),
     );
+
+    final data = jsonDecode(response.body);
+
+    if (data["success"] == true) {
+      // Save session locally
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool("loggedIn", true);
+      await prefs.setString("username", data["username"]);
+      await prefs.setString("role", data["role"]);
+
+      // Redirect based on role
+      if (data["role"] == "teacher") {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const NewAttendanceScreen()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => Scaffold(
+              appBar: AppBar(title: const Text("Admin Dashboard")),
+              body: const Center(child: Text("Admin panel coming soon")),
+            ),
+          ),
+        );
+      }
+    } else {
+      _showSnack("Invalid username or password");
+    }
   }
 
   @override
