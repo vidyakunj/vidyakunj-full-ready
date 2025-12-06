@@ -1,3 +1,4 @@
+import 'screens/teacher_dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -25,31 +26,30 @@ class _SplashCheckState extends State<SplashCheck> {
 
     await Future.delayed(const Duration(milliseconds: 600));
 
-    if (!loggedIn) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
-    } else {
-      if (role == "teacher") {
+   if (!loggedIn) {
   Navigator.pushReplacement(
     context,
-    MaterialPageRoute(builder: (_) => const TeacherDashboard()),
+    MaterialPageRoute(builder: (_) => const LoginScreen()),
   );
-}
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => Scaffold(
-              appBar: AppBar(title: const Text("Admin Dashboard")),
-              body: const Center(child: Text("Admin panel coming soon")),
-            ),
-          ),
-        );
-      }
-    }
+} else {
+  if (role == "teacher") {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const TeacherDashboard()),
+    );
+  } else {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: const Text("Admin Dashboard")),
+          body: const Center(child: Text("Admin panel coming soon")),
+        ),
+      ),
+    );
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
