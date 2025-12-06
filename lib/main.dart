@@ -16,19 +16,35 @@ class MyApp extends StatelessWidget {
       title: 'Vidyakunj Attendance',
 
       theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
-          brightness: Brightness.light,
-        ),
-        scaffoldBackgroundColor: const Color(0xFFF5F2FF),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.deepPurple,
-          foregroundColor: Colors.white,
-          centerTitle: true,
-          elevation: 4,
-        ),
+  useMaterial3: true,
+
+  primaryColor: primaryNavy,
+
+  colorScheme: ColorScheme.fromSeed(
+    seedColor: primaryNavy,
+    brightness: Brightness.light,
+  ),
+
+  scaffoldBackgroundColor: const Color(0xfff6f8ff),
+
+  appBarTheme: const AppBarTheme(
+    backgroundColor: primaryNavy,
+    foregroundColor: Colors.white,
+    centerTitle: true,
+    elevation: 3,
+  ),
+
+  elevatedButtonTheme: ElevatedButtonThemeData(
+    style: ElevatedButton.styleFrom(
+      backgroundColor: primaryNavy,
+      foregroundColor: Colors.white,
+      padding: EdgeInsets.symmetric(vertical: 14),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(12)),
       ),
+    ),
+  ),
+),
 
       // -----------------------------------------------------
       // First time → Login Screen
@@ -40,3 +56,4 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+
