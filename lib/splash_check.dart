@@ -1,9 +1,10 @@
-import 'screens/teacher_dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'screens/login_screen.dart';
 import 'screens/new_attendance_screen.dart';
+import 'screens/teacher_dashboard.dart';
+import 'screens/admin_dashboard.dart';
 
 class SplashCheck extends StatefulWidget {
   const SplashCheck({super.key});
@@ -13,6 +14,7 @@ class SplashCheck extends StatefulWidget {
 }
 
 class _SplashCheckState extends State<SplashCheck> {
+
   @override
   void initState() {
     super.initState();
@@ -26,37 +28,41 @@ class _SplashCheckState extends State<SplashCheck> {
 
     await Future.delayed(const Duration(milliseconds: 600));
 
-   if (!loggedIn) {
-  Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(builder: (_) => const LoginScreen()),
-  );
-} else {
-  if (role == "teacher") {
+    if (!loggedIn) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+      return;
+    }
+
+    if (role == "teacher") {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const TeacherDashboard()),
+      );
+      return;
+    }
+
+    if (role == "admin") {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AdminDashboard()),
+      );
+      return;
+    }
+
+    // fallback
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const TeacherDashboard()),
-    );
-  } else {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => Scaffold(
-          appBar: AppBar(title: const Text("Admin Dashboard")),
-          body: const Center(child: Text("Admin panel coming soon")),
-        ),
-      ),
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
     );
   }
-}
-
 
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
-      body: Center(
-        child: CircularProgressIndicator(),
-      ),
+      body: Center(child: CircularProgressIndicator()),
     );
   }
 }
