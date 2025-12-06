@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'screens/login_screen.dart';
-import 'screens/new_attendance_screen.dart';
 import 'screens/teacher_dashboard.dart';
 import 'screens/admin_dashboard.dart';
 
@@ -14,7 +13,6 @@ class SplashCheck extends StatefulWidget {
 }
 
 class _SplashCheckState extends State<SplashCheck> {
-
   @override
   void initState() {
     super.initState();
