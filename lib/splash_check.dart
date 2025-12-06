@@ -32,12 +32,11 @@ class _SplashCheckState extends State<SplashCheck> {
       );
     } else {
       if (role == "teacher") {
-       Navigator.pushReplacement(
-         context,
-         MaterialPageRoute(builder: (_) => const TeacherDashboard()),
-);
-
-        );
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(builder: (_) => const TeacherDashboard()),
+  );
+}
       } else {
         Navigator.pushReplacement(
           context,
