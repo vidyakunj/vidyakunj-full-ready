@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import '../config.dart';
+import '../screens/login_screen.dart';
 
 class NewAttendanceScreen extends StatefulWidget {
   const NewAttendanceScreen({super.key});
@@ -22,6 +24,17 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
   List<int> absentRollNumbers = [];
 
   final List<String> stdOptions = List<String>.generate(12, (i) => '${i + 1}');
+
+  Future<void> _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (_) => false,
+    );
+  }
 
   // ------------------------------ LOAD DIVISIONS ------------------------------
   Future<void> _loadDivisions() async {
@@ -128,14 +141,13 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
   void _showSnack(String msg) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
-  // ------------------------------ UI BUILD ------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xffeef3ff),
 
       appBar: AppBar(
-        backgroundColor: const Color(0xff003366), // NAVY BLUE
+        backgroundColor: const Color(0xff003366),
         elevation: 4,
         titleSpacing: 0,
         title: Row(
@@ -154,13 +166,18 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
+          )
+        ],
       ),
 
       body: Column(
         children: [
           const SizedBox(height: 12),
 
-          // ------------------------------ DROPDOWNS ------------------------------
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
@@ -196,7 +213,6 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
           const SizedBox(height: 10),
 
-          // ------------------------------ ULTRA-COMPACT COUNTERS ------------------------------
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
@@ -211,7 +227,6 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
           const SizedBox(height: 6),
 
-          // ------------------------------ ABSENT NUMBERS ------------------------------
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Column(
@@ -242,7 +257,6 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
           const SizedBox(height: 10),
 
-          // ------------------------------ HEADER ------------------------------
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             color: Colors.blue.shade50,
@@ -255,7 +269,6 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
             ),
           ),
 
-          // ------------------------------ STUDENT LIST ------------------------------
           Expanded(
             child: isLoadingStudents
                 ? const Center(child: CircularProgressIndicator())
@@ -264,7 +277,6 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                   ),
           ),
 
-          // ------------------------------ SAVE / EXIT ------------------------------
           Padding(
             padding: const EdgeInsets.all(12),
             child: Row(
@@ -287,12 +299,11 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
             ),
           ),
 
-          // ------------------------------ FOOTER ------------------------------
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 12),
             decoration: const BoxDecoration(
-              color: Color(0xff003366), // Navy Blue Footer
+              color: Color(0xff003366),
             ),
             child: const Center(
               child: Text(
@@ -310,7 +321,6 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     );
   }
 
-  // ------------------------------ ULTRA SMALL COUNTER BOX ------------------------------
   Widget _tinyCounter(String title, int value, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 6),
@@ -341,7 +351,6 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     );
   }
 
-  // ------------------------------ HELPERS ------------------------------
   InputDecoration _inputDeco(String label) =>
       InputDecoration(labelText: label, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)));
 
@@ -384,7 +393,6 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
   }
 }
 
-// ------------------------------ MODEL ------------------------------
 class _StudentRow {
   final String name;
   final int roll;
