@@ -159,6 +159,41 @@ app.post("/send-sms", async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+// ============ UPLOAD CSV & SAVE TO DB ==================
+app.post("/upload-csv", async (req, res) => {
+  try {
+    const { std, div, csv } = req.body;
+    if (!std || !div || !csv) {
+      return res.status(400).json({ success: false, error: "Missing data" });
+    }
+
+    const rows = csv.split("\n").map((line) => line.split(","));
+
+    // skip header
+    const records = rows.slice(1);
+
+    for (let r of records) {
+      if (r.length >= 4) {
+        const roll = parseInt(r[0]);
+        const name = r[1];
+        const mobile = r[3];
+
+        if (roll && name && mobile) {
+          await Student.updateOne(
+            { std, div, roll },
+            { $set: { name, mobile } },
+            { upsert: true }
+          );
+        }
+      }
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 /* =======================================================
    START SERVER
