@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:html' as html; // for opening CSV download in browser
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
@@ -52,8 +53,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Future<void> loadStudents() async {
     if (selectedStd == null || selectedDiv == null) return;
 
-    final uri = Uri.parse(
-        "$SERVER_URL/students?std=$selectedStd&div=$selectedDiv");
+    final uri =
+        Uri.parse("$SERVER_URL/students?std=$selectedStd&div=$selectedDiv");
     final res = await http.get(uri);
 
     if (res.statusCode == 200) {
@@ -63,13 +64,28 @@ class _AdminDashboardState extends State<AdminDashboard> {
       setState(() {
         totalStudents = list.length;
 
+        // For now present/absent will be 0 unless you store in DB
+        // But we keep code ready if later you store "isPresent".
         presentStudents =
             list.where((s) => s["isPresent"] == true).length;
-
         absentStudents =
             list.where((s) => s["isPresent"] == false).length;
       });
     }
+  }
+
+  void _downloadCsv() {
+    if (selectedStd == null || selectedDiv == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select STD and DIV first")),
+      );
+      return;
+    }
+
+    final url =
+        "$SERVER_URL/students/export?std=$selectedStd&div=$selectedDiv";
+
+    html.window.open(url, "_blank");
   }
 
   @override
@@ -78,7 +94,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
     return Scaffold(
       backgroundColor: const Color(0xffeef3ff),
-
       appBar: AppBar(
         backgroundColor: navy,
         title: const Text("Admin Dashboard"),
@@ -92,7 +107,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
       body: Column(
         children: [
-
           Padding(
             padding: const EdgeInsets.all(20),
             child: Row(
@@ -102,10 +116,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     value: selectedStd,
                     hint: const Text("Select STD"),
                     items: stdOptions
-                        .map((e) => DropdownMenuItem(
-                              value: e,
-                              child: Text(e),
-                            ))
+                        .map(
+                          (e) => DropdownMenuItem(
+                            value: e,
+                            child: Text(e),
+                          ),
+                        )
                         .toList(),
                     onChanged: (v) {
                       setState(() => selectedStd = v);
@@ -113,25 +129,25 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     },
                   ),
                 ),
-
                 const SizedBox(width: 15),
-
                 Expanded(
                   child: DropdownButtonFormField(
                     value: selectedDiv,
                     hint: const Text("Select DIV"),
                     items: divisions
-                        .map((e) => DropdownMenuItem(
-                              value: e,
-                              child: Text(e),
-                            ))
+                        .map(
+                          (e) => DropdownMenuItem(
+                            value: e,
+                            child: Text(e),
+                          ),
+                        )
                         .toList(),
                     onChanged: (v) {
                       setState(() => selectedDiv = v);
                       loadStudents();
                     },
                   ),
-                )
+                ),
               ],
             ),
           ),
@@ -145,18 +161,32 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ],
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton.icon(
+                onPressed: _downloadCsv,
+                icon: const Icon(Icons.download),
+                label: const Text("Download CSV"),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 10),
 
           Expanded(
             child: selectedStd == null || selectedDiv == null
                 ? const Center(child: Text("Select class"))
                 : FutureBuilder(
                     future: http.get(
-                      Uri.parse("$SERVER_URL/students?std=$selectedStd&div=$selectedDiv"),
+                      Uri.parse(
+                          "$SERVER_URL/students?std=$selectedStd&div=$selectedDiv"),
                     ),
                     builder: (context, snap) {
-                      if (snap.connectionState ==
-                          ConnectionState.waiting) {
+                      if (snap.connectionState == ConnectionState.waiting) {
                         return const Center(
                             child: CircularProgressIndicator());
                       }
@@ -167,6 +197,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
                       final data = jsonDecode(snap.data!.body);
                       final list = data["students"] ?? [];
+
+                      if (list.isEmpty) {
+                        return const Center(child: Text("No students found"));
+                      }
 
                       return ListView(
                         children: list.map<Widget>((s) {
