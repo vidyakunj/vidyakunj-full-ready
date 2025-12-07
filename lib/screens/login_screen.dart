@@ -1,8 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../splash_check.dart';
+import '../config.dart';
 import 'new_attendance_screen.dart';
+import 'teacher_dashboard.dart';
+import 'admin_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,203 +15,125 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen>
-    with SingleTickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _userCtrl = TextEditingController();
   final TextEditingController _passCtrl = TextEditingController();
 
-  bool isAdmin = false;
+  bool loading = false;
 
-  late AnimationController _anim;
-  late Animation<double> _fade;
-  late Animation<Offset> _slide;
+  void _showSnack(String msg) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(msg)));
+  }
 
-  static const Color navy = Color(0xFF110E38);
+  Future<void> _login() async {
+    if (_userCtrl.text.isEmpty || _passCtrl.text.isEmpty) {
+      _showSnack("Enter username & password");
+      return;
+    }
 
-  @override
-  void initState() {
-    super.initState();
-    _anim = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 450),
+    setState(() => loading = true);
+
+    final res = await http.post(
+      Uri.parse("$SERVER_URL/login"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "username": _userCtrl.text.trim(),
+        "password": _passCtrl.text.trim()
+      }),
     );
-    _fade = CurvedAnimation(parent: _anim, curve: Curves.easeOut);
-    _slide = Tween<Offset>(
-      begin: const Offset(0, 0.06),
-      end: Offset.zero,
-    ).animate(_fade);
 
-    _anim.forward();
-  }
+    setState(() => loading = false);
 
-  @override
-  void dispose() {
-    _anim.dispose();
-    _userCtrl.dispose();
-    _passCtrl.dispose();
-    super.dispose();
-  }
+    final data = jsonDecode(res.body);
 
-  void _showSnack(String msg) =>
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(msg)));
-
-  Future<void> _onLoginPressed() async {
-    if (_userCtrl.text.trim().isEmpty || _passCtrl.text.isEmpty) {
-      _showSnack("Please enter username & password");
+    if (data["success"] != true) {
+      _showSnack("Invalid login");
       return;
     }
 
     final prefs = await SharedPreferences.getInstance();
-    prefs.setBool("loggedIn", true);
-    prefs.setString("role", isAdmin ? "admin" : "teacher");
+    await prefs.setBool("loggedIn", true);
+    await prefs.setString("role", data["role"]);
 
-    if (!mounted) return;
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const SplashCheck(),
-      ),
-    );
+    if (data["role"] == "teacher") {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const TeacherDashboard()),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AdminDashboard()),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    const navy = Color(0xff003366);
+
     return Scaffold(
       backgroundColor: const Color(0xffeef3ff),
-
       appBar: AppBar(
         backgroundColor: navy,
-        elevation: 4,
-        titleSpacing: 0,
-        title: Row(
-          children: [
-            const SizedBox(width: 10),
-            Image.asset("assets/logo.png", height: 40),
-            const SizedBox(width: 12),
-            const Text(
-              "VIDYAKUNJ SCHOOL",
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                letterSpacing: 1.1,
-              ),
-            ),
-          ],
-        ),
+        title: const Text("Login"),
       ),
+      body: Center(
+        child: SingleChildScrollView(
+          child: Container(
+            padding: const EdgeInsets.all(25),
+            width: 350,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 8,
+                )
+              ],
+            ),
+            child: Column(
+              children: [
+                const Text("Login",
+                    style: TextStyle(
+                        fontSize: 22, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 20),
 
-      body: FadeTransition(
-        opacity: _fade,
-        child: SlideTransition(
-          position: _slide,
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Card(
-                  elevation: 10,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 26, vertical: 28),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          "Login to continue",
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            ChoiceChip(
-                              label: const Text("Teacher"),
-                              selected: !isAdmin,
-                              onSelected: (v) =>
-                                  setState(() => isAdmin = false),
-                            ),
-                            const SizedBox(width: 10),
-                            ChoiceChip(
-                              label: const Text("Admin"),
-                              selected: isAdmin,
-                              onSelected: (v) =>
-                                  setState(() => isAdmin = true),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 18),
-
-                        TextField(
-                          controller: _userCtrl,
-                          decoration: InputDecoration(
-                            labelText: "Username / Mobile",
-                            prefixIcon: const Icon(Icons.person),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          textInputAction: TextInputAction.next,
-                        ),
-
-                        const SizedBox(height: 14),
-
-                        TextField(
-                          controller: _passCtrl,
-                          obscureText: true,
-                          decoration: InputDecoration(
-                            labelText: "Password",
-                            prefixIcon: const Icon(Icons.lock),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 22),
-
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: navy,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
-                            ),
-                            onPressed: _onLoginPressed,
-                            child: const Text(
-                              "LOGIN",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        TextButton(
-                          onPressed: () =>
-                              _showSnack("Please contact school admin."),
-                          child: const Text("Forgot Password?"),
-                        ),
-                      ],
-                    ),
+                TextField(
+                  controller: _userCtrl,
+                  decoration: const InputDecoration(
+                    labelText: "Username",
+                    prefixIcon: Icon(Icons.person),
                   ),
                 ),
-              ),
+
+                const SizedBox(height: 15),
+
+                TextField(
+                  controller: _passCtrl,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: "Password",
+                    prefixIcon: Icon(Icons.lock),
+                  ),
+                ),
+
+                const SizedBox(height: 25),
+
+                loading
+                    ? const CircularProgressIndicator()
+                    : ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: navy,
+                          minimumSize: const Size(double.infinity, 50),
+                        ),
+                        onPressed: _login,
+                        child: const Text("LOGIN",
+                            style: TextStyle(fontSize: 18)),
+                      ),
+              ],
             ),
           ),
         ),
