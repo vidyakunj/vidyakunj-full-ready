@@ -194,6 +194,25 @@ app.post("/upload-csv", async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+// ============= DOWNLOAD CSV =============
+app.get("/download-csv", async (req, res) => {
+  const { std, div } = req.query;
+
+  if (!std || !div) {
+    return res.status(400).send("Missing STD or DIV");
+  }
+
+  const students = await Student.find({ std, div }).sort({ roll: 1 });
+
+  let csv = "roll,name,mobile\n";
+  students.forEach((s) => {
+    csv += `${s.roll},${s.name},${s.mobile}\n`;
+  });
+
+  res.header("Content-Type", "text/csv");
+  res.attachment(`${std}-${div}-students.csv`);
+  res.send(csv);
+});
 
 /* =======================================================
    START SERVER
