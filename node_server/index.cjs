@@ -11,12 +11,12 @@ require("dotenv").config();
 const axios = require("axios");
 
 /* =======================================================
-   SIMPLE LOGIN USERS (Option 1)
+   SIMPLE LOGIN USERS
    ======================================================= */
 const users = [
   { username: "teacher1", password: "1234", role: "teacher" },
   { username: "mamta", password: "1234", role: "teacher" },
-  { username: "admin", password: "admin123", role: "admin" }
+  { username: "admin", password: "admin123", role: "admin" },
 ];
 
 /* =======================================================
@@ -76,7 +76,33 @@ app.get("/students", async (req, res) => {
 });
 
 /* =======================================================
-   LOGIN API  (Simple Authentication)
+   EXPORT STUDENTS AS CSV (for Excel)
+   ======================================================= */
+app.get("/students/export", async (req, res) => {
+  try {
+    const { std, div } = req.query;
+    const students = await Student.find({ std, div }).sort({ roll: 1 });
+
+    let csv = "Roll,Name,Mobile\n";
+
+    students.forEach((s) => {
+      csv += `${s.roll},${s.name},${s.mobile}\n`;
+    });
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=${std}-${div}-students.csv`
+    );
+
+    res.send(csv);
+  } catch (err) {
+    res.status(500).send("Error while generating CSV");
+  }
+});
+
+/* =======================================================
+   LOGIN API
    ======================================================= */
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
