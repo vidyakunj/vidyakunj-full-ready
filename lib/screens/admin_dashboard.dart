@@ -142,6 +142,41 @@ class _AdminDashboardState extends State<AdminDashboard> {
       ),
     );
   }
+const SizedBox(height: 30),
+
+Expanded(
+  child: FutureBuilder(
+    future: selectedStd != null && selectedDiv != null
+        ? http.get(Uri.parse("$SERVER_URL/students?std=$selectedStd&div=$selectedDiv"))
+        : null,
+    builder: (context, snap) {
+      if (snap.connectionState == ConnectionState.waiting) {
+        return const Center(child: CircularProgressIndicator());
+      }
+
+      if (!snap.hasData) {
+        return const Center(child: Text("Select class"));
+      }
+
+      final data = jsonDecode(snap.data!.body);
+      final list = data["students"] ?? [];
+
+      if (list.isEmpty) {
+        return const Center(child: Text("No students found"));
+      }
+
+      return ListView(
+        children: list.map<Widget>((s) {
+          return ListTile(
+            leading: Text(s["roll"].toString()),
+            title: Text(s["name"]),
+            subtitle: Text(s["mobile"]),
+          );
+        }).toList(),
+      );
+    },
+  ),
+),
 
   Widget _box(String title, int value, Color color) {
     return Container(
