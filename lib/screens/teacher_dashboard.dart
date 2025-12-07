@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'new_attendance_screen.dart';
 import 'login_screen.dart';
+import 'new_attendance_screen.dart';
 
 class TeacherDashboard extends StatelessWidget {
   const TeacherDashboard({super.key});
 
+  // ---------- LOGOUT ----------
   Future<void> _logout(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();  // delete all login data
+    await prefs.clear();
 
     Navigator.pushReplacement(
       context,
@@ -19,14 +20,22 @@ class TeacherDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const navy = Color(0xFF110E38);
+    const navy = Color(0xff003366);
 
     return Scaffold(
       backgroundColor: const Color(0xffeef3ff),
 
       appBar: AppBar(
         backgroundColor: navy,
-        title: const Text("Teacher Dashboard"),
+        elevation: 4,
+        title: const Text(
+          "Teacher Panel",
+          style: TextStyle(
+            letterSpacing: 1.1,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -41,14 +50,18 @@ class TeacherDashboard extends StatelessWidget {
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: navy,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
+              padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 18),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
             child: const Text(
               "Open Attendance",
-              style: TextStyle(fontSize: 18),
+              style: TextStyle(
+                fontSize: 18,
+                letterSpacing: 1.2,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             onPressed: () {
               Navigator.push(
