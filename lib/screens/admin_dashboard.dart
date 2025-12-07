@@ -1,6 +1,8 @@
+// ======================= ADMIN DASHBOARD ==========================
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'package:file_picker/file_picker.dart';
 import 'dart:convert';
 
 import '../config.dart';
@@ -36,8 +38,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Future<void> loadDivisions() async {
     if (selectedStd == null) return;
 
-    final url = "$SERVER_URL/divisions?std=$selectedStd";
-    final res = await http.get(Uri.parse(url));
+    final uri = Uri.parse("$SERVER_URL/divisions?std=$selectedStd");
+    final res = await http.get(uri);
 
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
@@ -51,8 +53,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Future<void> loadStudents() async {
     if (selectedStd == null || selectedDiv == null) return;
 
-    final url = "$SERVER_URL/students?std=$selectedStd&div=$selectedDiv";
-    final res = await http.get(Uri.parse(url));
+    final uri = Uri.parse(
+        "$SERVER_URL/students?std=$selectedStd&div=$selectedDiv");
+    final res = await http.get(uri);
 
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
@@ -67,42 +70,44 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
-  // CSV download
-  Future<void> _downloadCsv() async {
-    if (selectedStd == null || selectedDiv == null) return;
-    final url =
-        "$SERVER_URL/students?std=$selectedStd&div=$selectedDiv";
+  // -------------------------- CSV UPLOAD --------------------------
+  Future<void> _uploadCSV() async {
+    if (selectedStd == null || selectedDiv == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Select STD & DIV first")));
+      return;
+    }
 
-    final res = await http.get(Uri.parse(url));
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ["csv"],
+    );
+
+    if (result == null || result.files.isEmpty) return;
+
+    final bytes = result.files.first.bytes;
+    if (bytes == null) return;
+
+    final csvContent = utf8.decode(bytes);
+
+    final res = await http.post(
+      Uri.parse("$SERVER_URL/upload-csv"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "std": selectedStd,
+        "div": selectedDiv,
+        "csv": csvContent,
+      }),
+    );
 
     if (res.statusCode == 200) {
-      final data = jsonDecode(res.body);
-      final students = data["students"] ?? [];
-
-      String csv = "Roll,Name,Mobile\n";
-      for (final s in students) {
-        csv += "${s["roll"]},${s["name"]},${s["mobile"]}\n";
-      }
-
-      final bytes = utf8.encode(csv);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("CSV Generated — Copy below")),
+        const SnackBar(content: Text("Uploaded Successfully")),
       );
-
-      showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text("CSV DATA"),
-          content: SingleChildScrollView(
-            child: SelectableText(csv),
-          ),
-          actions: [
-            TextButton(
-              child: const Text("OK"),
-              onPressed: () => Navigator.pop(context),
-            )
-          ],
-        ),
+      loadStudents(); // refresh display
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Upload Failed: ${res.statusCode}")),
       );
     }
   }
@@ -117,7 +122,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
         backgroundColor: navy,
         title: const Text("Admin Dashboard"),
         actions: [
-          IconButton(icon: const Icon(Icons.logout), onPressed: _logout)
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
+          )
         ],
       ),
 
@@ -133,9 +141,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     hint: const Text("Select STD"),
                     items: stdOptions
                         .map((e) => DropdownMenuItem(
-                          value: e,
-                          child: Text(e),
-                        ))
+                              value: e,
+                              child: Text(e),
+                            ))
                         .toList(),
                     onChanged: (v) {
                       setState(() => selectedStd = v);
@@ -143,34 +151,27 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     },
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 15),
                 Expanded(
                   child: DropdownButtonFormField(
                     value: selectedDiv,
                     hint: const Text("Select DIV"),
                     items: divisions
                         .map((e) => DropdownMenuItem(
-                          value: e,
-                          child: Text(e),
-                        ))
+                              value: e,
+                              child: Text(e),
+                            ))
                         .toList(),
                     onChanged: (v) {
                       setState(() => selectedDiv = v);
                       loadStudents();
                     },
                   ),
-                ),
-                const SizedBox(width: 10),
-
-                ElevatedButton.icon(
-                  onPressed: _downloadCsv,
-                  icon: const Icon(Icons.download),
-                  label: const Text("CSV"),
-                ),
+                )
               ],
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 30),
 
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -179,7 +180,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 _box("Present", presentStudents, Colors.green),
                 _box("Absent", absentStudents, Colors.red),
               ],
-            )
+            ),
+
+            const SizedBox(height: 40),
+
+            ElevatedButton.icon(
+              onPressed: _uploadCSV,
+              icon: const Icon(Icons.upload),
+              label: const Text("Upload CSV"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+              ),
+            ),
           ],
         ),
       ),
@@ -205,7 +217,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          Text(title, style: TextStyle(color: color)),
+          Text(
+            title,
+            style: TextStyle(color: color),
+          ),
         ],
       ),
     );
