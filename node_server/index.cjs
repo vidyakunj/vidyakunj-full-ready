@@ -50,6 +50,30 @@ const studentSchema = new mongoose.Schema({
 const Student = mongoose.model("students", studentSchema);
 
 /* =======================================================
+   LOGIN API
+   ======================================================= */
+app.post("/login", (req, res) => {
+  const { username, password } = req.body;
+
+  const user = users.find(
+    (u) => u.username === username && u.password === password
+  );
+
+  if (!user) {
+    return res.json({
+      success: false,
+      message: "Invalid username or password",
+    });
+  }
+
+  return res.json({
+    success: true,
+    username: user.username,
+    role: user.role,
+  });
+});
+
+/* =======================================================
    GET DIVISIONS
    ======================================================= */
 app.get("/divisions", async (req, res) => {
@@ -76,53 +100,62 @@ app.get("/students", async (req, res) => {
 });
 
 /* =======================================================
-   EXPORT STUDENTS AS CSV (for Excel)
-   ======================================================= */
-app.get("/students/export", async (req, res) => {
+      UPLOAD CSV
+======================================================= */
+app.post("/upload-csv", async (req, res) => {
   try {
-    const { std, div } = req.query;
-    const students = await Student.find({ std, div }).sort({ roll: 1 });
+    const { std, div, csv } = req.body;
 
-    let csv = "Roll,Name,Mobile\n";
+    if (!std || !div || !csv) {
+      return res.status(400).json({ success: false, error: "Missing data" });
+    }
 
-    students.forEach((s) => {
-      csv += `${s.roll},${s.name},${s.mobile}\n`;
-    });
+    const rows = csv.split("\n").map((line) => line.split(","));
 
-    res.setHeader("Content-Type", "text/csv");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename=${std}-${div}-students.csv`
-    );
+    const records = rows.slice(1);
 
-    res.send(csv);
+    for (let r of records) {
+      if (r.length >= 4) {
+        const roll = parseInt(r[0]);
+        const name = r[1];
+        const mobile = r[3];
+
+        if (roll && name && mobile) {
+          await Student.updateOne(
+            { std, div, roll },
+            { $set: { name, mobile } },
+            { upsert: true }
+          );
+        }
+      }
+    }
+
+    res.json({ success: true });
   } catch (err) {
-    res.status(500).send("Error while generating CSV");
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
 /* =======================================================
-   LOGIN API
-   ======================================================= */
-app.post("/login", (req, res) => {
-  const { username, password } = req.body;
+      DOWNLOAD CSV
+======================================================= */
+app.get("/download-csv", async (req, res) => {
+  const { std, div } = req.query;
 
-  const user = users.find(
-    (u) => u.username === username && u.password === password
-  );
-
-  if (!user) {
-    return res.json({
-      success: false,
-      message: "Invalid username or password",
-    });
+  if (!std || !div) {
+    return res.status(400).send("Missing STD or DIV");
   }
 
-  return res.json({
-    success: true,
-    username: user.username,
-    role: user.role,
+  const students = await Student.find({ std, div }).sort({ roll: 1 });
+
+  let csv = "roll,name,mobile\n";
+  students.forEach((s) => {
+    csv += `${s.roll},${s.name},${s.mobile}\n`;
   });
+
+  res.header("Content-Type", "text/csv");
+  res.attachment(`${std}-${div}-students.csv`);
+  res.send(csv);
 });
 
 /* =======================================================
@@ -158,66 +191,6 @@ app.post("/send-sms", async (req, res) => {
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
-});
-// ============ UPLOAD CSV & SAVE TO DB ==================
-app.post("/upload-csv", async (req, res) => {
-  try {
-    const { std, div, csv } = req.body;
-    if (!std || !div || !csv) {
-      return res.status(400).json({ success: false, error: "Missing data" });
-    }
-
-    const rows = csv.split("\n").map((line) => line.split(","));
-
-    // skip header
-    const records = rows.slice(1);
-
-    for (let r of records) {
-      const roll = parseInt(r[0]);
-      const name = r[1];
-      const mobile = r[2];  // <-- FIXED
-
-      if (roll && name && mobile) {
-        await Student.updateOne(
-          { std, div, roll },
-          { $set: { name, mobile } },
-          { upsert: true }
-        );
-      }
-    }
-
-    res.json({ success: true });
-
-  } catch (err) {
-    console.log(err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-    res.json({ success: true });
-  } catch (err) {
-    console.log(err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-// ============= DOWNLOAD CSV =============
-app.get("/download-csv", async (req, res) => {
-  const { std, div } = req.query;
-
-  if (!std || !div) {
-    return res.status(400).send("Missing STD or DIV");
-  }
-
-  const students = await Student.find({ std, div }).sort({ roll: 1 });
-
-  let csv = "roll,name,mobile\n";
-  students.forEach((s) => {
-    csv += `${s.roll},${s.name},${s.mobile}\n`;
-  });
-
-  res.header("Content-Type", "text/csv");
-  res.attachment(`${std}-${div}-students.csv`);
-  res.send(csv);
 });
 
 /* =======================================================
