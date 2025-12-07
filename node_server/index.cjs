@@ -173,20 +173,26 @@ app.post("/upload-csv", async (req, res) => {
     const records = rows.slice(1);
 
     for (let r of records) {
-      if (r.length >= 4) {
-        const roll = parseInt(r[0]);
-        const name = r[1];
-        const mobile = r[3];
+      const roll = parseInt(r[0]);
+      const name = r[1];
+      const mobile = r[2];  // <-- FIXED
 
-        if (roll && name && mobile) {
-          await Student.updateOne(
-            { std, div, roll },
-            { $set: { name, mobile } },
-            { upsert: true }
-          );
-        }
+      if (roll && name && mobile) {
+        await Student.updateOne(
+          { std, div, roll },
+          { $set: { name, mobile } },
+          { upsert: true }
+        );
       }
     }
+
+    res.json({ success: true });
+
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
     res.json({ success: true });
   } catch (err) {
