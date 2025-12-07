@@ -160,6 +160,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
               _box("Absent", absentStudents, Colors.red),
             ],
           ),
+Padding(
+  padding: const EdgeInsets.symmetric(horizontal: 20),
+  child: Align(
+    alignment: Alignment.centerRight,
+    child: ElevatedButton.icon(
+      onPressed: _downloadCsv,
+      icon: const Icon(Icons.download),
+      label: const Text("Download CSV"),
+    ),
+  ),
+),
 
           const SizedBox(height: 12),
 
