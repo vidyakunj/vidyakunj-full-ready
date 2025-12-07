@@ -1,7 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
 
 import '../config.dart';
 import 'login_screen.dart';
@@ -16,6 +16,7 @@ class AdminDashboard extends StatefulWidget {
 class _AdminDashboardState extends State<AdminDashboard> {
   String? selectedStd;
   String? selectedDiv;
+
   List<String> divisions = [];
 
   int totalStudents = 0;
@@ -57,13 +58,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
-
       final list = data["students"] ?? [];
 
       setState(() {
         totalStudents = list.length;
-        presentStudents = list.where((s) => s["isPresent"] == true).length;
-        absentStudents = list.where((s) => s["isPresent"] == false).length;
+
+        presentStudents =
+            list.where((s) => s["isPresent"] == true).length;
+
+        absentStudents =
+            list.where((s) => s["isPresent"] == false).length;
       });
     }
   }
@@ -74,6 +78,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
     return Scaffold(
       backgroundColor: const Color(0xffeef3ff),
+
       appBar: AppBar(
         backgroundColor: navy,
         title: const Text("Admin Dashboard"),
@@ -85,11 +90,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
         ],
       ),
 
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Row(
+      body: Column(
+        children: [
+
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
               children: [
                 Expanded(
                   child: DropdownButtonFormField(
@@ -107,7 +113,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     },
                   ),
                 ),
+
                 const SizedBox(width: 15),
+
                 Expanded(
                   child: DropdownButtonFormField(
                     value: selectedDiv,
@@ -126,55 +134,56 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 )
               ],
             ),
+          ),
 
-            const SizedBox(height: 30),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _box("Total", totalStudents, Colors.blue),
+              _box("Present", presentStudents, Colors.green),
+              _box("Absent", absentStudents, Colors.red),
+            ],
+          ),
 
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _box("Total", totalStudents, Colors.blue),
-                _box("Present", presentStudents, Colors.green),
-                _box("Absent", absentStudents, Colors.red),
-              ],
-            )
-          ],
-        ),
+          const SizedBox(height: 20),
+
+          Expanded(
+            child: selectedStd == null || selectedDiv == null
+                ? const Center(child: Text("Select class"))
+                : FutureBuilder(
+                    future: http.get(
+                      Uri.parse("$SERVER_URL/students?std=$selectedStd&div=$selectedDiv"),
+                    ),
+                    builder: (context, snap) {
+                      if (snap.connectionState ==
+                          ConnectionState.waiting) {
+                        return const Center(
+                            child: CircularProgressIndicator());
+                      }
+
+                      if (!snap.hasData) {
+                        return const Center(child: Text("No data"));
+                      }
+
+                      final data = jsonDecode(snap.data!.body);
+                      final list = data["students"] ?? [];
+
+                      return ListView(
+                        children: list.map<Widget>((s) {
+                          return ListTile(
+                            leading: Text("${s["roll"]}"),
+                            title: Text(s["name"]),
+                            subtitle: Text(s["mobile"]),
+                          );
+                        }).toList(),
+                      );
+                    },
+                  ),
+          ),
+        ],
       ),
     );
   }
-const SizedBox(height: 30),
-
-Expanded(
-  child: selectedStd == null || selectedDiv == null
-      ? const Center(child: Text("Select class"))
-      : FutureBuilder(
-          future: http.get(
-            Uri.parse("$SERVER_URL/students?std=$selectedStd&div=$selectedDiv"),
-          ),
-          builder: (context, snap) {
-            if (snap.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            if (!snap.hasData) {
-              return const Center(child: Text("No data"));
-            }
-
-            final data = jsonDecode(snap.data!.body);
-            final list = data["students"] ?? [];
-
-            return ListView(
-              children: list.map<Widget>((s) {
-                return ListTile(
-                  leading: Text(s["roll"].toString()),
-                  title: Text(s["name"]),
-                  subtitle: Text(s["mobile"]),
-                );
-              }).toList(),
-            );
-          },
-        ),
-),
 
   Widget _box(String title, int value, Color color) {
     return Container(
