@@ -1,142 +1,178 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 
-import '../config.dart';
-import 'new_attendance_screen.dart';
-import 'teacher_dashboard.dart';
-import 'admin_dashboard.dart';
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Vidyakunj Login',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: const LoginScreen(),
+    );
+  }
+}
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
-
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _userCtrl = TextEditingController();
-  final TextEditingController _passCtrl = TextEditingController();
-
-  bool loading = false;
-
-  void _showSnack(String msg) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
-  }
-
-  Future<void> _login() async {
-    if (_userCtrl.text.isEmpty || _passCtrl.text.isEmpty) {
-      _showSnack("Enter username & password");
-      return;
-    }
-
-    setState(() => loading = true);
-
-    final res = await http.post(
-      Uri.parse("$SERVER_URL/login"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "username": _userCtrl.text.trim(),
-        "password": _passCtrl.text.trim()
-      }),
-    );
-
-    setState(() => loading = false);
-
-    final data = jsonDecode(res.body);
-
-    if (data["success"] != true) {
-      _showSnack("Invalid login");
-      return;
-    }
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool("loggedIn", true);
-    await prefs.setString("role", data["role"]);
-
-    if (data["role"] == "teacher") {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const TeacherDashboard()),
-      );
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const AdminDashboard()),
-      );
-    }
-  }
+  // Role selection state: [Teacher, Admin]
+  List<bool> _isSelected = [true, false];
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
-    const navy = Color(0xff003366);
+    // Determine form width for responsiveness
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final double formWidth = screenWidth * 0.9 > 400 ? 400 : screenWidth * 0.9;
 
     return Scaffold(
-      backgroundColor: const Color(0xffeef3ff),
-      appBar: AppBar(
-        backgroundColor: navy,
-        title: const Text("Login"),
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          child: Container(
-            padding: const EdgeInsets.all(25),
-            width: 350,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 8,
-                )
-              ],
-            ),
-            child: Column(
+      body: Column(
+        children: [
+          // Top banner with logo and school name
+          Container(
+            color: Colors.blue[800],
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            child: Row(
               children: [
-                const Text("Login",
-                    style: TextStyle(
-                        fontSize: 22, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 20),
-
-                TextField(
-                  controller: _userCtrl,
-                  decoration: const InputDecoration(
-                    labelText: "Username",
-                    prefixIcon: Icon(Icons.person),
+                // Logo placeholder: replace with actual asset
+                Image.asset(
+                  'assets/logo.png',
+                  height: 40,
+                  width: 40,
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'VIDYAKUNJ SCHOOL',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
                   ),
                 ),
-
-                const SizedBox(height: 15),
-
-                TextField(
-                  controller: _passCtrl,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: "Password",
-                    prefixIcon: Icon(Icons.lock),
-                  ),
-                ),
-
-                const SizedBox(height: 25),
-
-                loading
-                    ? const CircularProgressIndicator()
-                    : ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: navy,
-                          minimumSize: const Size(double.infinity, 50),
-                        ),
-                        onPressed: _login,
-                        child: const Text("LOGIN",
-                            style: TextStyle(fontSize: 18)),
-                      ),
               ],
             ),
           ),
-        ),
+          // Main content area, centered
+          Expanded(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Container(
+                  width: formWidth,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Role selection toggle buttons
+                      ToggleButtons(
+                        borderRadius: BorderRadius.circular(8),
+                        borderColor: Colors.blue,
+                        selectedBorderColor: Colors.blue,
+                        fillColor: Colors.blue,
+                        selectedColor: Colors.white,
+                        color: Colors.blue,
+                        constraints: const BoxConstraints(minHeight: 40.0, minWidth: 100.0),
+                        isSelected: _isSelected,
+                        onPressed: (int index) {
+                          setState(() {
+                            // Make selection mutually exclusive
+                            for (int i = 0; i < _isSelected.length; i++) {
+                              _isSelected[i] = i == index;
+                            }
+                          });
+                        },
+                        children: const [
+                          Text('Teacher'),
+                          Text('Admin'),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      // Username / Mobile input
+                      TextFormField(
+                        controller: _usernameController,
+                        decoration: InputDecoration(
+                          hintText: 'Username or Mobile',
+                          prefixIcon: const Icon(Icons.person),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Password input
+                      TextFormField(
+                        controller: _passwordController,
+                        decoration: InputDecoration(
+                          hintText: 'Password',
+                          prefixIcon: const Icon(Icons.lock),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        obscureText: true,
+                      ),
+                      const SizedBox(height: 24),
+                      // Login button
+                      ElevatedButton(
+                        onPressed: () {
+                          // TODO: Implement login logic
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue[800],
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'LOGIN',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Forgot Password link
+                      Center(
+                        child: TextButton(
+                          onPressed: () {
+                            // TODO: Navigate to forgot password
+                          },
+                          child: const Text(
+                            'Forgot Password?',
+                            style: TextStyle(color: Colors.blue),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
