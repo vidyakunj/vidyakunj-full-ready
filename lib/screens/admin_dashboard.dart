@@ -19,8 +19,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
   List<String> divisions = [];
 
   int totalStudents = 0;
-  int presentStudents = 0;
-  int absentStudents = 0;
 
   final List<String> stdOptions = List.generate(12, (i) => "${i + 1}");
 
@@ -56,16 +54,42 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
-  // CSV UPLOAD button
   Future<void> uploadCSV() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles();
     if (result == null) return;
 
     String csvContent = utf8.decode(result.files.first.bytes!);
-
     List<List<dynamic>> rows = const CsvToListConverter().convert(csvContent);
 
-    print("Uploaded CSV rows = ${rows.length}");
+    List<Map<String, dynamic>> students = [];
+
+    for (int i = 1; i < rows.length; i++) {
+      var row = rows[i];
+      students.add({
+        "std": row[0].toString(),
+        "div": row[1].toString(),
+        "roll": int.tryParse(row[2].toString()) ?? 0,
+        "name": row[3].toString(),
+        "mobile": row[4].toString(),
+      });
+    }
+
+    final res = await http.post(
+      Uri.parse('$SERVER_URL/students/bulk'),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"students": students}),
+    );
+
+    if (res.statusCode == 200) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Students uploaded successfully")),
+      );
+      loadStudents(); // Refresh count
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Upload failed: ${res.body}")),
+      );
+    }
   }
 
   @override
@@ -78,7 +102,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
         backgroundColor: navy,
         title: const Text("Admin Dashboard"),
       ),
-
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -96,7 +119,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             ))
                         .toList(),
                     onChanged: (v) {
-                      setState(() => selectedStd = v);
+                      setState(() {
+                        selectedStd = v;
+                        selectedDiv = null;
+                      });
                       loadDivisions();
                     },
                   ),
@@ -117,21 +143,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       loadStudents();
                     },
                   ),
-                )
+                ),
               ],
             ),
-
             const SizedBox(height: 30),
-
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 _box("Total", totalStudents, Colors.blue),
               ],
             ),
-
             const SizedBox(height: 30),
-
             ElevatedButton.icon(
               onPressed: uploadCSV,
               icon: const Icon(Icons.upload),
