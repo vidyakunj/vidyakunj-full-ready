@@ -1,22 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Vidyakunj Login',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: const LoginScreen(),
-    );
-  }
-}
+import 'admin_dashboard.dart';
+import 'teacher_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -25,28 +13,80 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // Role selection state: [Teacher, Admin]
   List<bool> _isSelected = [true, false];
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
+  final Color navy = const Color(0xFF003366);
+
+  Future<void> _login() async {
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text.trim();
+    final role = _isSelected[0] ? 'teacher' : 'admin';
+
+    if (username.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter both fields')),
+      );
+      return;
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse('https://vidyakunj-backend.onrender.com/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'username': username,
+          'password': password,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (data['success'] == true) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('loggedIn', true);
+        await prefs.setString('role', data['role']);
+        await prefs.setString('username', data['username']);
+
+        if (data['role'] == 'admin') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const AdminDashboard()),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const TeacherDashboard()),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(data['message'] ?? 'Login failed')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Determine form width for responsiveness
     final double screenWidth = MediaQuery.of(context).size.width;
     final double formWidth = screenWidth * 0.9 > 400 ? 400 : screenWidth * 0.9;
 
     return Scaffold(
+      backgroundColor: const Color(0xfff7f1f9),
       body: Column(
         children: [
-          // Top banner with logo and school name
           Container(
-            color: Colors.blue[800],
+            color: navy,
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
             child: Row(
               children: [
-                // Logo placeholder: replace with actual asset
                 Image.asset(
                   'assets/logo.png',
                   height: 40,
@@ -65,7 +105,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
             ),
           ),
-          // Main content area, centered
           Expanded(
             child: Center(
               child: SingleChildScrollView(
@@ -87,19 +126,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Role selection toggle buttons
                       ToggleButtons(
                         borderRadius: BorderRadius.circular(8),
-                        borderColor: Colors.blue,
-                        selectedBorderColor: Colors.blue,
-                        fillColor: Colors.blue,
+                        borderColor: navy,
+                        selectedBorderColor: navy,
+                        fillColor: navy,
                         selectedColor: Colors.white,
-                        color: Colors.blue,
+                        color: navy,
                         constraints: const BoxConstraints(minHeight: 40.0, minWidth: 100.0),
                         isSelected: _isSelected,
                         onPressed: (int index) {
                           setState(() {
-                            // Make selection mutually exclusive
                             for (int i = 0; i < _isSelected.length; i++) {
                               _isSelected[i] = i == index;
                             }
@@ -111,7 +148,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                       ),
                       const SizedBox(height: 24),
-                      // Username / Mobile input
                       TextFormField(
                         controller: _usernameController,
                         decoration: InputDecoration(
@@ -123,7 +159,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      // Password input
                       TextFormField(
                         controller: _passwordController,
                         decoration: InputDecoration(
@@ -136,13 +171,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         obscureText: true,
                       ),
                       const SizedBox(height: 24),
-                      // Login button
                       ElevatedButton(
-                        onPressed: () {
-                          // TODO: Implement login logic
-                        },
+                        onPressed: _login,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue[800],
+                          backgroundColor: navy,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
@@ -154,11 +186,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      // Forgot Password link
                       Center(
                         child: TextButton(
                           onPressed: () {
-                            // TODO: Navigate to forgot password
+                            // Add forgot password action
                           },
                           child: const Text(
                             'Forgot Password?',
