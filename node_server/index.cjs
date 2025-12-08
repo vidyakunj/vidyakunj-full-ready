@@ -24,16 +24,17 @@ const users = [
    ======================================================= */
 const app = express();
 
-// ✅ CORRECT CORS CONFIGURATION
+// ✅ Handle preflight (OPTIONS) requests before any middleware
+app.options("*", cors());
+
+// ✅ CORS middleware
 app.use(cors({
   origin: "https://vidyakunj-frontend.onrender.com",
   methods: ["GET", "POST", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Accept"],
   credentials: true
 }));
-
-// Handle preflight (OPTIONS) requests
-app.options('*', cors());
+console.log("✅ CORS Middleware Applied");
 
 app.use(bodyParser.json());
 
