@@ -23,7 +23,14 @@ const users = [
    APP SETUP
    ======================================================= */
 const app = express();
-app.use(cors());
+
+// ✅ CORRECT CORS CONFIGURATION
+app.use(cors({
+  origin: "https://vidyakunj-frontend.onrender.com",  // your frontend domain
+  methods: ["GET", "POST"],
+  credentials: true,
+}));
+
 app.use(bodyParser.json());
 
 /* =======================================================
@@ -100,8 +107,8 @@ app.get("/students", async (req, res) => {
 });
 
 /* =======================================================
-      UPLOAD CSV
-======================================================= */
+   UPLOAD CSV
+   ======================================================= */
 app.post("/upload-csv", async (req, res) => {
   try {
     const { std, div, csv } = req.body;
@@ -111,7 +118,6 @@ app.post("/upload-csv", async (req, res) => {
     }
 
     const rows = csv.split("\n").map((line) => line.split(","));
-
     const records = rows.slice(1);
 
     for (let r of records) {
@@ -137,8 +143,8 @@ app.post("/upload-csv", async (req, res) => {
 });
 
 /* =======================================================
-      DOWNLOAD CSV
-======================================================= */
+   DOWNLOAD CSV
+   ======================================================= */
 app.get("/download-csv", async (req, res) => {
   const { std, div } = req.query;
 
