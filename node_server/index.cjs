@@ -25,13 +25,18 @@ const users = [
 const app = express();
 
 // ✅ CORRECT CORS CONFIGURATION
-app.use(
-  cors({
-    origin: "https://vidyakunj-frontend.onrender.com",
-    methods: ["GET", "POST"],
-    allowedHeaders: ["Content-Type"],
-  })
-);
+const cors = require("cors");
+
+app.use(cors({
+  origin: "https://vidyakunj-frontend.onrender.com",
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Accept"],
+  credentials: true
+}));
+
+// Make sure preflight (OPTIONS) requests are handled
+app.options('*', cors());
+
 
 
 app.use(bodyParser.json());
