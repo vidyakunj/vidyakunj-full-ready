@@ -3,12 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../config.dart'; // ✅ import your server config
+import '../config.dart';
 import 'admin_dashboard.dart';
 import 'teacher_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
@@ -34,7 +35,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('$SERVER_URL/login'), // ✅ using correct server URL
+        Uri.parse('$SERVER_URL/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'username': username,
@@ -200,6 +201,22 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ],
                   ),
+                ),
+              ),
+            ),
+          ),
+          // ✅ Footer bar with Powered By
+          Container(
+            width: double.infinity,
+            color: navy,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: const Center(
+              child: Text(
+                'Powered By: Vidyakunj School',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
                 ),
               ),
             ),
