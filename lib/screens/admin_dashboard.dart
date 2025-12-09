@@ -112,13 +112,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget build(BuildContext context) {
     const navy = Color(0xFF110E38);
 
-    int total = 0, present = 0, absent = 0;
-    for (var s in summary) {
-      total += s['total'] ?? 0;
-      present += s['present'] ?? 0;
-      absent += s['absent'] ?? 0;
-    }
-
+  int total = 0, present = 0, absent = 0;
+for (var s in summary) {
+  total += (s['total'] ?? 0).toInt();
+  present += (s['present'] ?? 0).toInt();
+  absent += (s['absent'] ?? 0).toInt();
+}
     return Scaffold(
       backgroundColor: const Color(0xffeef3ff),
       appBar: AppBar(
