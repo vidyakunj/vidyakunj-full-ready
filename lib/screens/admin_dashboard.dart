@@ -84,7 +84,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Students uploaded successfully")),
       );
-      loadStudents(); // Refresh count
+      loadStudents();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Upload failed: ${res.body}")),
@@ -94,7 +94,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Future<void> loadAttendanceSummary() async {
     final dateStr = "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
-    final uri = Uri.parse("$SERVER_URL/attendance-summary?date=$dateStr");
+    final uri = Uri.parse("$SERVER_URL/full-attendance-summary?date=$dateStr");
 
     final res = await http.get(uri);
     if (res.statusCode == 200) {
@@ -112,12 +112,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget build(BuildContext context) {
     const navy = Color(0xFF110E38);
 
-  num total = 0, present = 0, absent = 0;
-for (var s in summary) {
-  total += s['total'] ?? 0;
-  present += s['present'] ?? 0;
-  absent += s['absent'] ?? 0;
-}
+    int total = 0;
+    int present = 0;
+    int absent = 0;
+
+    for (var s in summary) {
+      total += (s['total'] ?? 0).toInt();
+      present += (s['present'] ?? 0).toInt();
+      absent += (s['absent'] ?? 0).toInt();
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xffeef3ff),
@@ -130,93 +133,43 @@ for (var s in summary) {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField(
-                      value: selectedStd,
-                      hint: const Text("Select STD"),
-                      items: stdOptions.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                      onChanged: (v) {
-                        setState(() {
-                          selectedStd = v;
-                          selectedDiv = null;
-                        });
-                        loadDivisions();
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    child: DropdownButtonFormField(
-                      value: selectedDiv,
-                      hint: const Text("Select DIV"),
-                      items: divisions.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                      onChanged: (v) {
-                        setState(() => selectedDiv = v);
-                        loadStudents();
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 30),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _box("Total", totalStudents, Colors.blue),
-                ],
-              ),
-              const SizedBox(height: 30),
-              ElevatedButton.icon(
-                onPressed: uploadCSV,
-                icon: const Icon(Icons.upload),
-                label: const Text("Upload CSV"),
-              ),
-              const SizedBox(height: 30),
-              Text("📅 Daily Attendance Summary", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  ElevatedButton(
-                    onPressed: () async {
-                      DateTime? picked = await showDatePicker(
-                        context: context,
-                        initialDate: selectedDate,
-                        firstDate: DateTime(2023),
-                        lastDate: DateTime.now(),
-                      );
-                      if (picked != null && picked != selectedDate) {
-                        setState(() => selectedDate = picked);
-                        loadAttendanceSummary();
-                      }
-                    },
-                    child: const Text("Select Date"),
-                  ),
-                  const SizedBox(width: 12),
-                  Text("${selectedDate.day}-${selectedDate.month}-${selectedDate.year}", style: const TextStyle(fontWeight: FontWeight.bold)),
-                ],
+              ElevatedButton(
+                onPressed: () async {
+                  DateTime? picked = await showDatePicker(
+                    context: context,
+                    initialDate: selectedDate,
+                    firstDate: DateTime(2023),
+                    lastDate: DateTime.now(),
+                  );
+                  if (picked != null && picked != selectedDate) {
+                    setState(() => selectedDate = picked);
+                    loadAttendanceSummary();
+                  }
+                },
+                child: const Text("Select Date for Summary"),
               ),
               const SizedBox(height: 12),
               summary.isEmpty
                   ? const Text("No summary available.")
                   : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         ...summary.map((e) {
                           return Card(
                             child: ListTile(
                               title: Text("STD: ${e['std']}  |  DIV: ${e['div']}"),
-                              subtitle: Text("Total: ${e['total']}  |  Present: ${e['present']}  |  Absent: ${e['absent']}"),
+                              subtitle: Text("Total: ${e['total']}  |  Present: ${e['present']}  |  Absent: ${e['absent']}")
                             ),
                           );
                         }).toList(),
-                        const Divider(thickness: 1.2),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8.0),
-                          child: Text(
-                            "Grand Total: $total | Present: $present | Absent: $absent",
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        const SizedBox(height: 15),
+                        Card(
+                          color: Colors.yellow[100],
+                          child: ListTile(
+                            title: const Text(
+                              "All Classes Summary",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: Text("Total: $total  |  Present: $present  |  Absent: $absent"),
                           ),
                         )
                       ],
@@ -227,32 +180,4 @@ for (var s in summary) {
       ),
     );
   }
-
-  Widget _box(String title, int value, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      width: 120,
-      decoration: BoxDecoration(
-        color: color.withOpacity(.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color),
-      ),
-      child: Column(
-        children: [
-          Text(
-            "$value",
-            style: TextStyle(
-              color: color,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          Text(
-            title,
-            style: TextStyle(color: color),
-          ),
-        ],
-      ),
-    );
-  }
-}
+} 
