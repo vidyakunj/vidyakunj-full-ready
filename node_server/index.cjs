@@ -64,7 +64,7 @@ const Student = mongoose.model("students", studentSchema);
    ATTENDANCE SCHEMA
    ======================================================= */
 const attendanceSchema = new mongoose.Schema({
-  studentId: { type: mongoose.Schema.Types.ObjectId, ref: "students", required: true },
+  studentId: { type: mongoose.Schema.Types.ObjectId, ref: "students" },
   std: String,
   div: String,
   roll: Number,
@@ -194,15 +194,17 @@ app.post("/attendance", async (req, res) => {
     }
 
     for (const entry of attendance) {
+      const studentId = entry.studentId || (await Student.findOne({ std: entry.std, div: entry.div, roll: entry.roll }))?._id;
+
       await Attendance.updateOne(
-        { studentId: entry.studentId, date },
+        { studentId, date },
         {
-          studentId: entry.studentId,
+          studentId,
           std: entry.std,
           div: entry.div,
           roll: entry.roll,
           date,
-          present: entry.present
+          present: entry.present,
         },
         { upsert: true }
       );
@@ -231,11 +233,11 @@ app.get("/attendance-summary", async (req, res) => {
     const records = await Attendance.find({
       date: { $gte: startOfDay, $lte: endOfDay },
       std,
-      div
+      div,
     });
 
     const total = records.length;
-    const present = records.filter(r => r.present).length;
+    const present = records.filter((r) => r.present).length;
     const absent = total - present;
 
     res.json({ total, present, absent });
