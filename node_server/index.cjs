@@ -215,14 +215,24 @@ app.post("/attendance", async (req, res) => {
 });
 
 /* =======================================================
-   GET ATTENDANCE SUMMARY BY DATE
+   GET ATTENDANCE SUMMARY BY DATE + STD + DIV
    ======================================================= */
 app.get("/attendance-summary", async (req, res) => {
   try {
-    const { date } = req.query;
-    const parsedDate = new Date(date);
+    const { date, std, div } = req.query;
+    if (!date || !std || !div) {
+      return res.status(400).json({ success: false, message: "Missing query params" });
+    }
 
-    const records = await Attendance.find({ date: parsedDate });
+    const parsedDate = new Date(date);
+    const startOfDay = new Date(parsedDate.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(parsedDate.setHours(23, 59, 59, 999));
+
+    const records = await Attendance.find({
+      date: { $gte: startOfDay, $lte: endOfDay },
+      std,
+      div
+    });
 
     const total = records.length;
     const present = records.filter(r => r.present).length;
