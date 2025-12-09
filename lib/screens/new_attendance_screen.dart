@@ -95,34 +95,76 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
   }
 
   // ------------------------------ SAVE & SMS ------------------------------
-  Future<void> _saveAttendance() async {
-    if (selectedStd == null || selectedDiv == null) {
-      _showSnack('Select STD & DIV');
-      return;
+Future<void> _saveAttendance() async {
+  if (selectedStd == null || selectedDiv == null) {
+    _showSnack('Select STD & DIV');
+    return;
+  }
+
+  final absentees = students.where((s) => !s.isPresent).toList();
+  int sent = 0, failed = 0;
+
+  // Send SMS to absentees
+  for (final s in absentees) {
+    try {
+      final res = await http.post(
+        Uri.parse("$SERVER_URL/send-sms"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"mobile": s.mobile, "studentName": s.name}),
+      );
+
+      final success = (res.statusCode == 200 && jsonDecode(res.body)['success'] == true);
+      success ? sent++ : failed++;
+    } catch (e) {
+      failed++;
     }
+  }
 
-    final absentees = students.where((s) => !s.isPresent).toList();
-    if (absentees.isEmpty) {
-      _showSnack("No absentees");
-      return;
+  // Save attendance to backend
+  try {
+    final now = DateTime.now();
+    final List<Map<String, dynamic>> attendanceData = students.map((s) {
+      return {
+        "studentId": null, // Optional: if you ever include _id in API
+        "std": selectedStd,
+        "div": selectedDiv,
+        "roll": s.roll,
+        "present": s.isPresent,
+        "date": now.toIso8601String(),
+      };
+    }).toList();
+
+    final response = await http.post(
+      Uri.parse("$SERVER_URL/attendance"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "date": now.toIso8601String(),
+        "attendance": attendanceData,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      print("✅ Attendance saved to database");
+    } else {
+      print("❌ Attendance save failed: ${response.body}");
     }
+  } catch (e) {
+    print("❌ Error saving attendance: $e");
+  }
 
-    int sent = 0, failed = 0;
+  if (!mounted) return;
 
-    for (final s in absentees) {
-      try {
-        final res = await http.post(
-          Uri.parse("$SERVER_URL/send-sms"),
-          headers: {"Content-Type": "application/json"},
-          body: jsonEncode({"mobile": s.mobile, "studentName": s.name}),
-        );
-
-        final success = (res.statusCode == 200 && jsonDecode(res.body)['success'] == true);
-        success ? sent++ : failed++;
-      } catch (e) {
-        failed++;
-      }
-    }
+  showDialog(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text("SMS Summary"),
+      content: Text("$sent Sent\n$failed Failed"),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("OK")),
+      ],
+    ),
+  );
+}
 
     if (!mounted) return;
 
