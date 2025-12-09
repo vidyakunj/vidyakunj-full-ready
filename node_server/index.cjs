@@ -239,6 +239,58 @@ app.post("/send-sms", async (req, res) => {
 });
 
 /* =======================================================
+   ATTENDANCE SUMMARY FOR ALL CLASSES ON A DATE
+   ======================================================= */
+app.get("/attendance-summary-all", async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (!date) return res.status(400).json({ success: false, message: "Missing date" });
+
+    const parsedDate = new Date(date);
+    const startOfDay = new Date(parsedDate.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(parsedDate.setHours(23, 59, 59, 999));
+
+    const records = await Attendance.aggregate([
+      {
+        $match: {
+          date: { $gte: startOfDay, $lte: endOfDay }
+        }
+      },
+      {
+        $group: {
+          _id: { std: "$std", div: "$div" },
+          total: { $sum: 1 },
+          present: {
+            $sum: {
+              $cond: [{ $eq: ["$present", true] }, 1, 0]
+            }
+          },
+          absent: {
+            $sum: {
+              $cond: [{ $eq: ["$present", false] }, 1, 0]
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          std: "$_id.std",
+          div: "$_id.div",
+          total: 1,
+          present: 1,
+          absent: 1
+        }
+      }
+    ]);
+
+    res.json({ success: true, data: records });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/* =======================================================
    START SERVER
    ======================================================= */
 const PORT = process.env.PORT || 10000;
