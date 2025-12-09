@@ -25,10 +25,8 @@ const users = [
    ======================================================= */
 const app = express();
 
-// ✅ Handle preflight (OPTIONS) requests before any middleware
 app.options("*", cors());
 
-// ✅ CORS middleware
 app.use(cors({
   origin: "https://vidyakunj-frontend.onrender.com",
   methods: ["GET", "POST", "OPTIONS"],
@@ -61,6 +59,20 @@ const studentSchema = new mongoose.Schema({
 });
 
 const Student = mongoose.model("students", studentSchema);
+
+/* =======================================================
+   ATTENDANCE SCHEMA
+   ======================================================= */
+const attendanceSchema = new mongoose.Schema({
+  studentId: { type: mongoose.Schema.Types.ObjectId, ref: "students", required: true },
+  std: String,
+  div: String,
+  roll: Number,
+  date: { type: Date, required: true },
+  present: { type: Boolean, default: false },
+}, { timestamps: true });
+
+const Attendance = mongoose.model("attendance", attendanceSchema);
 
 /* =======================================================
    LOGIN API
@@ -168,6 +180,58 @@ app.get("/download-csv", async (req, res) => {
   res.header("Content-Type", "text/csv");
   res.attachment(`${std}-${div}-students.csv`);
   res.send(csv);
+});
+
+/* =======================================================
+   SUBMIT ATTENDANCE (date-wise)
+   ======================================================= */
+app.post("/attendance", async (req, res) => {
+  try {
+    const { date, attendance } = req.body;
+
+    if (!date || !attendance) {
+      return res.status(400).json({ success: false, message: "Missing data" });
+    }
+
+    for (const entry of attendance) {
+      await Attendance.updateOne(
+        { studentId: entry.studentId, date },
+        {
+          studentId: entry.studentId,
+          std: entry.std,
+          div: entry.div,
+          roll: entry.roll,
+          date,
+          present: entry.present
+        },
+        { upsert: true }
+      );
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/* =======================================================
+   GET ATTENDANCE SUMMARY BY DATE
+   ======================================================= */
+app.get("/attendance-summary", async (req, res) => {
+  try {
+    const { date } = req.query;
+    const parsedDate = new Date(date);
+
+    const records = await Attendance.find({ date: parsedDate });
+
+    const total = records.length;
+    const present = records.filter(r => r.present).length;
+    const absent = total - present;
+
+    res.json({ total, present, absent });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 /* =======================================================
