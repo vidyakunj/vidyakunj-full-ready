@@ -92,27 +92,32 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
- Future<void> loadAttendanceSummary() async {
-  if (selectedStd == null || selectedDiv == null) return;
+  Future<void> loadAttendanceSummary() async {
+    final dateStr = "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
+    final uri = Uri.parse("$SERVER_URL/attendance-summary?date=$dateStr");
 
-  final dateStr = "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
-  final uri = Uri.parse("$SERVER_URL/attendance-summary?date=$dateStr&std=$selectedStd&div=$selectedDiv");
-
-  final res = await http.get(uri);
-  if (res.statusCode == 200) {
-    setState(() {
-      summary = [jsonDecode(res.body)];
-    });
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Failed to load summary")),
-    );
+    final res = await http.get(uri);
+    if (res.statusCode == 200) {
+      setState(() {
+        summary = jsonDecode(res.body);
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Failed to load summary")),
+      );
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) {
     const navy = Color(0xFF110E38);
+
+    int total = 0, present = 0, absent = 0;
+    for (var s in summary) {
+      total += s['total'] ?? 0;
+      present += s['present'] ?? 0;
+      absent += s['absent'] ?? 0;
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xffeef3ff),
@@ -196,14 +201,25 @@ class _AdminDashboardState extends State<AdminDashboard> {
               summary.isEmpty
                   ? const Text("No summary available.")
                   : Column(
-                      children: summary.map((e) {
-                        return Card(
-                          child: ListTile(
-                            title: Text("STD: ${e['std']}  |  DIV: ${e['div']}"),
-                            subtitle: Text("Total: ${e['total']}  |  Present: ${e['present']}  |  Absent: ${e['absent']}"),
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ...summary.map((e) {
+                          return Card(
+                            child: ListTile(
+                              title: Text("STD: ${e['std']}  |  DIV: ${e['div']}"),
+                              subtitle: Text("Total: ${e['total']}  |  Present: ${e['present']}  |  Absent: ${e['absent']}"),
+                            ),
+                          );
+                        }).toList(),
+                        const Divider(thickness: 1.2),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Text(
+                            "Grand Total: $total | Present: $present | Absent: $absent",
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                           ),
-                        );
-                      }).toList(),
+                        )
+                      ],
                     ),
             ],
           ),
