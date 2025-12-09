@@ -94,12 +94,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Future<void> loadAttendanceSummary() async {
     final dateStr = "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
-    final uri = Uri.parse("$SERVER_URL/full-attendance-summary?date=$dateStr");
+    final uri = Uri.parse("$SERVER_URL/attendance-summary-all?date=$dateStr"); // ✅ Fixed URL
 
     final res = await http.get(uri);
     if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
       setState(() {
-        summary = jsonDecode(res.body);
+        summary = data["data"] ?? [];
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -120,7 +121,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
       total += ((s['total'] ?? 0) as num).toInt();
       present += ((s['present'] ?? 0) as num).toInt();
       absent += ((s['absent'] ?? 0) as num).toInt();
-
     }
 
     return Scaffold(
@@ -181,4 +181,4 @@ class _AdminDashboardState extends State<AdminDashboard> {
       ),
     );
   }
-} 
+}
