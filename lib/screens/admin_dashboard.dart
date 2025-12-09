@@ -92,21 +92,23 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
-  Future<void> loadAttendanceSummary() async {
-    final dateStr = "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
-    final uri = Uri.parse("$SERVER_URL/attendance-summary?date=$dateStr");
+ Future<void> loadAttendanceSummary() async {
+  if (selectedStd == null || selectedDiv == null) return;
 
-    final res = await http.get(uri);
-    if (res.statusCode == 200) {
-      setState(() {
-        summary = jsonDecode(res.body);
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Failed to load summary")),
-      );
-    }
+  final dateStr = "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
+  final uri = Uri.parse("$SERVER_URL/attendance-summary?date=$dateStr&std=$selectedStd&div=$selectedDiv");
+
+  final res = await http.get(uri);
+  if (res.statusCode == 200) {
+    setState(() {
+      summary = [jsonDecode(res.body)];
+    });
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Failed to load summary")),
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {
