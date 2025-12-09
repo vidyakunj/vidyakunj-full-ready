@@ -64,7 +64,7 @@ const Student = mongoose.model("students", studentSchema);
    ATTENDANCE SCHEMA
    ======================================================= */
 const attendanceSchema = new mongoose.Schema({
-  studentId: { type: mongoose.Schema.Types.ObjectId, ref: "students" },
+  studentId: { type: mongoose.Schema.Types.ObjectId, ref: "students", required: true },
   std: String,
   div: String,
   roll: Number,
@@ -125,64 +125,6 @@ app.get("/students", async (req, res) => {
 });
 
 /* =======================================================
-   UPLOAD CSV
-   ======================================================= */
-app.post("/upload-csv", async (req, res) => {
-  try {
-    const { std, div, csv } = req.body;
-
-    if (!std || !div || !csv) {
-      return res.status(400).json({ success: false, error: "Missing data" });
-    }
-
-    const rows = csv.split("\n").map((line) => line.split(","));
-    const records = rows.slice(1);
-
-    for (let r of records) {
-      if (r.length >= 4) {
-        const roll = parseInt(r[0]);
-        const name = r[1];
-        const mobile = r[3];
-
-        if (roll && name && mobile) {
-          await Student.updateOne(
-            { std, div, roll },
-            { $set: { name, mobile } },
-            { upsert: true }
-          );
-        }
-      }
-    }
-
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-/* =======================================================
-   DOWNLOAD CSV
-   ======================================================= */
-app.get("/download-csv", async (req, res) => {
-  const { std, div } = req.query;
-
-  if (!std || !div) {
-    return res.status(400).send("Missing STD or DIV");
-  }
-
-  const students = await Student.find({ std, div }).sort({ roll: 1 });
-
-  let csv = "roll,name,mobile\n";
-  students.forEach((s) => {
-    csv += `${s.roll},${s.name},${s.mobile}\n`;
-  });
-
-  res.header("Content-Type", "text/csv");
-  res.attachment(`${std}-${div}-students.csv`);
-  res.send(csv);
-});
-
-/* =======================================================
    SUBMIT ATTENDANCE (date-wise)
    ======================================================= */
 app.post("/attendance", async (req, res) => {
@@ -194,17 +136,15 @@ app.post("/attendance", async (req, res) => {
     }
 
     for (const entry of attendance) {
-      const studentId = entry.studentId || (await Student.findOne({ std: entry.std, div: entry.div, roll: entry.roll }))?._id;
-
       await Attendance.updateOne(
-        { studentId, date },
+        { studentId: entry.studentId, date },
         {
-          studentId,
+          studentId: entry.studentId,
           std: entry.std,
           div: entry.div,
           roll: entry.roll,
           date,
-          present: entry.present,
+          present: entry.present
         },
         { upsert: true }
       );
@@ -217,30 +157,47 @@ app.post("/attendance", async (req, res) => {
 });
 
 /* =======================================================
-   GET ATTENDANCE SUMMARY BY DATE + STD + DIV
+   ATTENDANCE REPORT (per class + grand total)
    ======================================================= */
-app.get("/attendance-summary", async (req, res) => {
+app.get("/attendance-report", async (req, res) => {
   try {
-    const { date, std, div } = req.query;
-    if (!date || !std || !div) {
-      return res.status(400).json({ success: false, message: "Missing query params" });
-    }
+    const { date } = req.query;
+    if (!date) return res.status(400).json({ success: false, message: "Missing date" });
 
-    const parsedDate = new Date(date);
-    const startOfDay = new Date(parsedDate.setHours(0, 0, 0, 0));
-    const endOfDay = new Date(parsedDate.setHours(23, 59, 59, 999));
+    const parsed = new Date(date);
+    const startOfDay = new Date(parsed);
+    startOfDay.setHours(0,0,0,0);
+    const endOfDay = new Date(parsed);
+    endOfDay.setHours(23,59,59,999);
 
-    const records = await Attendance.find({
-      date: { $gte: startOfDay, $lte: endOfDay },
-      std,
-      div,
-    });
+    const pipeline = [
+      { $match: { date: { $gte: startOfDay, $lte: endOfDay } } },
+      { $group: {
+          _id: { std: "$std", div: "$div" },
+          total: { $sum: 1 },
+          present: { $sum: { $cond: [ "$present", 1, 0 ] } }
+      }},
+      { $project: {
+          _id: 0,
+          std: "$_id.std",
+          div: "$_id.div",
+          total: 1,
+          present: 1,
+          absent: { $subtract: ["$total", "$present"] }
+      }},
+      { $sort: { std: 1, div: 1 } }
+    ];
 
-    const total = records.length;
-    const present = records.filter((r) => r.present).length;
-    const absent = total - present;
+    const rows = await Attendance.aggregate(pipeline);
 
-    res.json({ total, present, absent });
+    const grand = rows.reduce((acc, r) => {
+      acc.total += r.total || 0;
+      acc.present += r.present || 0;
+      acc.absent += r.absent || 0;
+      return acc;
+    }, { total: 0, present: 0, absent: 0 });
+
+    res.json({ success: true, rows, grand });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
