@@ -117,9 +117,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
     int absent = 0;
 
     for (var s in summary) {
-      total += (s['total'] ?? 0).toInt();
-      present += (s['present'] ?? 0).toInt();
-      absent += (s['absent'] ?? 0).toInt();
+      total += ((s['total'] ?? 0) as num).toInt();
+      present += ((s['present'] ?? 0) as num).toInt();
+      absent += ((s['absent'] ?? 0) as num).toInt();
+
     }
 
     return Scaffold(
