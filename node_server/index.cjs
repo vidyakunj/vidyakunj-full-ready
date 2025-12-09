@@ -14,8 +14,9 @@ const axios = require("axios");
    SIMPLE LOGIN USERS
    ======================================================= */
 const users = [
+  { username: "patil", password: "iken", role: "teacher" },
   { username: "teacher1", password: "1234", role: "teacher" },
-  { username: "mamta", password: "1234", role: "teacher" },
+  { username: "vks", password: "1234", role: "teacher" },
   { username: "admin", password: "admin123", role: "admin" },
 ];
 
