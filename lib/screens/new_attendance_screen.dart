@@ -23,6 +23,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
   List<String> divisions = [];
   List<_StudentRow> students = [];
   List<int> absentRollNumbers = [];
+  final List<int> lockedRolls = [];
 
   final List<String> stdOptions = List<String>.generate(12, (i) => '${i + 1}');
 
@@ -50,7 +51,6 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     try {
       final uri = Uri.parse('$SERVER_URL/divisions?std=${Uri.encodeComponent(selectedStd!)}');
       final res = await http.get(uri);
-
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         divisions = (data['divisions'] ?? []).map<String>((e) => e.toString()).toList();
@@ -75,7 +75,6 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     try {
       final uri = Uri.parse('$SERVER_URL/students?std=$selectedStd&div=$selectedDiv');
       final res = await http.get(uri);
-
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         students = (data['students'] ?? [])
@@ -97,14 +96,14 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
   Future<void> _checkExistingAttendance() async {
     final today = DateTime.now();
     final dateStr = "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
-    final uri = Uri.parse("$SERVER_URL/attendance-check?std=$selectedStd&div=$selectedDiv&date=$dateStr");
+    final uri = Uri.parse("$SERVER_URL/attendance/check-lock?std=$selectedStd&div=$selectedDiv&date=$dateStr");
     final res = await http.get(uri);
 
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
-      if (data['exists'] == true) {
-        hasExistingAttendance = true;
-        _showSnack("Attendance already submitted for today");
+      if (data['lockedRolls'] != null) {
+        lockedRolls.clear();
+        lockedRolls.addAll(List<int>.from(data['lockedRolls']));
       }
     }
   }
@@ -115,12 +114,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
       return;
     }
 
-    if (hasExistingAttendance) {
-      _showSnack("Attendance already exists for today");
-      return;
-    }
-
-    final absentees = students.where((s) => !s.isPresent).toList();
+    final absentees = students.where((s) => !s.isPresent && !lockedRolls.contains(s.roll)).toList();
     int sent = 0, failed = 0;
 
     for (final s in absentees) {
@@ -130,10 +124,9 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
           headers: {"Content-Type": "application/json"},
           body: jsonEncode({"mobile": s.mobile, "studentName": s.name}),
         );
-
         final success = (res.statusCode == 200 && jsonDecode(res.body)['success'] == true);
         success ? sent++ : failed++;
-      } catch (e) {
+      } catch (_) {
         failed++;
       }
     }
@@ -152,16 +145,13 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
       final response = await http.post(
         Uri.parse("$SERVER_URL/attendance"),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "date": now.toIso8601String(),
-          "attendance": attendanceData,
-        }),
+        body: jsonEncode({"date": now.toIso8601String(), "attendance": attendanceData}),
       );
 
-      if (response.statusCode != 200) {
-        _showSnack("Attendance save failed");
+      if (response.statusCode == 200) {
+        lockedRolls.addAll(absentees.map((e) => e.roll));
       } else {
-        hasExistingAttendance = true;
+        _showSnack("Attendance save failed");
       }
     } catch (e) {
       _showSnack("Error saving attendance: $e");
@@ -174,28 +164,24 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text("SMS Summary"),
         content: Text("$sent Sent\n$failed Failed"),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("OK")),
-        ],
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("OK"))],
       ),
     );
   }
 
-  void _showSnack(String msg) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  void _showSnack(String msg) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xffeef3ff),
       appBar: AppBar(
-        title: const Text("Mark Attendance"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _logout,
-          ),
-        ],
+        backgroundColor: const Color(0xff003366),
+        title: const Text(
+          "Vidyakunj",
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 22),
+        ),
+        actions: [IconButton(icon: const Icon(Icons.logout), onPressed: _logout)],
       ),
       body: Column(
         children: [
@@ -207,7 +193,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     value: selectedStd,
-                    decoration: const InputDecoration(labelText: "Select STD"),
+                    decoration: _inputDeco("Select STD"),
                     items: stdOptions.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
                     onChanged: (v) {
                       setState(() => selectedStd = v);
@@ -221,7 +207,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                       ? const Center(child: CircularProgressIndicator())
                       : DropdownButtonFormField<String>(
                           value: selectedDiv,
-                          decoration: const InputDecoration(labelText: "Select DIV"),
+                          decoration: _inputDeco("Select DIV"),
                           items: divisions.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
                           onChanged: (v) {
                             setState(() => selectedDiv = v);
@@ -233,40 +219,92 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          ElevatedButton(
-            onPressed: hasExistingAttendance ? null : _saveAttendance,
-            child: const Text("Save Attendance"),
-          ),
-          const Divider(),
           Expanded(
             child: isLoadingStudents
                 ? const Center(child: CircularProgressIndicator())
                 : ListView(
-                    children: students.map((s) {
-                      return ListTile(
-                        title: Text(s.name),
-                        subtitle: Text("Roll: ${s.roll} | Phone: ${s.mobile}"),
-                        trailing: Checkbox(
-                          value: s.isPresent,
-                          onChanged: hasExistingAttendance
-                              ? null
-                              : (v) => setState(() {
-                                    s.isPresent = v ?? true;
-                                    if (!s.isPresent && !absentRollNumbers.contains(s.roll)) {
-                                      absentRollNumbers.add(s.roll);
-                                    } else {
-                                      absentRollNumbers.remove(s.roll);
-                                    }
-                                  }),
-                        ),
-                      );
-                    }).toList(),
+                    children: students.map((s) => _studentTile(s)).toList(),
                   ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xff003366),
+                      foregroundColor: Colors.white,
+                      textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    onPressed: _saveAttendance,
+                    child: const Text("Send SMS"),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text("EXIT"),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
+
+  Widget _studentTile(_StudentRow s) {
+    final isLocked = lockedRolls.contains(s.roll);
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      decoration: BoxDecoration(
+        color: s.isPresent ? Colors.green.shade50 : Colors.red.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: s.isPresent ? Colors.green.shade200 : Colors.red.shade200),
+      ),
+      child: Row(
+        children: [
+          Expanded(flex: 5, child: Text(s.name)),
+          Expanded(
+            flex: 2,
+            child: Text(
+              "${s.roll}",
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Checkbox(
+              value: s.isPresent,
+              onChanged: isLocked
+                  ? null
+                  : (v) {
+                      setState(() {
+                        s.isPresent = v ?? true;
+                        if (!s.isPresent) {
+                          if (!absentRollNumbers.contains(s.roll)) {
+                            absentRollNumbers.add(s.roll);
+                            absentRollNumbers.sort();
+                          }
+                        } else {
+                          absentRollNumbers.remove(s.roll);
+                        }
+                      });
+                    },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  InputDecoration _inputDeco(String label) =>
+      InputDecoration(labelText: label, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)));
 }
 
 class _StudentRow {
