@@ -80,6 +80,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
         final data = jsonDecode(res.body);
         students = (data['students'] ?? [])
             .map<_StudentRow>((e) => _StudentRow(
+                  id: e['_id'],
                   name: e['name'],
                   roll: e['roll'],
                   mobile: e['mobile'],
@@ -140,7 +141,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     try {
       final now = DateTime.now();
       final attendanceData = students.map((s) => {
-        "studentId": null,
+        "studentId": s.id,
         "std": selectedStd,
         "div": selectedDiv,
         "roll": s.roll,
@@ -327,4 +328,3 @@ class _StudentRow {
     this.locked = false,
   });
 }
-
