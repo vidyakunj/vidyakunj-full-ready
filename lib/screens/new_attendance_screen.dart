@@ -183,6 +183,90 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
   void _showSnack(String msg) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xffeef3ff),
+      appBar: AppBar(
+        title: const Text("Mark Attendance"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: selectedStd,
+                    decoration: const InputDecoration(labelText: "Select STD"),
+                    items: stdOptions.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                    onChanged: (v) {
+                      setState(() => selectedStd = v);
+                      _loadDivisions();
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: isLoadingDivs
+                      ? const Center(child: CircularProgressIndicator())
+                      : DropdownButtonFormField<String>(
+                          value: selectedDiv,
+                          decoration: const InputDecoration(labelText: "Select DIV"),
+                          items: divisions.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                          onChanged: (v) {
+                            setState(() => selectedDiv = v);
+                            _loadStudents();
+                          },
+                        ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          ElevatedButton(
+            onPressed: hasExistingAttendance ? null : _saveAttendance,
+            child: const Text("Save Attendance"),
+          ),
+          const Divider(),
+          Expanded(
+            child: isLoadingStudents
+                ? const Center(child: CircularProgressIndicator())
+                : ListView(
+                    children: students.map((s) {
+                      return ListTile(
+                        title: Text(s.name),
+                        subtitle: Text("Roll: ${s.roll} | Phone: ${s.mobile}"),
+                        trailing: Checkbox(
+                          value: s.isPresent,
+                          onChanged: hasExistingAttendance
+                              ? null
+                              : (v) => setState(() {
+                                    s.isPresent = v ?? true;
+                                    if (!s.isPresent && !absentRollNumbers.contains(s.roll)) {
+                                      absentRollNumbers.add(s.roll);
+                                    } else {
+                                      absentRollNumbers.remove(s.roll);
+                                    }
+                                  }),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _StudentRow {
