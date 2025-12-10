@@ -125,7 +125,7 @@ app.get("/students", async (req, res) => {
 });
 
 /* =======================================================
-   SUBMIT ATTENDANCE (date-wise)
+   SUBMIT ATTENDANCE (avoid duplicates)
    ======================================================= */
 app.post("/attendance", async (req, res) => {
   try {
@@ -135,19 +135,27 @@ app.post("/attendance", async (req, res) => {
       return res.status(400).json({ success: false, message: "Missing data" });
     }
 
+    const parsedDate = new Date(date);
+    parsedDate.setHours(0, 0, 0, 0);
+    const nextDay = new Date(parsedDate);
+    nextDay.setDate(parsedDate.getDate() + 1);
+
     for (const entry of attendance) {
-      await Attendance.updateOne(
-        { studentId: entry.studentId, date },
-        {
+      const alreadyExists = await Attendance.findOne({
+        studentId: entry.studentId,
+        date: { $gte: parsedDate, $lt: nextDay }
+      });
+
+      if (!alreadyExists) {
+        await Attendance.create({
           studentId: entry.studentId,
           std: entry.std,
           div: entry.div,
           roll: entry.roll,
-          date,
+          date: parsedDate,
           present: entry.present
-        },
-        { upsert: true }
-      );
+        });
+      }
     }
 
     res.json({ success: true });
