@@ -189,7 +189,7 @@ app.get("/attendance/check-lock", async (req, res) => {
       std,
       div,
       date: { $gte: start, $lte: end },
-      present: false, // only lock absent entries
+      present: false,
     });
 
     const locked = records.map((r) => r.roll);
