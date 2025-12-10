@@ -193,7 +193,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
         elevation: 4,
         titleSpacing: 0,
         title: const Text(
-          "Vidyakunj",
+          "Vidyakunj School",
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,
