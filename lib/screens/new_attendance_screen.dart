@@ -252,6 +252,16 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                   ),
           ),
           Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                "Absent: ${absentRollNumbers.join(', ')}",
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.red),
+              ),
+            ),
+          ),
+          Padding(
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
