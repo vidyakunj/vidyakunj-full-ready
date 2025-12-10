@@ -312,7 +312,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 }
 
 class _StudentRow {
-  final String id; // studentId
+  final String id;
   final String name;
   final int roll;
   final String mobile;
