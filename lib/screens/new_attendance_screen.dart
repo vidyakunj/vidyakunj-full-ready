@@ -311,6 +311,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 }
 
 class _StudentRow {
+  final String id; // studentId
   final String name;
   final int roll;
   final String mobile;
@@ -318,6 +319,7 @@ class _StudentRow {
   bool locked;
 
   _StudentRow({
+    required this.id,
     required this.name,
     required this.roll,
     required this.mobile,
@@ -325,3 +327,4 @@ class _StudentRow {
     this.locked = false,
   });
 }
+
