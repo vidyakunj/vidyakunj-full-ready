@@ -119,11 +119,6 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
       return;
     }
 
-    if (hasExistingAttendance) {
-      _showSnack("Attendance already exists for today");
-      return;
-    }
-
     final absentees = students.where((s) => !s.isPresent && !s.locked).toList();
     int sent = 0, failed = 0;
 
