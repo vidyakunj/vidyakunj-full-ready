@@ -165,6 +165,36 @@ app.post("/attendance", async (req, res) => {
 });
 
 /* =======================================================
+   ATTENDANCE CHECK FOR INDIVIDUAL STUDENT (NEW ENDPOINT)
+   ======================================================= */
+app.get("/attendance/check-lock", async (req, res) => {
+  const { std, div, roll, date } = req.query;
+
+  if (!std || !div || !roll || !date) {
+    return res.status(400).json({ error: "Missing required query params" });
+  }
+
+  try {
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+
+    const existing = await Attendance.findOne({
+      std,
+      div,
+      roll: Number(roll),
+      date: { $gte: start.toISOString(), $lte: end.toISOString() }
+    });
+
+    res.json({ exists: !!existing });
+  } catch (err) {
+    console.error("Check lock error", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/* =======================================================
    ATTENDANCE REPORT (per class + grand total)
    ======================================================= */
 app.get("/attendance-report", async (req, res) => {
