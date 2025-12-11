@@ -78,14 +78,12 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
-        students = (data['students'] ?? [])
-            .map<_StudentRow>((e) => _StudentRow(
-                  id: e['_id'],
-                  name: e['name'],
-                  roll: e['roll'],
-                  mobile: e['mobile'],
-                ))
-            .toList();
+        students = (data['students'] ?? []).map<_StudentRow>((e) => _StudentRow(
+              id: e['_id'],
+              name: e['name'],
+              roll: e['roll'],
+              mobile: e['mobile'],
+            )).toList();
       }
     } catch (e) {
       _showSnack('Error loading students: $e');
@@ -120,65 +118,70 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
       return;
     }
 
-    final absentees = students.where((s) => !s.isPresent && !s.locked).toList();
-    int sent = 0, failed = 0;
+    final now = DateTime.now();
+    final dateStr = now.toIso8601String();
 
-    for (final s in absentees) {
-      try {
-        final res = await http.post(
-          Uri.parse("$SERVER_URL/send-sms"),
-          headers: {"Content-Type": "application/json"},
-          body: jsonEncode({"mobile": s.mobile, "studentName": s.name}),
-        );
-
-        final success = (res.statusCode == 200 && jsonDecode(res.body)['success'] == true);
-        success ? sent++ : failed++;
-      } catch (e) {
-        failed++;
-      }
-    }
+    final attendanceData = students.map((s) => {
+      "studentId": s.id,
+      "std": selectedStd,
+      "div": selectedDiv,
+      "roll": s.roll,
+      "date": dateStr,
+      "present": s.isPresent,
+    }).toList();
 
     try {
-      final now = DateTime.now();
-      final attendanceData = students.map((s) => {
-        "studentId": s.id,
-        "std": selectedStd,
-        "div": selectedDiv,
-        "roll": s.roll,
-        "date": now.toIso8601String(),
-        "present": s.isPresent,
-      }).toList();
-
-      final response = await http.post(
+      final res = await http.post(
         Uri.parse("$SERVER_URL/attendance"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
-          "date": now.toIso8601String(),
+          "date": dateStr,
           "attendance": attendanceData,
         }),
       );
 
-      if (response.statusCode != 200) {
+      if (res.statusCode != 200) {
         _showSnack("Attendance save failed");
-      } else {
-        hasExistingAttendance = true;
+        return;
       }
+
+      final absentIds = students
+          .where((s) => !s.isPresent && !s.locked)
+          .map((s) => s.id)
+          .toList();
+
+      final smsRes = await http.post(
+        Uri.parse("$SERVER_URL/send-sms-bulk"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "studentIds": absentIds,
+          "date": dateStr,
+        }),
+      );
+
+      final smsSuccess = smsRes.statusCode == 200 &&
+          jsonDecode(smsRes.body)['success'] == true;
+
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text("SMS Summary"),
+          content: Text(smsSuccess
+              ? "Absent SMS sent successfully"
+              : "Failed to send some or all SMS"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("OK"),
+            ),
+          ],
+        ),
+      );
     } catch (e) {
-      _showSnack("Error saving attendance: $e");
+      _showSnack("Error saving or sending: $e");
     }
-
-    if (!mounted) return;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("SMS Summary"),
-        content: Text("$sent Sent\n$failed Failed"),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("OK")),
-        ],
-      ),
-    );
   }
 
   void _showSnack(String msg) =>
@@ -247,9 +250,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
           Expanded(
             child: isLoadingStudents
                 ? const Center(child: CircularProgressIndicator())
-                : ListView(
-                    children: students.map((s) => _studentTile(s)).toList(),
-                  ),
+                : ListView(children: students.map(_studentTile).toList()),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
