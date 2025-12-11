@@ -178,6 +178,22 @@ app.put("/students/:id", async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+// =============================
+// STEP 8: DELETE STUDENT BY ID
+// =============================
+app.delete("/students/:id", async (req, res) => {
+  try {
+    const deleted = await Student.findByIdAndDelete(req.params.id);
+
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: "Student not found" });
+    }
+
+    res.json({ success: true, message: "Student deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 /* =======================================================
    POST ATTENDANCE + SMS
