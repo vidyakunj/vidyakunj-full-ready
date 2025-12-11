@@ -11,26 +11,31 @@ require("dotenv").config();
 const axios = require("axios");
 
 /* =======================================================
-   SIMPLE LOGIN USERS (use hashed storage in production)
+   SIMPLE LOGIN USERS
    ======================================================= */
-const users = new Map([
-  ["patil", { password: "iken", role: "teacher" }],
-  ["teacher1", { password: "1234", role: "teacher" }],
-  ["vks", { password: "1234", role: "teacher" }],
-  ["admin", { password: "admin123", role: "admin" }],
-]);
+const users = [
+  { username: "patil", password: "iken", role: "teacher" },
+  { username: "teacher1", password: "1234", role: "teacher" },
+  { username: "vks", password: "1234", role: "teacher" },
+  { username: "admin", password: "admin123", role: "admin" },
+];
 
 /* =======================================================
    APP SETUP
    ======================================================= */
 const app = express();
 
-app.use(cors({
-  origin: "https://vidyakunj-frontend.onrender.com",
-  methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Accept"],
-  credentials: true,
-}));
+app.options("*", cors());
+
+app.use(
+  cors({
+    origin: "https://vidyakunj-frontend.onrender.com",
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Accept"],
+    credentials: true,
+  })
+);
+console.log("✅ CORS Middleware Applied");
 
 app.use(bodyParser.json());
 
@@ -39,12 +44,13 @@ app.use(bodyParser.json());
    ======================================================= */
 const MONGO_URL = process.env.MONGO_URL || process.env.MONGODB_URI;
 
-mongoose.connect(MONGO_URL)
+mongoose
+  .connect(MONGO_URL)
   .then(() => console.log("✅ MongoDB Connected"))
-  .catch((err) => console.error("❌ Mongo Error:", err));
+  .catch((err) => console.log("❌ Mongo Error:", err));
 
 /* =======================================================
-   SCHEMAS
+   STUDENT SCHEMA
    ======================================================= */
 const studentSchema = new mongoose.Schema({
   std: String,
@@ -53,40 +59,63 @@ const studentSchema = new mongoose.Schema({
   roll: Number,
   mobile: String,
 });
+
 const Student = mongoose.model("students", studentSchema);
 
-const attendanceSchema = new mongoose.Schema({
-  studentId: { type: mongoose.Schema.Types.ObjectId, ref: "students", required: true },
-  std: String,
-  div: String,
-  roll: Number,
-  date: { type: Date, required: true },
-  present: { type: Boolean, default: false },
-}, { timestamps: true });
+/* =======================================================
+   ATTENDANCE SCHEMA
+   ======================================================= */
+const attendanceSchema = new mongoose.Schema(
+  {
+    studentId: { type: mongoose.Schema.Types.ObjectId, ref: "students", required: true },
+    std: String,
+    div: String,
+    roll: Number,
+    date: { type: Date, required: true },
+    present: { type: Boolean, default: false },
+  },
+  { timestamps: true }
+);
+
 const Attendance = mongoose.model("attendance", attendanceSchema);
 
 /* =======================================================
-   INDEXES
+   INDEX OPTIMIZATION STEP
    ======================================================= */
-mongoose.connection.once("open", async () => {
+async function ensureIndexes() {
   await Student.collection.createIndex({ std: 1, div: 1 });
   await Attendance.collection.createIndex({ std: 1, div: 1, date: 1 });
   await Attendance.collection.createIndex({ studentId: 1, date: 1 });
   console.log("📌 MongoDB indexes ensured");
+}
+
+mongoose.connection.once("open", () => {
+  console.log("🔌 MongoDB connection open");
+  ensureIndexes();
 });
 
 /* =======================================================
-   LOGIN API (Fast map lookup)
+   LOGIN API
    ======================================================= */
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
-  const user = users.get(username);
 
-  if (!user || user.password !== password) {
-    return res.json({ success: false, message: "Invalid username or password" });
+  const user = users.find(
+    (u) => u.username === username && u.password === password
+  );
+
+  if (!user) {
+    return res.json({
+      success: false,
+      message: "Invalid username or password",
+    });
   }
 
-  return res.json({ success: true, username, role: user.role });
+  return res.json({
+    success: true,
+    username: user.username,
+    role: user.role,
+  });
 });
 
 /* =======================================================
@@ -116,11 +145,25 @@ app.get("/students", async (req, res) => {
 });
 
 /* =======================================================
-   POST ATTENDANCE + BULK SMS
+   GET SINGLE STUDENT BY ID (Step 6)
+   ======================================================= */
+app.get("/students/:id", async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.id);
+    if (!student) return res.status(404).json({ success: false, message: "Student not found" });
+    res.json({ success: true, student });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/* =======================================================
+   POST ATTENDANCE + SMS
    ======================================================= */
 app.post("/attendance", async (req, res) => {
   try {
     const { date, attendance } = req.body;
+
     if (!date || !attendance) {
       return res.status(400).json({ success: false, message: "Missing data" });
     }
@@ -130,44 +173,55 @@ app.post("/attendance", async (req, res) => {
     const nextDay = new Date(parsedDate);
     nextDay.setDate(parsedDate.getDate() + 1);
 
-    const inserts = [];
+    let sent = 0,
+      failed = 0;
+
+    const newEntries = [];
     const smsPromises = [];
-    let sent = 0, failed = 0;
 
     for (const entry of attendance) {
-      const exists = await Attendance.exists({ studentId: entry.studentId, date: { $gte: parsedDate, $lt: nextDay } });
-      if (exists) continue;
-
-      inserts.push({
+      const alreadyExists = await Attendance.findOne({
         studentId: entry.studentId,
-        std: entry.std,
-        div: entry.div,
-        roll: entry.roll,
-        date: parsedDate,
-        present: entry.present,
+        date: { $gte: parsedDate, $lt: nextDay },
       });
 
-      if (!entry.present) {
-        const params = {
-          method: "SendMessage",
-          send_to: entry.mobile,
-          msg: `Dear Parents,Your child, ${entry.name} remained absent in school today.,Vidyakunj School`,
-          msg_type: "TEXT",
-          userid: process.env.GUPSHUP_USER,
-          password: process.env.GUPSHUP_PASSWORD,
-          auth_scheme: "PLAIN",
-          v: "1.1",
-        };
+      if (!alreadyExists) {
+        newEntries.push({
+          studentId: entry.studentId,
+          std: entry.std,
+          div: entry.div,
+          roll: entry.roll,
+          date: parsedDate,
+          present: entry.present,
+        });
 
-        smsPromises.push(
-          axios.get(process.env.GUPSHUP_URL, { params })
-            .then((res) => res.data.toLowerCase().includes("success") ? sent++ : failed++)
-            .catch(() => failed++)
-        );
+        if (!entry.present) {
+          const message = `Dear Parents,Your child, ${entry.name} remained absent in school today.,Vidyakunj School`;
+          const params = {
+            method: "SendMessage",
+            send_to: entry.mobile,
+            msg: message,
+            msg_type: "TEXT",
+            userid: process.env.GUPSHUP_USER,
+            password: process.env.GUPSHUP_PASSWORD,
+            auth_scheme: "PLAIN",
+            v: "1.1",
+          };
+
+          smsPromises.push(
+            axios
+              .get(process.env.GUPSHUP_URL, { params })
+              .then((res) => {
+                if (res.data.toLowerCase().includes("success")) sent++;
+                else failed++;
+              })
+              .catch(() => failed++)
+          );
+        }
       }
     }
 
-    if (inserts.length > 0) await Attendance.insertMany(inserts);
+    if (newEntries.length) await Attendance.insertMany(newEntries);
     await Promise.all(smsPromises);
 
     res.json({ success: true, smsSummary: { sent, failed } });
@@ -177,11 +231,14 @@ app.post("/attendance", async (req, res) => {
 });
 
 /* =======================================================
-   LOCKED STUDENTS
+   CHECK LOCKED STUDENTS
    ======================================================= */
 app.get("/attendance/check-lock", async (req, res) => {
   const { std, div, date } = req.query;
-  if (!std || !div || !date) return res.status(400).json({ error: "Missing required query params" });
+
+  if (!std || !div || !date) {
+    return res.status(400).json({ error: "Missing required query params" });
+  }
 
   try {
     const start = new Date(date);
@@ -189,9 +246,14 @@ app.get("/attendance/check-lock", async (req, res) => {
     const end = new Date(date);
     end.setHours(23, 59, 59, 999);
 
-    const locked = await Attendance.find({ std, div, date: { $gte: start, $lte: end }, present: false })
-      .distinct("roll");
+    const records = await Attendance.find({
+      std,
+      div,
+      date: { $gte: start, $lte: end },
+      present: false,
+    });
 
+    const locked = records.map((r) => r.roll);
     res.json({ locked });
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });
@@ -207,50 +269,67 @@ app.get("/attendance-report", async (req, res) => {
     if (!date) return res.status(400).json({ success: false, message: "Missing date" });
 
     const parsed = new Date(date);
-    const startOfDay = new Date(parsed.setHours(0, 0, 0, 0));
-    const endOfDay = new Date(parsed.setHours(23, 59, 59, 999));
+    const startOfDay = new Date(parsed);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(parsed);
+    endOfDay.setHours(23, 59, 59, 999);
 
-    const report = await Attendance.aggregate([
+    const pipeline = [
       { $match: { date: { $gte: startOfDay, $lte: endOfDay } } },
-      { $group: {
-        _id: { std: "$std", div: "$div" },
-        total: { $sum: 1 },
-        present: { $sum: { $cond: ["$present", 1, 0] } },
-      } },
-      { $project: {
-        std: "$_id.std",
-        div: "$_id.div",
-        total: 1,
-        present: 1,
-        absent: { $subtract: ["$total", "$present"] },
-      } },
-      { $sort: { std: 1, div: 1 } }
-    ]);
+      {
+        $group: {
+          _id: { std: "$std", div: "$div" },
+          total: { $sum: 1 },
+          present: { $sum: { $cond: ["$present", 1, 0] } },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          std: "$_id.std",
+          div: "$_id.div",
+          total: 1,
+          present: 1,
+          absent: { $subtract: ["$total", "$present"] },
+        },
+      },
+      { $sort: { std: 1, div: 1 } },
+    ];
 
-    const grand = report.reduce((acc, r) => {
-      acc.total += r.total;
-      acc.present += r.present;
-      acc.absent += r.absent;
-      return acc;
-    }, { total: 0, present: 0, absent: 0 });
+    const rows = await Attendance.aggregate(pipeline);
 
-    res.json({ success: true, rows: report, grand });
+    const grand = rows.reduce(
+      (acc, r) => {
+        acc.total += r.total || 0;
+        acc.present += r.present || 0;
+        acc.absent += r.absent || 0;
+        return acc;
+      },
+      { total: 0, present: 0, absent: 0 }
+    );
+
+    res.json({ success: true, rows, grand });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
 /* =======================================================
-   SEND SINGLE SMS
+   SEND SMS USING GUPSHUP
    ======================================================= */
 app.post("/send-sms", async (req, res) => {
   const { mobile, studentName } = req.body;
-  if (!mobile || !studentName) return res.status(400).json({ success: false, error: "Missing data" });
+
+  if (!mobile || !studentName) {
+    return res.status(400).json({ success: false, error: "Missing data" });
+  }
+
+  const message = `Dear Parents,Your child, ${studentName} remained absent in school today.,Vidyakunj School`;
 
   const params = {
     method: "SendMessage",
     send_to: mobile,
-    msg: `Dear Parents,Your child, ${studentName} remained absent in school today.,Vidyakunj School`,
+    msg: message,
     msg_type: "TEXT",
     userid: process.env.GUPSHUP_USER,
     password: process.env.GUPSHUP_PASSWORD,
@@ -260,42 +339,54 @@ app.post("/send-sms", async (req, res) => {
 
   try {
     const response = await axios.get(process.env.GUPSHUP_URL, { params });
-    res.json({ success: response.data.toLowerCase().includes("success"), response: response.data });
+    res.json({
+      success: response.data.toLowerCase().includes("success"),
+      response: response.data,
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
 /* =======================================================
-   ATTENDANCE SUMMARY FOR ALL CLASSES
+   SUMMARY FOR ALL CLASSES
    ======================================================= */
 app.get("/attendance-summary-all", async (req, res) => {
   try {
     const { date } = req.query;
     if (!date) return res.status(400).json({ success: false, message: "Missing date" });
 
-    const parsed = new Date(date);
-    const startOfDay = new Date(parsed.setHours(0, 0, 0, 0));
-    const endOfDay = new Date(parsed.setHours(23, 59, 59, 999));
+    const parsedDate = new Date(date);
+    const startOfDay = new Date(parsedDate.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(parsedDate.setHours(23, 59, 59, 999));
 
-    const data = await Attendance.aggregate([
-      { $match: { date: { $gte: startOfDay, $lte: endOfDay } } },
-      { $group: {
-        _id: { std: "$std", div: "$div" },
-        total: { $sum: 1 },
-        present: { $sum: { $cond: [{ $eq: ["$present", true] }, 1, 0] } },
-        absent: { $sum: { $cond: [{ $eq: ["$present", false] }, 1, 0] } },
-      } },
-      { $project: {
-        std: "$_id.std",
-        div: "$_id.div",
-        total: 1,
-        present: 1,
-        absent: 1,
-      } },
+    const records = await Attendance.aggregate([
+      {
+        $match: {
+          date: { $gte: startOfDay, $lte: endOfDay },
+        },
+      },
+      {
+        $group: {
+          _id: { std: "$std", div: "$div" },
+          total: { $sum: 1 },
+          present: { $sum: { $cond: [{ $eq: ["$present", true] }, 1, 0] } },
+          absent: { $sum: { $cond: [{ $eq: ["$present", false] }, 1, 0] } },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          std: "$_id.std",
+          div: "$_id.div",
+          total: 1,
+          present: 1,
+          absent: 1,
+        },
+      },
     ]);
 
-    res.json({ success: true, data });
+    res.json({ success: true, data: records });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -305,4 +396,6 @@ app.get("/attendance-summary-all", async (req, res) => {
    START SERVER
    ======================================================= */
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log("🚀 Vidyakunj Backend running on port " + PORT));
+app.listen(PORT, () =>
+  console.log("🚀 Vidyakunj Backend running on port " + PORT)
+);
