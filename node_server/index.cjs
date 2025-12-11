@@ -59,7 +59,6 @@ const studentSchema = new mongoose.Schema({
   roll: Number,
   mobile: String,
 });
-
 const Student = mongoose.model("students", studentSchema);
 
 /* =======================================================
@@ -76,11 +75,10 @@ const attendanceSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
 const Attendance = mongoose.model("attendance", attendanceSchema);
 
 /* =======================================================
-   INDEX OPTIMIZATION STEP (Step 3)
+   INDEX OPTIMIZATION
    ======================================================= */
 async function ensureIndexes() {
   await Student.collection.createIndex({ std: 1, div: 1 });
@@ -88,24 +86,17 @@ async function ensureIndexes() {
   await Attendance.collection.createIndex({ studentId: 1, date: 1 });
   console.log("📌 MongoDB indexes ensured");
 }
-
-mongoose.connection.once("open", () => {
-  console.log("🔌 MongoDB connection open");
-  ensureIndexes();
-});
+mongoose.connection.once("open", ensureIndexes);
 
 /* =======================================================
    LOGIN API
    ======================================================= */
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
-  const user = users.find(
-    (u) => u.username === username && u.password === password
-  );
-  if (!user) {
-    return res.json({ success: false, message: "Invalid username or password" });
-  }
-  return res.json({ success: true, username: user.username, role: user.role });
+  const user = users.find((u) => u.username === username && u.password === password);
+  return user
+    ? res.json({ success: true, username: user.username, role: user.role })
+    : res.json({ success: false, message: "Invalid username or password" });
 });
 
 /* =======================================================
@@ -135,60 +126,63 @@ app.get("/students", async (req, res) => {
 });
 
 /* =======================================================
-   POST ATTENDANCE + SMS (Parallel Optimized)
+   POST ATTENDANCE + SMS (Parallelized)
    ======================================================= */
 app.post("/attendance", async (req, res) => {
   try {
     const { date, attendance } = req.body;
-    if (!date || !attendance) {
-      return res.status(400).json({ success: false, message: "Missing data" });
-    }
+    if (!date || !attendance) return res.status(400).json({ success: false, message: "Missing data" });
 
     const parsedDate = new Date(date);
     parsedDate.setHours(0, 0, 0, 0);
     const nextDay = new Date(parsedDate);
     nextDay.setDate(parsedDate.getDate() + 1);
 
-    let sent = 0, failed = 0;
+    const bulkOps = [];
+    const smsPromises = [];
 
-    await Promise.all(attendance.map(async (entry) => {
-      const alreadyExists = await Attendance.findOne({
-        studentId: entry.studentId,
-        date: { $gte: parsedDate, $lt: nextDay },
-      });
-
-      if (!alreadyExists) {
-        await Attendance.create({
-          studentId: entry.studentId,
-          std: entry.std,
-          div: entry.div,
-          roll: entry.roll,
-          date: parsedDate,
-          present: entry.present,
+    for (const entry of attendance) {
+      const exists = await Attendance.exists({ studentId: entry.studentId, date: { $gte: parsedDate, $lt: nextDay } });
+      if (!exists) {
+        bulkOps.push({
+          insertOne: {
+            document: {
+              studentId: entry.studentId,
+              std: entry.std,
+              div: entry.div,
+              roll: entry.roll,
+              date: parsedDate,
+              present: entry.present,
+            },
+          },
         });
 
         if (!entry.present) {
-          try {
-            const message = `Dear Parents,Your child, ${entry.name} remained absent in school today.,Vidyakunj School`;
-            const params = {
-              method: "SendMessage",
-              send_to: entry.mobile,
-              msg: message,
-              msg_type: "TEXT",
-              userid: process.env.GUPSHUP_USER,
-              password: process.env.GUPSHUP_PASSWORD,
-              auth_scheme: "PLAIN",
-              v: "1.1",
-            };
-            const response = await axios.get(process.env.GUPSHUP_URL, { params });
-            if (response.data.toLowerCase().includes("success")) sent++;
-            else failed++;
-          } catch {
-            failed++;
-          }
+          const message = `Dear Parents,Your child, ${entry.name} remained absent in school today.,Vidyakunj School`;
+          const params = {
+            method: "SendMessage",
+            send_to: entry.mobile,
+            msg: message,
+            msg_type: "TEXT",
+            userid: process.env.GUPSHUP_USER,
+            password: process.env.GUPSHUP_PASSWORD,
+            auth_scheme: "PLAIN",
+            v: "1.1",
+          };
+          smsPromises.push(
+            axios.get(process.env.GUPSHUP_URL, { params })
+              .then(r => r.data.toLowerCase().includes("success"))
+              .catch(() => false)
+          );
         }
       }
-    }));
+    }
+
+    if (bulkOps.length) await Attendance.bulkWrite(bulkOps);
+
+    const results = await Promise.all(smsPromises);
+    const sent = results.filter(r => r).length;
+    const failed = results.length - sent;
 
     res.json({ success: true, smsSummary: { sent, failed } });
   } catch (err) {
@@ -201,9 +195,8 @@ app.post("/attendance", async (req, res) => {
    ======================================================= */
 app.get("/attendance/check-lock", async (req, res) => {
   const { std, div, date } = req.query;
-  if (!std || !div || !date) {
-    return res.status(400).json({ error: "Missing required query params" });
-  }
+  if (!std || !div || !date) return res.status(400).json({ error: "Missing required query params" });
+
   try {
     const start = new Date(date);
     start.setHours(0, 0, 0, 0);
@@ -219,132 +212,7 @@ app.get("/attendance/check-lock", async (req, res) => {
 });
 
 /* =======================================================
-   ATTENDANCE REPORT
-   ======================================================= */
-app.get("/attendance-report", async (req, res) => {
-  try {
-    const { date } = req.query;
-    if (!date) return res.status(400).json({ success: false, message: "Missing date" });
-
-    const parsed = new Date(date);
-    const startOfDay = new Date(parsed);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(parsed);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    const pipeline = [
-      { $match: { date: { $gte: startOfDay, $lte: endOfDay } } },
-      {
-        $group: {
-          _id: { std: "$std", div: "$div" },
-          total: { $sum: 1 },
-          present: { $sum: { $cond: ["$present", 1, 0] } },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          std: "$_id.std",
-          div: "$_id.div",
-          total: 1,
-          present: 1,
-          absent: { $subtract: ["$total", "$present"] },
-        },
-      },
-      { $sort: { std: 1, div: 1 } },
-    ];
-
-    const rows = await Attendance.aggregate(pipeline);
-
-    const grand = rows.reduce((acc, r) => {
-      acc.total += r.total || 0;
-      acc.present += r.present || 0;
-      acc.absent += r.absent || 0;
-      return acc;
-    }, { total: 0, present: 0, absent: 0 });
-
-    res.json({ success: true, rows, grand });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-/* =======================================================
-   SEND SMS USING GUPSHUP
-   ======================================================= */
-app.post("/send-sms", async (req, res) => {
-  const { mobile, studentName } = req.body;
-  if (!mobile || !studentName) {
-    return res.status(400).json({ success: false, error: "Missing data" });
-  }
-  const message = `Dear Parents,Your child, ${studentName} remained absent in school today.,Vidyakunj School`;
-  const params = {
-    method: "SendMessage",
-    send_to: mobile,
-    msg: message,
-    msg_type: "TEXT",
-    userid: process.env.GUPSHUP_USER,
-    password: process.env.GUPSHUP_PASSWORD,
-    auth_scheme: "PLAIN",
-    v: "1.1",
-  };
-  try {
-    const response = await axios.get(process.env.GUPSHUP_URL, { params });
-    res.json({
-      success: response.data.toLowerCase().includes("success"),
-      response: response.data,
-    });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-/* =======================================================
-   SUMMARY FOR ALL CLASSES
-   ======================================================= */
-app.get("/attendance-summary-all", async (req, res) => {
-  try {
-    const { date } = req.query;
-    if (!date) return res.status(400).json({ success: false, message: "Missing date" });
-
-    const parsedDate = new Date(date);
-    const startOfDay = new Date(parsedDate.setHours(0, 0, 0, 0));
-    const endOfDay = new Date(parsedDate.setHours(23, 59, 59, 999));
-
-    const records = await Attendance.aggregate([
-      {
-        $match: { date: { $gte: startOfDay, $lte: endOfDay } },
-      },
-      {
-        $group: {
-          _id: { std: "$std", div: "$div" },
-          total: { $sum: 1 },
-          present: { $sum: { $cond: [{ $eq: ["$present", true] }, 1, 0] } },
-          absent: { $sum: { $cond: [{ $eq: ["$present", false] }, 1, 0] } },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          std: "$_id.std",
-          div: "$_id.div",
-          total: 1,
-          present: 1,
-          absent: 1,
-        },
-      },
-    ]);
-
-    res.json({ success: true, data: records });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-/* =======================================================
    START SERVER
    ======================================================= */
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () =>
-  console.log("🚀 Vidyakunj Backend running on port " + PORT)
-);
+app.listen(PORT, () => console.log("🚀 Vidyakunj Backend running on port " + PORT));
