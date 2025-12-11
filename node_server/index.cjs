@@ -99,23 +99,13 @@ mongoose.connection.once("open", () => {
    ======================================================= */
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
-
   const user = users.find(
     (u) => u.username === username && u.password === password
   );
-
   if (!user) {
-    return res.json({
-      success: false,
-      message: "Invalid username or password",
-    });
+    return res.json({ success: false, message: "Invalid username or password" });
   }
-
-  return res.json({
-    success: true,
-    username: user.username,
-    role: user.role,
-  });
+  return res.json({ success: true, username: user.username, role: user.role });
 });
 
 /* =======================================================
@@ -145,12 +135,11 @@ app.get("/students", async (req, res) => {
 });
 
 /* =======================================================
-   POST ATTENDANCE + SMS
+   POST ATTENDANCE + SMS (Parallel Optimized)
    ======================================================= */
 app.post("/attendance", async (req, res) => {
   try {
     const { date, attendance } = req.body;
-
     if (!date || !attendance) {
       return res.status(400).json({ success: false, message: "Missing data" });
     }
@@ -160,10 +149,9 @@ app.post("/attendance", async (req, res) => {
     const nextDay = new Date(parsedDate);
     nextDay.setDate(parsedDate.getDate() + 1);
 
-    let sent = 0,
-      failed = 0;
+    let sent = 0, failed = 0;
 
-    for (const entry of attendance) {
+    await Promise.all(attendance.map(async (entry) => {
       const alreadyExists = await Attendance.findOne({
         studentId: entry.studentId,
         date: { $gte: parsedDate, $lt: nextDay },
@@ -182,7 +170,6 @@ app.post("/attendance", async (req, res) => {
         if (!entry.present) {
           try {
             const message = `Dear Parents,Your child, ${entry.name} remained absent in school today.,Vidyakunj School`;
-
             const params = {
               method: "SendMessage",
               send_to: entry.mobile,
@@ -193,7 +180,6 @@ app.post("/attendance", async (req, res) => {
               auth_scheme: "PLAIN",
               v: "1.1",
             };
-
             const response = await axios.get(process.env.GUPSHUP_URL, { params });
             if (response.data.toLowerCase().includes("success")) sent++;
             else failed++;
@@ -202,7 +188,7 @@ app.post("/attendance", async (req, res) => {
           }
         }
       }
-    }
+    }));
 
     res.json({ success: true, smsSummary: { sent, failed } });
   } catch (err) {
@@ -215,24 +201,16 @@ app.post("/attendance", async (req, res) => {
    ======================================================= */
 app.get("/attendance/check-lock", async (req, res) => {
   const { std, div, date } = req.query;
-
   if (!std || !div || !date) {
     return res.status(400).json({ error: "Missing required query params" });
   }
-
   try {
     const start = new Date(date);
     start.setHours(0, 0, 0, 0);
     const end = new Date(date);
     end.setHours(23, 59, 59, 999);
 
-    const records = await Attendance.find({
-      std,
-      div,
-      date: { $gte: start, $lte: end },
-      present: false,
-    });
-
+    const records = await Attendance.find({ std, div, date: { $gte: start, $lte: end }, present: false });
     const locked = records.map((r) => r.roll);
     res.json({ locked });
   } catch (err) {
@@ -278,15 +256,12 @@ app.get("/attendance-report", async (req, res) => {
 
     const rows = await Attendance.aggregate(pipeline);
 
-    const grand = rows.reduce(
-      (acc, r) => {
-        acc.total += r.total || 0;
-        acc.present += r.present || 0;
-        acc.absent += r.absent || 0;
-        return acc;
-      },
-      { total: 0, present: 0, absent: 0 }
-    );
+    const grand = rows.reduce((acc, r) => {
+      acc.total += r.total || 0;
+      acc.present += r.present || 0;
+      acc.absent += r.absent || 0;
+      return acc;
+    }, { total: 0, present: 0, absent: 0 });
 
     res.json({ success: true, rows, grand });
   } catch (err) {
@@ -299,13 +274,10 @@ app.get("/attendance-report", async (req, res) => {
    ======================================================= */
 app.post("/send-sms", async (req, res) => {
   const { mobile, studentName } = req.body;
-
   if (!mobile || !studentName) {
     return res.status(400).json({ success: false, error: "Missing data" });
   }
-
   const message = `Dear Parents,Your child, ${studentName} remained absent in school today.,Vidyakunj School`;
-
   const params = {
     method: "SendMessage",
     send_to: mobile,
@@ -316,7 +288,6 @@ app.post("/send-sms", async (req, res) => {
     auth_scheme: "PLAIN",
     v: "1.1",
   };
-
   try {
     const response = await axios.get(process.env.GUPSHUP_URL, { params });
     res.json({
@@ -342,9 +313,7 @@ app.get("/attendance-summary-all", async (req, res) => {
 
     const records = await Attendance.aggregate([
       {
-        $match: {
-          date: { $gte: startOfDay, $lte: endOfDay },
-        },
+        $match: { date: { $gte: startOfDay, $lte: endOfDay } },
       },
       {
         $group: {
