@@ -80,6 +80,21 @@ const attendanceSchema = new mongoose.Schema(
 const Attendance = mongoose.model("attendance", attendanceSchema);
 
 /* =======================================================
+   INDEX OPTIMIZATION STEP (Step 3)
+   ======================================================= */
+async function ensureIndexes() {
+  await Student.collection.createIndex({ std: 1, div: 1 });
+  await Attendance.collection.createIndex({ std: 1, div: 1, date: 1 });
+  await Attendance.collection.createIndex({ studentId: 1, date: 1 });
+  console.log("📌 MongoDB indexes ensured");
+}
+
+mongoose.connection.once("open", () => {
+  console.log("🔌 MongoDB connection open");
+  ensureIndexes();
+});
+
+/* =======================================================
    LOGIN API
    ======================================================= */
 app.post("/login", (req, res) => {
@@ -130,9 +145,8 @@ app.get("/students", async (req, res) => {
 });
 
 /* =======================================================
-   UPDATED: /attendance API - now sends SMS from backend
+   POST ATTENDANCE + SMS
    ======================================================= */
-
 app.post("/attendance", async (req, res) => {
   try {
     const { date, attendance } = req.body;
@@ -150,7 +164,6 @@ app.post("/attendance", async (req, res) => {
       failed = 0;
 
     for (const entry of attendance) {
-      // Avoid duplicate entries
       const alreadyExists = await Attendance.findOne({
         studentId: entry.studentId,
         date: { $gte: parsedDate, $lt: nextDay },
@@ -166,7 +179,6 @@ app.post("/attendance", async (req, res) => {
           present: entry.present,
         });
 
-        // If absent, send SMS
         if (!entry.present) {
           try {
             const message = `Dear Parents,Your child, ${entry.name} remained absent in school today.,Vidyakunj School`;
@@ -185,7 +197,7 @@ app.post("/attendance", async (req, res) => {
             const response = await axios.get(process.env.GUPSHUP_URL, { params });
             if (response.data.toLowerCase().includes("success")) sent++;
             else failed++;
-          } catch (err) {
+          } catch {
             failed++;
           }
         }
@@ -199,7 +211,7 @@ app.post("/attendance", async (req, res) => {
 });
 
 /* =======================================================
-   ATTENDANCE CHECK FOR LOCKED STUDENTS
+   CHECK LOCKED STUDENTS
    ======================================================= */
 app.get("/attendance/check-lock", async (req, res) => {
   const { std, div, date } = req.query;
@@ -224,7 +236,6 @@ app.get("/attendance/check-lock", async (req, res) => {
     const locked = records.map((r) => r.roll);
     res.json({ locked });
   } catch (err) {
-    console.error("Check lock error", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -318,7 +329,7 @@ app.post("/send-sms", async (req, res) => {
 });
 
 /* =======================================================
-   ATTENDANCE SUMMARY FOR ALL CLASSES
+   SUMMARY FOR ALL CLASSES
    ======================================================= */
 app.get("/attendance-summary-all", async (req, res) => {
   try {
@@ -339,16 +350,8 @@ app.get("/attendance-summary-all", async (req, res) => {
         $group: {
           _id: { std: "$std", div: "$div" },
           total: { $sum: 1 },
-          present: {
-            $sum: {
-              $cond: [{ $eq: ["$present", true] }, 1, 0],
-            },
-          },
-          absent: {
-            $sum: {
-              $cond: [{ $eq: ["$present", false] }, 1, 0],
-            },
-          },
+          present: { $sum: { $cond: [{ $eq: ["$present", true] }, 1, 0] } },
+          absent: { $sum: { $cond: [{ $eq: ["$present", false] }, 1, 0] } },
         },
       },
       {
