@@ -156,6 +156,28 @@ app.get("/students/:id", async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+// =============================
+// STEP 7: UPDATE STUDENT BY ID
+// =============================
+app.put("/students/:id", async (req, res) => {
+  try {
+    const { name, roll, mobile, std, div } = req.body;
+
+    const updated = await Student.findByIdAndUpdate(
+      req.params.id,
+      { name, roll, mobile, std, div },
+      { new: true, runValidators: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ success: false, message: "Student not found" });
+    }
+
+    res.json({ success: true, student: updated });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 /* =======================================================
    POST ATTENDANCE + SMS
