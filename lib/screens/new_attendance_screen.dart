@@ -63,37 +63,45 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
   }
 
   Future<void> _loadStudents() async {
-    if (selectedStd == null || selectedDiv == null) return;
+  if (selectedStd == null || selectedDiv == null) return;
 
-    setState(() {
-      isLoadingStudents = true;
-      students = [];
-      absentRollNumbers = [];
-      hasExistingAttendance = false;
-    });
+  setState(() {
+    isLoadingStudents = true;
+    students.clear();
+    absentRollNumbers.clear();
+    hasExistingAttendance = false;
+  });
 
-    try {
-      final uri = Uri.parse('$SERVER_URL/students?std=$selectedStd&div=$selectedDiv');
-      final res = await http.get(uri);
+  try {
+    final uri = Uri.parse('$SERVER_URL/students?std=$selectedStd&div=$selectedDiv');
+    final res = await http.get(uri);
 
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        students = (data['students'] ?? []).map<_StudentRow>((e) => _StudentRow(
-              id: e['_id'],
-              name: e['name'],
-              roll: e['roll'],
-              mobile: e['mobile'],
-            )).toList();
-      }
-    } catch (e) {
-      _showSnack('Error loading students: $e');
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      final loadedStudents = (data['students'] ?? []).map<_StudentRow>((e) {
+        return _StudentRow(
+          id: e['_id'],
+          name: e['name'],
+          roll: e['roll'],
+          mobile: e['mobile'],
+        );
+      }).toList();
+
+      students = loadedStudents;
     }
-
-    await _checkAttendanceLock();
-    setState(() => isLoadingStudents = false);
+  } catch (e) {
+    _showSnack('Error loading students: $e');
   }
 
-  Future<void> _checkAttendanceLock() async {
+  await _checkAttendanceLock();
+
+  if (mounted) {
+    setState(() {
+      isLoadingStudents = false;
+    });
+  }
+}
+   Future<void> _checkAttendanceLock() async {
     final today = DateTime.now();
     final dateStr = "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
     final uri = Uri.parse("$SERVER_URL/attendance/check-lock?std=$selectedStd&div=$selectedDiv&date=$dateStr");
