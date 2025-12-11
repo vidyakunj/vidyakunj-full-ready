@@ -252,25 +252,28 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                   ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                "Absent: ${absentRollNumbers.join(', ')}",
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.red),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
               children: [
                 Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade900),
-                    onPressed: _saveAttendance,
-                    child: const Text("Send SMS", style: TextStyle(color: Colors.white)),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      absentRollNumbers.isEmpty
+                          ? "Absent: None"
+                          : "Absent (${absentRollNumbers.length}): ${absentRollNumbers.join(', ')}",
+                      style: const TextStyle(
+                        color: Colors.red,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade900),
+                  onPressed: _saveAttendance,
+                  child: const Text("Send SMS", style: TextStyle(color: Colors.white)),
                 ),
               ],
             ),
