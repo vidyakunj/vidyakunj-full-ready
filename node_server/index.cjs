@@ -130,8 +130,9 @@ app.get("/students", async (req, res) => {
 });
 
 /* =======================================================
-   SUBMIT ATTENDANCE (avoid duplicates)
+   UPDATED: /attendance API - now sends SMS from backend
    ======================================================= */
+
 app.post("/attendance", async (req, res) => {
   try {
     const { date, attendance } = req.body;
@@ -145,7 +146,11 @@ app.post("/attendance", async (req, res) => {
     const nextDay = new Date(parsedDate);
     nextDay.setDate(parsedDate.getDate() + 1);
 
+    let sent = 0,
+      failed = 0;
+
     for (const entry of attendance) {
+      // Avoid duplicate entries
       const alreadyExists = await Attendance.findOne({
         studentId: entry.studentId,
         date: { $gte: parsedDate, $lt: nextDay },
@@ -160,10 +165,34 @@ app.post("/attendance", async (req, res) => {
           date: parsedDate,
           present: entry.present,
         });
+
+        // If absent, send SMS
+        if (!entry.present) {
+          try {
+            const message = `Dear Parents,Your child, ${entry.name} remained absent in school today.,Vidyakunj School`;
+
+            const params = {
+              method: "SendMessage",
+              send_to: entry.mobile,
+              msg: message,
+              msg_type: "TEXT",
+              userid: process.env.GUPSHUP_USER,
+              password: process.env.GUPSHUP_PASSWORD,
+              auth_scheme: "PLAIN",
+              v: "1.1",
+            };
+
+            const response = await axios.get(process.env.GUPSHUP_URL, { params });
+            if (response.data.toLowerCase().includes("success")) sent++;
+            else failed++;
+          } catch (err) {
+            failed++;
+          }
+        }
       }
     }
 
-    res.json({ success: true });
+    res.json({ success: true, smsSummary: { sent, failed } });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
