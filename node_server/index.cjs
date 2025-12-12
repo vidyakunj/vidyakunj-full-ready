@@ -469,11 +469,47 @@ app.get("/attendance-summary-all", async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+app.post("/send-sms-bulk", async (req, res) => {
+  const { messages } = req.body;
+
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return res.status(400).json({ success: false, message: "No messages provided" });
+  }
+
+  let sent = 0, failed = 0;
+
+  const promises = messages.map((entry) => {
+    const message = `Dear Parents,Your child, ${entry.name} remained absent in school today.,Vidyakunj School`;
+
+    const params = {
+      method: "SendMessage",
+      send_to: entry.mobile,
+      msg: message,
+      msg_type: "TEXT",
+      userid: process.env.GUPSHUP_USER,
+      password: process.env.GUPSHUP_PASSWORD,
+      auth_scheme: "PLAIN",
+      v: "1.1",
+    };
+
+    return axios
+      .get(process.env.GUPSHUP_URL, { params })
+      .then((res) => {
+        if (res.data.toLowerCase().includes("success")) sent++;
+        else failed++;
+      })
+      .catch(() => failed++);
+  });
+
+  await Promise.all(promises);
+  res.json({ success: true, summary: { sent, failed } });
+});
 
 /* =======================================================
    START SERVER
    ======================================================= */
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () =>
+   
   console.log("🚀 Vidyakunj Backend running on port " + PORT)
 );
