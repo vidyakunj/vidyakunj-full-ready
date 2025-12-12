@@ -2,7 +2,7 @@
    VIDYAKUNJ SMS + ATTENDANCE BACKEND
    Node.js + Express + MongoDB + Gupshup
    ======================================================= */
-
+const compression = require("compression");
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
@@ -38,6 +38,9 @@ app.use(
 console.log("✅ CORS Middleware Applied");
 
 app.use(bodyParser.json());
+app.use(compression());
+console.log("✅ Compression Middleware Applied");
+
 
 /* =======================================================
    MONGO CONNECTION
