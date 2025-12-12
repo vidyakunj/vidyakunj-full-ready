@@ -1,10 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config.dart';
-import 'teacher_dashboard.dart';
-import 'admin_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -43,20 +41,12 @@ class _LoginScreenState extends State<LoginScreen> {
       final data = jsonDecode(res.body);
       if (data['success'] == true) {
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('loggedIn', true);
-        await prefs.setString('role', data['role']);
         await prefs.setString('username', data['username']);
+        await prefs.setString('role', data['role']);
 
         if (!mounted) return;
 
-        // Redirect based on role
-        if (data['role'] == 'teacher') {
-          Navigator.pushReplacement(
-              context, MaterialPageRoute(builder: (_) => const TeacherDashboard()));
-        } else {
-          Navigator.pushReplacement(
-              context, MaterialPageRoute(builder: (_) => const AdminDashboard()));
-        }
+        // Navigate to dashboard if needed
       } else {
         setState(() => errorMessage = "Invalid username or password.");
       }
@@ -70,40 +60,46 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.blue[50],
       appBar: AppBar(title: const Text("Login")),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text("Vidyakunj School",
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 32),
-            TextField(
-              controller: usernameController,
-              decoration: const InputDecoration(
-                  labelText: "Username", border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                  labelText: "Password", border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: 20),
-            if (errorMessage != null)
-              Text(errorMessage!,
-                  style: const TextStyle(color: Colors.red)),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: isLoading ? null : _login,
-              child: isLoading
-                  ? const CircularProgressIndicator(
-                      color: Colors.white, strokeWidth: 2)
-                  : const Text("Login"),
-            ),
-          ],
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("Vidyakunj School",
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 24),
+              TextField(
+                controller: usernameController,
+                decoration: const InputDecoration(
+                    labelText: "Username", border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                    labelText: "Password", border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 20),
+              if (errorMessage != null)
+                Text(errorMessage!,
+                    style: const TextStyle(color: Colors.red)),
+              const SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: isLoading ? null : _login,
+                child: isLoading
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Text("Login"),
+              ),
+            ],
+          ),
         ),
       ),
     );
