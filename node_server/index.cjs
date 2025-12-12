@@ -197,7 +197,44 @@ app.delete("/students/:id", async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+// STEP 10: ADD NEW STUDENT
+app.post("/students", async (req, res) => {
+try {
+const { name, roll, mobile, std, div } = req.body;
+if (!name || !roll || !mobile || !std || !div) return res.status(400).json({ success: false, message: "Missing fields" });
+const existing = await Student.findOne({ std, div, roll });
+if (existing) return res.status(400).json({ success: false, message: "Student with same roll already exists" });
+const newStudent = new Student({ name, roll, mobile, std, div });
+await newStudent.save();
+res.json({ success: true, student: newStudent });
+} catch (err) {
+res.status(500).json({ success: false, error: err.message });
+}
+});
 
+
+// STEP 11: BULK UPLOAD STUDENTS
+app.post("/students/bulk", async (req, res) => {
+try {
+const { students } = req.body;
+if (!students || !Array.isArray(students)) return res.status(400).json({ success: false, message: "Invalid students array" });
+const inserted = await Student.insertMany(students, { ordered: false });
+res.json({ success: true, insertedCount: inserted.length });
+} catch (err) {
+res.status(500).json({ success: false, error: err.message });
+}
+});
+
+
+// STEP 12: GET ALL STUDENTS
+app.get("/students-all", async (req, res) => {
+try {
+const allStudents = await Student.find().sort({ std: 1, div: 1, roll: 1 });
+res.json({ success: true, students: allStudents });
+} catch (err) {
+res.status(500).json({ success: false, error: err.message });
+}
+});
 /* =======================================================
    POST ATTENDANCE + SMS
    ======================================================= */
