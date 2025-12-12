@@ -43,23 +43,20 @@ class _LoginScreenState extends State<LoginScreen> {
       final data = jsonDecode(res.body);
       if (data['success'] == true) {
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('username', data['username']);
-        await prefs.setString('role', data['role']);
         await prefs.setBool('loggedIn', true);
+        await prefs.setString('role', data['role']);
+        await prefs.setString('username', data['username']);
 
         if (!mounted) return;
 
-        Widget targetScreen;
+        // Redirect based on role
         if (data['role'] == 'teacher') {
-          targetScreen = const TeacherDashboard();
+          Navigator.pushReplacement(
+              context, MaterialPageRoute(builder: (_) => const TeacherDashboard()));
         } else {
-          targetScreen = const AdminDashboard();
+          Navigator.pushReplacement(
+              context, MaterialPageRoute(builder: (_) => const AdminDashboard()));
         }
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => targetScreen),
-        );
       } else {
         setState(() => errorMessage = "Invalid username or password.");
       }
@@ -73,50 +70,42 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.blue.shade50,
-      body: Center(
-        child: Card(
-          margin: const EdgeInsets.all(24),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          elevation: 6,
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text("Vidyakunj School", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 24),
-                TextField(
-                  controller: usernameController,
-                  decoration: const InputDecoration(labelText: "Username", border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: "Password", border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 20),
-                if (errorMessage != null)
-                  Text(errorMessage!, style: const TextStyle(color: Colors.red)),
-                const SizedBox(height: 10),
-                ElevatedButton(
-                  onPressed: isLoading ? null : _login,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-                  ),
-                  child: isLoading
-                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text("Login", style: TextStyle(fontSize: 16)),
-                ),
-              ],
+      appBar: AppBar(title: const Text("Login")),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text("Vidyakunj School",
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 32),
+            TextField(
+              controller: usernameController,
+              decoration: const InputDecoration(
+                  labelText: "Username", border: OutlineInputBorder()),
             ),
-          ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: passwordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                  labelText: "Password", border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 20),
+            if (errorMessage != null)
+              Text(errorMessage!,
+                  style: const TextStyle(color: Colors.red)),
+            const SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: isLoading ? null : _login,
+              child: isLoading
+                  ? const CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 2)
+                  : const Text("Login"),
+            ),
+          ],
         ),
       ),
     );
   }
 }
-
-
-
