@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import '../config.dart';
+import 'teacher_dashboard.dart';
+import 'admin_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -43,9 +45,21 @@ class _LoginScreenState extends State<LoginScreen> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('username', data['username']);
         await prefs.setString('role', data['role']);
+        await prefs.setBool('loggedIn', true);
 
         if (!mounted) return;
-       
+
+        Widget targetScreen;
+        if (data['role'] == 'teacher') {
+          targetScreen = const TeacherDashboard();
+        } else {
+          targetScreen = const AdminDashboard();
+        }
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => targetScreen),
+        );
       } else {
         setState(() => errorMessage = "Invalid username or password.");
       }
@@ -103,4 +117,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
+
+
 
