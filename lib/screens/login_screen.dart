@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import '../config.dart';
-import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -46,10 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
         await prefs.setString('role', data['role']);
 
         if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
+       
       } else {
         setState(() => errorMessage = "Invalid username or password.");
       }
@@ -107,3 +103,4 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
+
