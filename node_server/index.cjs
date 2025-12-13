@@ -148,6 +148,7 @@ app.delete("/students/:id", async (req, res) => {
 });
 
 app.post("/students", async (req, res) => {
+   console.log("📩 Attendance POST Payload:", JSON.stringify(req.body, null, 2));
   try {
     const { name, roll, mobile, std, div } = req.body;
     if (!name || !roll || !mobile || !std || !div)
