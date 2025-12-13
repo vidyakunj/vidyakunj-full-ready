@@ -216,6 +216,82 @@ app.post("/send-sms", async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+/* =======================================================
+   POST ATTENDANCE + SEND SMS IF ABSENT
+   ======================================================= */
+app.post("/attendance", async (req, res) => {
+  try {
+    console.log("📩 Attendance POST Payload:", JSON.stringify(req.body, null, 2));
+
+    const { date, attendance } = req.body;
+
+    if (!date || !attendance) {
+      return res.status(400).json({ success: false, message: "Missing data" });
+    }
+
+    const parsedDate = new Date(date);
+    parsedDate.setHours(0, 0, 0, 0);
+    const nextDay = new Date(parsedDate);
+    nextDay.setDate(parsedDate.getDate() + 1);
+
+    let sent = 0,
+      failed = 0;
+
+    const newEntries = [];
+    const smsPromises = [];
+
+    for (const entry of attendance) {
+      const alreadyExists = await Attendance.findOne({
+        studentId: entry.studentId,
+        date: { $gte: parsedDate, $lt: nextDay },
+      });
+
+      if (!alreadyExists) {
+        newEntries.push({
+          studentId: entry.studentId,
+          std: entry.std,
+          div: entry.div,
+          roll: entry.roll,
+          date: parsedDate,
+          present: entry.present,
+        });
+
+        if (!entry.present) {
+          const message = `Dear Parents, Your child, ${entry.name} remained absent in school today. - Vidyakunj School`;
+
+          const params = {
+            method: "sendMessage",
+            send_to: entry.mobile,
+            msg: message,
+            msg_type: "TEXT",
+            userid: process.env.GUPSHUP_USER,
+            password: process.env.GUPSHUP_PASSWORD,
+            auth_scheme: "plain",
+            v: "1.1",
+          };
+
+          smsPromises.push(
+            axios
+              .get(process.env.GUPSHUP_URL, { params })
+              .then((res) => {
+                if (res.data.toLowerCase().includes("success")) sent++;
+                else failed++;
+              })
+              .catch(() => failed++)
+          );
+        }
+      }
+    }
+
+    if (newEntries.length) await Attendance.insertMany(newEntries);
+    await Promise.all(smsPromises);
+
+    res.json({ success: true, smsSummary: { sent, failed } });
+  } catch (err) {
+    console.error("❌ Error saving attendance:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 /* =======================================================
    START SERVER
