@@ -41,7 +41,6 @@ app.use(bodyParser.json());
 app.use(compression());
 console.log("✅ Compression Middleware Applied");
 
-
 /* =======================================================
    MONGO CONNECTION
    ======================================================= */
@@ -53,7 +52,7 @@ mongoose
   .catch((err) => console.log("❌ Mongo Error:", err));
 
 /* =======================================================
-   STUDENT SCHEMA
+   SCHEMAS
    ======================================================= */
 const studentSchema = new mongoose.Schema({
   std: String,
@@ -65,9 +64,6 @@ const studentSchema = new mongoose.Schema({
 
 const Student = mongoose.model("students", studentSchema);
 
-/* =======================================================
-   ATTENDANCE SCHEMA
-   ======================================================= */
 const attendanceSchema = new mongoose.Schema(
   {
     studentId: { type: mongoose.Schema.Types.ObjectId, ref: "students", required: true },
@@ -82,48 +78,24 @@ const attendanceSchema = new mongoose.Schema(
 
 const Attendance = mongoose.model("attendance", attendanceSchema);
 
-/* =======================================================
-   INDEX OPTIMIZATION STEP
-   ======================================================= */
-async function ensureIndexes() {
-  await Student.collection.createIndex({ std: 1, div: 1 });
-  await Attendance.collection.createIndex({ std: 1, div: 1, date: 1 });
-  await Attendance.collection.createIndex({ studentId: 1, date: 1 });
-  console.log("📌 MongoDB indexes ensured");
-}
-
 mongoose.connection.once("open", () => {
   console.log("🔌 MongoDB connection open");
-  ensureIndexes();
+  Student.collection.createIndex({ std: 1, div: 1 });
+  Attendance.collection.createIndex({ std: 1, div: 1, date: 1 });
+  Attendance.collection.createIndex({ studentId: 1, date: 1 });
+  console.log("📌 MongoDB indexes ensured");
 });
 
 /* =======================================================
-   LOGIN API
+   ROUTES
    ======================================================= */
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
-
-  const user = users.find(
-    (u) => u.username === username && u.password === password
-  );
-
-  if (!user) {
-    return res.json({
-      success: false,
-      message: "Invalid username or password",
-    });
-  }
-
-  return res.json({
-    success: true,
-    username: user.username,
-    role: user.role,
-  });
+  const user = users.find((u) => u.username === username && u.password === password);
+  if (!user) return res.json({ success: false, message: "Invalid username or password" });
+  res.json({ success: true, username: user.username, role: user.role });
 });
 
-/* =======================================================
-   GET DIVISIONS
-   ======================================================= */
 app.get("/divisions", async (req, res) => {
   try {
     const { std } = req.query;
@@ -134,9 +106,6 @@ app.get("/divisions", async (req, res) => {
   }
 });
 
-/* =======================================================
-   GET STUDENTS
-   ======================================================= */
 app.get("/students", async (req, res) => {
   try {
     const { std, div } = req.query;
@@ -147,9 +116,6 @@ app.get("/students", async (req, res) => {
   }
 });
 
-/* =======================================================
-   GET SINGLE STUDENT BY ID (Step 6)
-   ======================================================= */
 app.get("/students/:id", async (req, res) => {
   try {
     const student = await Student.findById(req.params.id);
@@ -159,234 +125,60 @@ app.get("/students/:id", async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
-// =============================
-// STEP 7: UPDATE STUDENT BY ID
-// =============================
+
 app.put("/students/:id", async (req, res) => {
   try {
     const { name, roll, mobile, std, div } = req.body;
-
-    const updated = await Student.findByIdAndUpdate(
-      req.params.id,
-      { name, roll, mobile, std, div },
-      { new: true, runValidators: true }
-    );
-
-    if (!updated) {
-      return res.status(404).json({ success: false, message: "Student not found" });
-    }
-
+    const updated = await Student.findByIdAndUpdate(req.params.id, { name, roll, mobile, std, div }, { new: true, runValidators: true });
+    if (!updated) return res.status(404).json({ success: false, message: "Student not found" });
     res.json({ success: true, student: updated });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
-// =============================
-// STEP 8: DELETE STUDENT BY ID
-// =============================
+
 app.delete("/students/:id", async (req, res) => {
   try {
     const deleted = await Student.findByIdAndDelete(req.params.id);
-
-    if (!deleted) {
-      return res.status(404).json({ success: false, message: "Student not found" });
-    }
-
+    if (!deleted) return res.status(404).json({ success: false, message: "Student not found" });
     res.json({ success: true, message: "Student deleted successfully" });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
-// STEP 10: ADD NEW STUDENT
+
 app.post("/students", async (req, res) => {
-try {
-const { name, roll, mobile, std, div } = req.body;
-if (!name || !roll || !mobile || !std || !div) return res.status(400).json({ success: false, message: "Missing fields" });
-const existing = await Student.findOne({ std, div, roll });
-if (existing) return res.status(400).json({ success: false, message: "Student with same roll already exists" });
-const newStudent = new Student({ name, roll, mobile, std, div });
-await newStudent.save();
-res.json({ success: true, student: newStudent });
-} catch (err) {
-res.status(500).json({ success: false, error: err.message });
-}
-});
-
-
-// STEP 11: BULK UPLOAD STUDENTS
-app.post("/students/bulk", async (req, res) => {
-try {
-const { students } = req.body;
-if (!students || !Array.isArray(students)) return res.status(400).json({ success: false, message: "Invalid students array" });
-const inserted = await Student.insertMany(students, { ordered: false });
-res.json({ success: true, insertedCount: inserted.length });
-} catch (err) {
-res.status(500).json({ success: false, error: err.message });
-}
-});
-
-
-// STEP 12: GET ALL STUDENTS
-app.get("/students-all", async (req, res) => {
-try {
-const allStudents = await Student.find().sort({ std: 1, div: 1, roll: 1 });
-res.json({ success: true, students: allStudents });
-} catch (err) {
-res.status(500).json({ success: false, error: err.message });
-}
-});
-/* =======================================================
-   POST ATTENDANCE + SMS
-   ======================================================= */
-app.post("/attendance", async (req, res) => {
   try {
-    const { date, attendance } = req.body;
-
-    if (!date || !attendance) {
-      return res.status(400).json({ success: false, message: "Missing data" });
-    }
-
-    const parsedDate = new Date(date);
-    parsedDate.setHours(0, 0, 0, 0);
-    const nextDay = new Date(parsedDate);
-    nextDay.setDate(parsedDate.getDate() + 1);
-
-    let sent = 0,
-      failed = 0;
-
-    const newEntries = [];
-    const smsPromises = [];
-
-    for (const entry of attendance) {
-      const alreadyExists = await Attendance.findOne({
-        studentId: entry.studentId,
-        date: { $gte: parsedDate, $lt: nextDay },
-      });
-
-      if (!alreadyExists) {
-        newEntries.push({
-          studentId: entry.studentId,
-          std: entry.std,
-          div: entry.div,
-          roll: entry.roll,
-          date: parsedDate,
-          present: entry.present,
-        });
-
-        if (!entry.present) {
-          const message = `Dear Parents,Your child, ${entry.name} remained absent in school today.,Vidyakunj School`;
-          const params = {
-            method: "sendMessage",
-            send_to: entry.mobile,
-            msg: message,
-            msg_type: "TEXT",
-            userid: process.env.GUPSHUP_USER,
-            password: process.env.GUPSHUP_PASSWORD,
-            auth_scheme: "PLAIN",
-            v: "1.1",
-          };
-
-          smsPromises.push(
-            axios
-              .get(process.env.GUPSHUP_URL, { params })
-              .then((res) => {
-                if (res.data.toLowerCase().includes("success")) sent++;
-                else failed++;
-              })
-              .catch(() => failed++)
-          );
-        }
-      }
-    }
-
-    if (newEntries.length) await Attendance.insertMany(newEntries);
-    await Promise.all(smsPromises);
-
-    res.json({ success: true, smsSummary: { sent, failed } });
+    const { name, roll, mobile, std, div } = req.body;
+    if (!name || !roll || !mobile || !std || !div)
+      return res.status(400).json({ success: false, message: "Missing fields" });
+    const existing = await Student.findOne({ std, div, roll });
+    if (existing)
+      return res.status(400).json({ success: false, message: "Student with same roll already exists" });
+    const newStudent = new Student({ name, roll, mobile, std, div });
+    await newStudent.save();
+    res.json({ success: true, student: newStudent });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-/* =======================================================
-   CHECK LOCKED STUDENTS
-   ======================================================= */
-app.get("/attendance/check-lock", async (req, res) => {
-  const { std, div, date } = req.query;
-
-  if (!std || !div || !date) {
-    return res.status(400).json({ error: "Missing required query params" });
-  }
-
+app.post("/students/bulk", async (req, res) => {
   try {
-    const start = new Date(date);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(date);
-    end.setHours(23, 59, 59, 999);
-
-    const records = await Attendance.find({
-      std,
-      div,
-      date: { $gte: start, $lte: end },
-      present: false,
-    });
-
-    const locked = records.map((r) => r.roll);
-    res.json({ locked });
+    const { students } = req.body;
+    if (!students || !Array.isArray(students))
+      return res.status(400).json({ success: false, message: "Invalid students array" });
+    const inserted = await Student.insertMany(students, { ordered: false });
+    res.json({ success: true, insertedCount: inserted.length });
   } catch (err) {
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
-/* =======================================================
-   ATTENDANCE REPORT
-   ======================================================= */
-app.get("/attendance-report", async (req, res) => {
+app.get("/students-all", async (req, res) => {
   try {
-    const { date } = req.query;
-    if (!date) return res.status(400).json({ success: false, message: "Missing date" });
-
-    const parsed = new Date(date);
-    const startOfDay = new Date(parsed);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(parsed);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    const pipeline = [
-      { $match: { date: { $gte: startOfDay, $lte: endOfDay } } },
-      {
-        $group: {
-          _id: { std: "$std", div: "$div" },
-          total: { $sum: 1 },
-          present: { $sum: { $cond: ["$present", 1, 0] } },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          std: "$_id.std",
-          div: "$_id.div",
-          total: 1,
-          present: 1,
-          absent: { $subtract: ["$total", "$present"] },
-        },
-      },
-      { $sort: { std: 1, div: 1 } },
-    ];
-
-    const rows = await Attendance.aggregate(pipeline);
-
-    const grand = rows.reduce(
-      (acc, r) => {
-        acc.total += r.total || 0;
-        acc.present += r.present || 0;
-        acc.absent += r.absent || 0;
-        return acc;
-      },
-      { total: 0, present: 0, absent: 0 }
-    );
-
-    res.json({ success: true, rows, grand });
+    const allStudents = await Student.find().sort({ std: 1, div: 1, roll: 1 });
+    res.json({ success: true, students: allStudents });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -397,12 +189,10 @@ app.get("/attendance-report", async (req, res) => {
    ======================================================= */
 app.post("/send-sms", async (req, res) => {
   const { mobile, studentName } = req.body;
-
-  if (!mobile || !studentName) {
+  if (!mobile || !studentName)
     return res.status(400).json({ success: false, error: "Missing data" });
-  }
 
-  const message = `Dear Parents,Your child, ${studentName} remained absent in school today.,Vidyakunj School`;
+  const message = `Dear Parents, Your child, ${studentName} remained absent in school today. - Vidyakunj School`;
 
   const params = {
     method: "sendMessage",
@@ -411,7 +201,7 @@ app.post("/send-sms", async (req, res) => {
     msg_type: "TEXT",
     userid: process.env.GUPSHUP_USER,
     password: process.env.GUPSHUP_PASSWORD,
-    auth_scheme: "PLAIN",
+    auth_scheme: "plain",
     v: "1.1",
   };
 
@@ -427,89 +217,7 @@ app.post("/send-sms", async (req, res) => {
 });
 
 /* =======================================================
-   SUMMARY FOR ALL CLASSES
-   ======================================================= */
-app.get("/attendance-summary-all", async (req, res) => {
-  try {
-    const { date } = req.query;
-    if (!date) return res.status(400).json({ success: false, message: "Missing date" });
-
-    const parsedDate = new Date(date);
-    const startOfDay = new Date(parsedDate.setHours(0, 0, 0, 0));
-    const endOfDay = new Date(parsedDate.setHours(23, 59, 59, 999));
-
-    const records = await Attendance.aggregate([
-      {
-        $match: {
-          date: { $gte: startOfDay, $lte: endOfDay },
-        },
-      },
-      {
-        $group: {
-          _id: { std: "$std", div: "$div" },
-          total: { $sum: 1 },
-          present: { $sum: { $cond: [{ $eq: ["$present", true] }, 1, 0] } },
-          absent: { $sum: { $cond: [{ $eq: ["$present", false] }, 1, 0] } },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          std: "$_id.std",
-          div: "$_id.div",
-          total: 1,
-          present: 1,
-          absent: 1,
-        },
-      },
-    ]);
-
-    res.json({ success: true, data: records });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-app.post("/send-sms-bulk", async (req, res) => {
-  const { messages } = req.body;
-
-  if (!Array.isArray(messages) || messages.length === 0) {
-    return res.status(400).json({ success: false, message: "No messages provided" });
-  }
-
-  let sent = 0, failed = 0;
-
-  const promises = messages.map((entry) => {
-    const message = `Dear Parents,Your child, ${studentName} remained absent in school today.,Vidyakunj School`;
-
-    const params = {
-      method: "sendMessage",
-      send_to: entry.mobile,
-      msg: message,
-      msg_type: "TEXT",
-      userid: process.env.GUPSHUP_USER,
-      password: process.env.GUPSHUP_PASSWORD,
-      auth_scheme: "PLAIN",
-      v: "1.1",
-    };
-
-    return axios
-      .get(process.env.GUPSHUP_URL, { params })
-      .then((res) => {
-        if (res.data.toLowerCase().includes("success")) sent++;
-        else failed++;
-      })
-      .catch(() => failed++);
-  });
-
-  await Promise.all(promises);
-  res.json({ success: true, summary: { sent, failed } });
-});
-
-/* =======================================================
    START SERVER
    ======================================================= */
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () =>
-   
-  console.log("🚀 Vidyakunj Backend running on port " + PORT)
-);
+app.listen(PORT, () => console.log("🚀 Vidyakunj Backend running on port " + PORT));
