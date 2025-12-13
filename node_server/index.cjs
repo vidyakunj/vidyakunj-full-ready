@@ -257,7 +257,7 @@ app.post("/attendance", async (req, res) => {
         });
 
         if (!entry.present) {
-          const message = `Dear Parents, Your child, ${entry.name} remained absent in school today. - Vidyakunj School`;
+          const message = `Dear Parents, Your child, ${entry.name} remained absent in school today.,Vidyakunj School`;
 
           const params = {
             method: "sendMessage",
