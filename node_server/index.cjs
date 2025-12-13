@@ -479,7 +479,7 @@ app.post("/send-sms-bulk", async (req, res) => {
   let sent = 0, failed = 0;
 
   const promises = messages.map((entry) => {
-    const message = `Dear Parents,Your child, ${entry.name} remained absent in school today.,Vidyakunj School`;
+    const message = `Dear Parents,Your child, ${studentName} remained absent in school today.,Vidyakunj School`;
 
     const params = {
       method: "SendMessage",
