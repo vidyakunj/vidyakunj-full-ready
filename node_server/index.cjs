@@ -196,13 +196,13 @@ app.post("/send-sms", async (req, res) => {
   const message = `Dear Parents, Your child, ${studentName} remained absent in school today.,Vidyakunj School`;
                    
   const params = {
-    method: "sendMessage",
+    method: "SendMessage",
     send_to: mobile,
     msg: message,
     msg_type: "TEXT",
     userid: process.env.GUPSHUP_USER,
     password: process.env.GUPSHUP_PASSWORD,
-    auth_scheme: "plain",
+    auth_scheme: "PLAIN",
     v: "1.1",
   };
 
