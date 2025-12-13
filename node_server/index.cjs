@@ -2,7 +2,7 @@
    VIDYAKUNJ SMS + ATTENDANCE BACKEND
    Node.js + Express + MongoDB + Gupshup
    ======================================================= */
-
+const compression = require("compression");
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
@@ -14,8 +14,9 @@ const axios = require("axios");
    SIMPLE LOGIN USERS
    ======================================================= */
 const users = [
+  { username: "patil", password: "iken", role: "teacher" },
   { username: "teacher1", password: "1234", role: "teacher" },
-  { username: "mamta", password: "1234", role: "teacher" },
+  { username: "vks", password: "1234", role: "teacher" },
   { username: "admin", password: "admin123", role: "admin" },
 ];
 
@@ -23,8 +24,23 @@ const users = [
    APP SETUP
    ======================================================= */
 const app = express();
-app.use(cors());
+
+app.options("*", cors());
+
+app.use(
+  cors({
+    origin: "https://vidyakunj-frontend.onrender.com",
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Accept"],
+    credentials: true,
+  })
+);
+console.log("✅ CORS Middleware Applied");
+
 app.use(bodyParser.json());
+app.use(compression());
+console.log("✅ Compression Middleware Applied");
+
 
 /* =======================================================
    MONGO CONNECTION
@@ -48,6 +64,62 @@ const studentSchema = new mongoose.Schema({
 });
 
 const Student = mongoose.model("students", studentSchema);
+
+/* =======================================================
+   ATTENDANCE SCHEMA
+   ======================================================= */
+const attendanceSchema = new mongoose.Schema(
+  {
+    studentId: { type: mongoose.Schema.Types.ObjectId, ref: "students", required: true },
+    std: String,
+    div: String,
+    roll: Number,
+    date: { type: Date, required: true },
+    present: { type: Boolean, default: false },
+  },
+  { timestamps: true }
+);
+
+const Attendance = mongoose.model("attendance", attendanceSchema);
+
+/* =======================================================
+   INDEX OPTIMIZATION STEP
+   ======================================================= */
+async function ensureIndexes() {
+  await Student.collection.createIndex({ std: 1, div: 1 });
+  await Attendance.collection.createIndex({ std: 1, div: 1, date: 1 });
+  await Attendance.collection.createIndex({ studentId: 1, date: 1 });
+  console.log("📌 MongoDB indexes ensured");
+}
+
+mongoose.connection.once("open", () => {
+  console.log("🔌 MongoDB connection open");
+  ensureIndexes();
+});
+
+/* =======================================================
+   LOGIN API
+   ======================================================= */
+app.post("/login", (req, res) => {
+  const { username, password } = req.body;
+
+  const user = users.find(
+    (u) => u.username === username && u.password === password
+  );
+
+  if (!user) {
+    return res.json({
+      success: false,
+      message: "Invalid username or password",
+    });
+  }
+
+  return res.json({
+    success: true,
+    username: user.username,
+    role: user.role,
+  });
+});
 
 /* =======================================================
    GET DIVISIONS
@@ -76,53 +148,248 @@ app.get("/students", async (req, res) => {
 });
 
 /* =======================================================
-   EXPORT STUDENTS AS CSV (for Excel)
+   GET SINGLE STUDENT BY ID (Step 6)
    ======================================================= */
-app.get("/students/export", async (req, res) => {
+app.get("/students/:id", async (req, res) => {
   try {
-    const { std, div } = req.query;
-    const students = await Student.find({ std, div }).sort({ roll: 1 });
+    const student = await Student.findById(req.params.id);
+    if (!student) return res.status(404).json({ success: false, message: "Student not found" });
+    res.json({ success: true, student });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+// =============================
+// STEP 7: UPDATE STUDENT BY ID
+// =============================
+app.put("/students/:id", async (req, res) => {
+  try {
+    const { name, roll, mobile, std, div } = req.body;
 
-    let csv = "Roll,Name,Mobile\n";
-
-    students.forEach((s) => {
-      csv += `${s.roll},${s.name},${s.mobile}\n`;
-    });
-
-    res.setHeader("Content-Type", "text/csv");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename=${std}-${div}-students.csv`
+    const updated = await Student.findByIdAndUpdate(
+      req.params.id,
+      { name, roll, mobile, std, div },
+      { new: true, runValidators: true }
     );
 
-    res.send(csv);
+    if (!updated) {
+      return res.status(404).json({ success: false, message: "Student not found" });
+    }
+
+    res.json({ success: true, student: updated });
   } catch (err) {
-    res.status(500).send("Error while generating CSV");
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+// =============================
+// STEP 8: DELETE STUDENT BY ID
+// =============================
+app.delete("/students/:id", async (req, res) => {
+  try {
+    const deleted = await Student.findByIdAndDelete(req.params.id);
+
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: "Student not found" });
+    }
+
+    res.json({ success: true, message: "Student deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+// STEP 10: ADD NEW STUDENT
+app.post("/students", async (req, res) => {
+try {
+const { name, roll, mobile, std, div } = req.body;
+if (!name || !roll || !mobile || !std || !div) return res.status(400).json({ success: false, message: "Missing fields" });
+const existing = await Student.findOne({ std, div, roll });
+if (existing) return res.status(400).json({ success: false, message: "Student with same roll already exists" });
+const newStudent = new Student({ name, roll, mobile, std, div });
+await newStudent.save();
+res.json({ success: true, student: newStudent });
+} catch (err) {
+res.status(500).json({ success: false, error: err.message });
+}
+});
+
+
+// STEP 11: BULK UPLOAD STUDENTS
+app.post("/students/bulk", async (req, res) => {
+try {
+const { students } = req.body;
+if (!students || !Array.isArray(students)) return res.status(400).json({ success: false, message: "Invalid students array" });
+const inserted = await Student.insertMany(students, { ordered: false });
+res.json({ success: true, insertedCount: inserted.length });
+} catch (err) {
+res.status(500).json({ success: false, error: err.message });
+}
+});
+
+
+// STEP 12: GET ALL STUDENTS
+app.get("/students-all", async (req, res) => {
+try {
+const allStudents = await Student.find().sort({ std: 1, div: 1, roll: 1 });
+res.json({ success: true, students: allStudents });
+} catch (err) {
+res.status(500).json({ success: false, error: err.message });
+}
+});
+/* =======================================================
+   POST ATTENDANCE + SMS
+   ======================================================= */
+app.post("/attendance", async (req, res) => {
+  try {
+    const { date, attendance } = req.body;
+
+    if (!date || !attendance) {
+      return res.status(400).json({ success: false, message: "Missing data" });
+    }
+
+    const parsedDate = new Date(date);
+    parsedDate.setHours(0, 0, 0, 0);
+    const nextDay = new Date(parsedDate);
+    nextDay.setDate(parsedDate.getDate() + 1);
+
+    let sent = 0,
+      failed = 0;
+
+    const newEntries = [];
+    const smsPromises = [];
+
+    for (const entry of attendance) {
+      const alreadyExists = await Attendance.findOne({
+        studentId: entry.studentId,
+        date: { $gte: parsedDate, $lt: nextDay },
+      });
+
+      if (!alreadyExists) {
+        newEntries.push({
+          studentId: entry.studentId,
+          std: entry.std,
+          div: entry.div,
+          roll: entry.roll,
+          date: parsedDate,
+          present: entry.present,
+        });
+
+        if (!entry.present) {
+          const message = `Dear Parents,Your child, ${entry.name} remained absent in school today.,Vidyakunj School`;
+          const params = {
+            method: "sendMessage",
+            send_to: entry.mobile,
+            msg: message,
+            msg_type: "TEXT",
+            userid: process.env.GUPSHUP_USER,
+            password: process.env.GUPSHUP_PASSWORD,
+            auth_scheme: "PLAIN",
+            v: "1.1",
+          };
+
+          smsPromises.push(
+            axios
+              .get(process.env.GUPSHUP_URL, { params })
+              .then((res) => {
+                if (res.data.toLowerCase().includes("success")) sent++;
+                else failed++;
+              })
+              .catch(() => failed++)
+          );
+        }
+      }
+    }
+
+    if (newEntries.length) await Attendance.insertMany(newEntries);
+    await Promise.all(smsPromises);
+
+    res.json({ success: true, smsSummary: { sent, failed } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
 /* =======================================================
-   LOGIN API
+   CHECK LOCKED STUDENTS
    ======================================================= */
-app.post("/login", (req, res) => {
-  const { username, password } = req.body;
+app.get("/attendance/check-lock", async (req, res) => {
+  const { std, div, date } = req.query;
 
-  const user = users.find(
-    (u) => u.username === username && u.password === password
-  );
-
-  if (!user) {
-    return res.json({
-      success: false,
-      message: "Invalid username or password",
-    });
+  if (!std || !div || !date) {
+    return res.status(400).json({ error: "Missing required query params" });
   }
 
-  return res.json({
-    success: true,
-    username: user.username,
-    role: user.role,
-  });
+  try {
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+
+    const records = await Attendance.find({
+      std,
+      div,
+      date: { $gte: start, $lte: end },
+      present: false,
+    });
+
+    const locked = records.map((r) => r.roll);
+    res.json({ locked });
+  } catch (err) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+/* =======================================================
+   ATTENDANCE REPORT
+   ======================================================= */
+app.get("/attendance-report", async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (!date) return res.status(400).json({ success: false, message: "Missing date" });
+
+    const parsed = new Date(date);
+    const startOfDay = new Date(parsed);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(parsed);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const pipeline = [
+      { $match: { date: { $gte: startOfDay, $lte: endOfDay } } },
+      {
+        $group: {
+          _id: { std: "$std", div: "$div" },
+          total: { $sum: 1 },
+          present: { $sum: { $cond: ["$present", 1, 0] } },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          std: "$_id.std",
+          div: "$_id.div",
+          total: 1,
+          present: 1,
+          absent: { $subtract: ["$total", "$present"] },
+        },
+      },
+      { $sort: { std: 1, div: 1 } },
+    ];
+
+    const rows = await Attendance.aggregate(pipeline);
+
+    const grand = rows.reduce(
+      (acc, r) => {
+        acc.total += r.total || 0;
+        acc.present += r.present || 0;
+        acc.absent += r.absent || 0;
+        return acc;
+      },
+      { total: 0, present: 0, absent: 0 }
+    );
+
+    res.json({ success: true, rows, grand });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 /* =======================================================
@@ -138,7 +405,7 @@ app.post("/send-sms", async (req, res) => {
   const message = `Dear Parents,Your child, ${studentName} remained absent in school today.,Vidyakunj School`;
 
   const params = {
-    method: "SendMessage",
+    method: "sendMessage",
     send_to: mobile,
     msg: message,
     msg_type: "TEXT",
@@ -150,7 +417,6 @@ app.post("/send-sms", async (req, res) => {
 
   try {
     const response = await axios.get(process.env.GUPSHUP_URL, { params });
-
     res.json({
       success: response.data.toLowerCase().includes("success"),
       response: response.data,
@@ -161,9 +427,89 @@ app.post("/send-sms", async (req, res) => {
 });
 
 /* =======================================================
+   SUMMARY FOR ALL CLASSES
+   ======================================================= */
+app.get("/attendance-summary-all", async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (!date) return res.status(400).json({ success: false, message: "Missing date" });
+
+    const parsedDate = new Date(date);
+    const startOfDay = new Date(parsedDate.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(parsedDate.setHours(23, 59, 59, 999));
+
+    const records = await Attendance.aggregate([
+      {
+        $match: {
+          date: { $gte: startOfDay, $lte: endOfDay },
+        },
+      },
+      {
+        $group: {
+          _id: { std: "$std", div: "$div" },
+          total: { $sum: 1 },
+          present: { $sum: { $cond: [{ $eq: ["$present", true] }, 1, 0] } },
+          absent: { $sum: { $cond: [{ $eq: ["$present", false] }, 1, 0] } },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          std: "$_id.std",
+          div: "$_id.div",
+          total: 1,
+          present: 1,
+          absent: 1,
+        },
+      },
+    ]);
+
+    res.json({ success: true, data: records });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+app.post("/send-sms-bulk", async (req, res) => {
+  const { messages } = req.body;
+
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return res.status(400).json({ success: false, message: "No messages provided" });
+  }
+
+  let sent = 0, failed = 0;
+
+  const promises = messages.map((entry) => {
+    const message = `Dear Parents,Your child, ${studentName} remained absent in school today.,Vidyakunj School`;
+
+    const params = {
+      method: "sendMessage",
+      send_to: entry.mobile,
+      msg: message,
+      msg_type: "TEXT",
+      userid: process.env.GUPSHUP_USER,
+      password: process.env.GUPSHUP_PASSWORD,
+      auth_scheme: "PLAIN",
+      v: "1.1",
+    };
+
+    return axios
+      .get(process.env.GUPSHUP_URL, { params })
+      .then((res) => {
+        if (res.data.toLowerCase().includes("success")) sent++;
+        else failed++;
+      })
+      .catch(() => failed++);
+  });
+
+  await Promise.all(promises);
+  res.json({ success: true, summary: { sent, failed } });
+});
+
+/* =======================================================
    START SERVER
    ======================================================= */
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () =>
+   
   console.log("🚀 Vidyakunj Backend running on port " + PORT)
 );
