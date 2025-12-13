@@ -160,7 +160,8 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
           .toList();
 
       final smsRes = await http.post(
-        Uri.parse("$SERVER_URL/send-sms-bulk"),
+        Uri.parse("$SERVER_URL/send-sms"),             
+
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "studentIds": absentIds,
