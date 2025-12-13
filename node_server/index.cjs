@@ -193,8 +193,8 @@ app.post("/send-sms", async (req, res) => {
   if (!mobile || !studentName)
     return res.status(400).json({ success: false, error: "Missing data" });
 
-  const message = `Dear Parents, Your child, ${studentName} remained absent in school today. - Vidyakunj School`;
-
+  const message = `Dear Parents, Your child, ${studentName} remained absent in school today.,Vidyakunj School`;
+                   
   const params = {
     method: "sendMessage",
     send_to: mobile,
