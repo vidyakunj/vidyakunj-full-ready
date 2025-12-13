@@ -276,7 +276,7 @@ app.post("/attendance", async (req, res) => {
         if (!entry.present) {
           const message = `Dear Parents,Your child, ${entry.name} remained absent in school today.,Vidyakunj School`;
           const params = {
-            method: "sendMessage",
+            method: "SendMessage",
             send_to: entry.mobile,
             msg: message,
             msg_type: "TEXT",
@@ -405,7 +405,7 @@ app.post("/send-sms", async (req, res) => {
   const message = `Dear Parents,Your child, ${studentName} remained absent in school today.,Vidyakunj School`;
 
   const params = {
-    method: "sendMessage",
+    method: "SendMessage",
     send_to: mobile,
     msg: message,
     msg_type: "TEXT",
@@ -479,10 +479,10 @@ app.post("/send-sms-bulk", async (req, res) => {
   let sent = 0, failed = 0;
 
   const promises = messages.map((entry) => {
-    const message = `Dear Parents,Your child, ${studentName} remained absent in school today.,Vidyakunj School`;
+    const message = `Dear Parents,Your child, ${entry.name} remained absent in school today.,Vidyakunj School`;
 
     const params = {
-      method: "sendMessage",
+      method: "SendMessage",
       send_to: entry.mobile,
       msg: message,
       msg_type: "TEXT",
