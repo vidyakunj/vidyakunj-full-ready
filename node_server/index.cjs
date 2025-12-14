@@ -77,6 +77,19 @@ const attendanceSchema = new mongoose.Schema(
 );
 
 const Attendance = mongoose.model("attendance", attendanceSchema);
+/* =======================================================
+   ATTENDANCE LOCK SCHEMA (NEW)
+   Prevents teacher from marking same student again
+   ======================================================= */
+
+const attendanceLockSchema = new mongoose.Schema({
+  std: String,          // Standard (e.g., "9")
+  div: String,          // Division (e.g., "D")
+  date: String,         // "YYYY-MM-DD"
+  locked: [Number],     // Array of roll numbers already marked
+});
+
+const AttendanceLock = mongoose.model("attendance_locks", attendanceLockSchema);
 
 mongoose.connection.once("open", () => {
   console.log("🔌 MongoDB connection open");
