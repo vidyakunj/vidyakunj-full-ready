@@ -154,29 +154,22 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
         return;
       }
 
-      final absentIds = students
-          .where((s) => !s.isPresent && !s.locked)
-          .map((s) => s.id)
-          .toList();
-
       int success = 0;
-int failed = 0;
+      int failed = 0;
 
-for (final s in students.where((s) => !s.isPresent && !s.locked)) {
-  final res = await http.post(
-    Uri.parse("$SERVER_URL/send-sms"),
-    headers: {"Content-Type": "application/json"},
-    body: jsonEncode({
-      "mobile": s.mobile,
-      "studentName": s.name,
-    }),
-  );
+      for (final s in students.where((s) => !s.isPresent && !s.locked)) {
+        final smsRes = await http.post(
+          Uri.parse("$SERVER_URL/send-sms"),
+          headers: {"Content-Type": "application/json"},
+          body: jsonEncode({
+            "mobile": s.mobile,
+            "studentName": s.name,
+          }),
+        );
 
-  final isOk = res.statusCode == 200 && jsonDecode(res.body)['success'] == true;
-  if (isOk) success++; else failed++;
-}
-      final smsSuccess = smsRes.statusCode == 200 &&
-          jsonDecode(smsRes.body)['success'] == true;
+        final isOk = smsRes.statusCode == 200 && jsonDecode(smsRes.body)['success'] == true;
+        if (isOk) success++; else failed++;
+      }
 
       if (!mounted) return;
 
@@ -184,9 +177,7 @@ for (final s in students.where((s) => !s.isPresent && !s.locked)) {
         context: context,
         builder: (ctx) => AlertDialog(
           title: const Text("SMS Summary"),
-          content: Text(smsSuccess
-              ? "Absent SMS sent successfully"
-              : "Failed to send some or all SMS"),
+          content: Text("SMS Sent: $success | Failed: $failed"),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
