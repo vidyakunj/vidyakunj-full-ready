@@ -1,6 +1,6 @@
 /* =======================================================
-   VIDYAKUNJ SMS + ATTENDANCE BACKEND
-   FINAL STABLE VERSION
+   VIDYAKUNJ ATTENDANCE + SMS BACKEND
+   FINAL GUARANTEED WORKING VERSION
    ======================================================= */
 
 const express = require("express");
@@ -12,16 +12,6 @@ const axios = require("axios");
 require("dotenv").config();
 
 /* =======================================================
-   SIMPLE LOGIN USERS
-   ======================================================= */
-const users = [
-  { username: "patil", password: "iken", role: "teacher" },
-  { username: "teacher1", password: "1234", role: "teacher" },
-  { username: "vks", password: "1234", role: "teacher" },
-  { username: "admin", password: "admin123", role: "admin" },
-];
-
-/* =======================================================
    APP SETUP
    ======================================================= */
 const app = express();
@@ -29,7 +19,7 @@ const app = express();
 app.use(
   cors({
     origin: "https://vidyakunj-frontend.onrender.com",
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "OPTIONS"],
     allowedHeaders: ["Content-Type"],
   })
 );
@@ -48,75 +38,44 @@ mongoose
 /* =======================================================
    SCHEMAS
    ======================================================= */
-const studentSchema = new mongoose.Schema({
-  std: String,
-  div: String,
-  name: String,
-  roll: Number,
-  mobile: String,
-});
-
-const Student = mongoose.model("students", studentSchema);
-
-const attendanceSchema = new mongoose.Schema(
-  {
-    studentId: mongoose.Schema.Types.ObjectId,
+const Student = mongoose.model(
+  "students",
+  new mongoose.Schema({
     std: String,
     div: String,
+    name: String,
     roll: Number,
-    date: Date,
-    present: Boolean,
-  },
-  { timestamps: true }
+    mobile: String,
+  })
 );
 
-attendanceSchema.index({ studentId: 1, date: 1 }, { unique: true });
-
-const Attendance = mongoose.model("attendance", attendanceSchema);
-
-const attendanceLockSchema = new mongoose.Schema({
-  std: String,
-  div: String,
-  date: String,      // YYYY-MM-DD
-  locked: [Number],  // roll numbers
-});
+const Attendance = mongoose.model(
+  "attendance",
+  new mongoose.Schema(
+    {
+      studentId: mongoose.Schema.Types.ObjectId,
+      std: String,
+      div: String,
+      roll: Number,
+      date: Date,
+      present: Boolean,
+    },
+    { timestamps: true }
+  )
+);
 
 const AttendanceLock = mongoose.model(
   "attendance_locks",
-  attendanceLockSchema
+  new mongoose.Schema({
+    std: String,
+    div: String,
+    date: String,
+    locked: [Number],
+  })
 );
 
 /* =======================================================
-   ROUTES
-   ======================================================= */
-
-/* ---------- LOGIN ---------- */
-app.post("/login", (req, res) => {
-  const { username, password } = req.body;
-  const user = users.find(
-    (u) => u.username === username && u.password === password
-  );
-
-  if (!user) {
-    return res.json({ success: false, message: "Invalid login" });
-  }
-
-  res.json({ success: true, username: user.username, role: user.role });
-});
-
-/* ---------- STUDENTS ---------- */
-app.get("/divisions", async (req, res) => {
-  const divisions = await Student.distinct("div", { std: req.query.std });
-  res.json({ divisions });
-});
-
-app.get("/students", async (req, res) => {
-  const students = await Student.find(req.query).sort({ roll: 1 });
-  res.json({ students });
-});
-
-/* =======================================================
-   ATTENDANCE LOCK CHECK (FOR FLUTTER)
+   CHECK LOCK (FRONTEND)
    ======================================================= */
 app.get("/attendance/check-lock", async (req, res) => {
   const { std, div, date } = req.query;
@@ -125,14 +84,14 @@ app.get("/attendance/check-lock", async (req, res) => {
 });
 
 /* =======================================================
-   POST ATTENDANCE (FINAL FIXED LOGIC)
+   POST ATTENDANCE (FINAL FIX)
    ======================================================= */
 app.post("/attendance", async (req, res) => {
   try {
     const { date, attendance } = req.body;
 
     if (!date || !Array.isArray(attendance)) {
-      return res.status(400).json({ success: false, message: "Invalid data" });
+      return res.status(400).json({ success: false });
     }
 
     const parsedDate = new Date(date);
@@ -145,87 +104,77 @@ app.post("/attendance", async (req, res) => {
       "-" +
       String(parsedDate.getDate()).padStart(2, "0");
 
-    // 🔒 Load existing locks ONCE
-    const existingLock = await AttendanceLock.findOne({
-      std: attendance[0].std,
-      div: attendance[0].div,
-      date: dateStr,
-    });
+    const std = attendance[0].std;
+    const div = attendance[0].div;
 
+    const existingLock = await AttendanceLock.findOne({ std, div, date: dateStr });
     const alreadyLocked = existingLock?.locked || [];
 
-    const attendanceToSave = [];
-    const rollsToLock = [];
+    const saveAttendance = [];
+    const newLocks = [];
     const smsJobs = [];
 
     let sent = 0;
     let failed = 0;
 
     for (const entry of attendance) {
-      // ⛔ Skip locked students
+      // 🔒 LOCK ONLY ABSENT STUDENTS
+      if (entry.present === true) continue;
+
+      // ⛔ Skip already locked
       if (alreadyLocked.includes(entry.roll)) continue;
 
-      attendanceToSave.push({
+      saveAttendance.push({
         studentId: entry.studentId,
-        std: entry.std,
-        div: entry.div,
+        std,
+        div,
         roll: entry.roll,
         date: parsedDate,
-        present: entry.present,
+        present: false,
       });
 
-      rollsToLock.push(entry.roll);
+      newLocks.push(entry.roll);
 
-      // 📩 Send SMS only if ABSENT
-      if (!entry.present) {
-        const message = `Dear Parents, Your child, ${entry.name} remained absent in school today.,Vidyakunj School`;
-
-        smsJobs.push(
-          axios
-            .get(process.env.GUPSHUP_URL, {
-              params: {
-                method: "SendMessage",
-                send_to: entry.mobile,
-                msg: message,
-                msg_type: "TEXT",
-                userid: process.env.GUPSHUP_USER,
-                password: process.env.GUPSHUP_PASSWORD,
-                auth_scheme: "PLAIN",
-                v: "1.1",
-              },
-            })
-            .then((r) =>
-              r.data.toLowerCase().includes("success") ? sent++ : failed++
-            )
-            .catch(() => failed++)
-        );
-      }
+      // 📩 SMS (ONLY ABSENT)
+      smsJobs.push(
+        axios
+          .get(process.env.GUPSHUP_URL, {
+            params: {
+              method: "SendMessage",
+              send_to: entry.mobile,
+              msg: `Dear Parents, Your child ${entry.name} remained absent today.,Vidyakunj School`,
+              msg_type: "TEXT",
+              userid: process.env.GUPSHUP_USER,
+              password: process.env.GUPSHUP_PASSWORD,
+              auth_scheme: "PLAIN",
+              v: "1.1",
+            },
+          })
+          .then((r) =>
+            r.data.toLowerCase().includes("success") ? sent++ : failed++
+          )
+          .catch(() => failed++)
+      );
     }
 
-    // ✅ Save attendance FIRST
-    if (attendanceToSave.length > 0) {
-      await Attendance.insertMany(attendanceToSave, { ordered: false });
+    if (saveAttendance.length > 0) {
+      await Attendance.insertMany(saveAttendance);
     }
 
-    // ✅ Lock ONLY saved rolls
-    if (rollsToLock.length > 0) {
+    if (newLocks.length > 0) {
       await AttendanceLock.updateOne(
-        { std: attendance[0].std, div: attendance[0].div, date: dateStr },
-        { $addToSet: { locked: { $each: rollsToLock } } },
+        { std, div, date: dateStr },
+        { $addToSet: { locked: { $each: newLocks } } },
         { upsert: true }
       );
     }
 
-    // ✅ Send SMS LAST
     await Promise.all(smsJobs);
 
-    res.json({
-      success: true,
-      smsSummary: { sent, failed },
-    });
+    res.json({ success: true, smsSummary: { sent, failed } });
   } catch (err) {
-    console.error("❌ Attendance Error:", err);
-    res.status(500).json({ success: false, error: err.message });
+    console.error("❌ Error:", err);
+    res.status(500).json({ success: false });
   }
 });
 
@@ -234,5 +183,5 @@ app.post("/attendance", async (req, res) => {
    ======================================================= */
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () =>
-  console.log("🚀 Vidyakunj Backend running on port", PORT)
+  console.log("🚀 Server running on port", PORT)
 );
