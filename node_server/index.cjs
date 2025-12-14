@@ -1,20 +1,20 @@
-// ===============================
-// FILE: index.cjs (Node.js backend)
-// ===============================
+// =========================
+// FILE: index.cjs
+// =========================
 
-import express from 'express';
-import cors from 'cors';
-import compression from 'compression';
-import mongoose from 'mongoose';
-import dotenv from 'dotenv';
-import fetch from 'node-fetch';
+const express = require('express');
+const cors = require('cors');
+const compression = require('compression');
+const mongoose = require('mongoose');
+const dotenv = require('dotenv');
+const fetch = require('node-fetch');
 
 dotenv.config();
 
 const app = express();
+app.use(express.json());
 app.use(cors());
 app.use(compression());
-app.use(express.json());
 
 const PORT = process.env.PORT || 10000;
 const MONGO_URL = process.env.MONGO_URL;
@@ -52,65 +52,87 @@ const Attendance = mongoose.model('Attendance', attendanceSchema);
 
 app.get('/students', async (req, res) => {
   const { std, div } = req.query;
-  const students = await Student.find({ std, div });
+  const students = await Student.find({ std, div }).sort({ roll: 1 });
   res.json({ students });
 });
 
 app.get('/divisions', async (req, res) => {
   const { std } = req.query;
-  const divisions = await Student.find({ std }).distinct('div');
-  res.json({ divisions });
+  const divs = await Student.distinct('div', { std });
+  res.json({ divisions: divs });
 });
 
 app.get('/attendance/check-lock', async (req, res) => {
   const { std, div, date } = req.query;
-  const attendances = await Attendance.find({ std, div, date });
-  const locked = attendances.filter(a => a.smsSent).map(a => a.roll);
-  res.json({ locked });
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(date);
+  end.setHours(23, 59, 59, 999);
+  const attendances = await Attendance.find({
+    std,
+    div,
+    date: { $gte: start, $lte: end },
+    smsSent: true,
+  });
+  const lockedRolls = attendances.map((a) => a.roll);
+  res.json({ locked: lockedRolls });
 });
 
 app.post('/attendance', async (req, res) => {
   const { date, attendance } = req.body;
+  const attendanceDate = new Date(date);
 
-  let sent = 0;
+  let success = 0;
   let failed = 0;
 
   for (const entry of attendance) {
-    const filter = {
+    const existing = await Attendance.findOne({
       studentId: entry.studentId,
-      std: entry.std,
-      div: entry.div,
-      roll: entry.roll,
-      date,
-    };
+      date: {
+        $gte: new Date(attendanceDate.setHours(0, 0, 0, 0)),
+        $lte: new Date(attendanceDate.setHours(23, 59, 59, 999)),
+      },
+    });
 
-    const existing = await Attendance.findOne(filter);
+    if (existing) continue;
 
-    if (existing) continue; // skip if already saved
-
-    const doc = await Attendance.create({ ...entry, date });
+    const newEntry = await Attendance.create({ ...entry, date: attendanceDate });
 
     if (!entry.present) {
       try {
-        const url = `${GUPSHUP_URL}?method=sendMessage&send_to=${entry.mobile}&msg=Dear Parent, your child ${entry.name} is absent today.&msg_type=TEXT&userid=${GUPSHUP_USER}&auth_scheme=plain&password=${GUPSHUP_PASSWORD}&v=1.1&format=JSON`;
-        const smsRes = await fetch(url);
-        const json = await smsRes.json();
-        if (json.response.status === 'success') {
-          doc.smsSent = true;
-          sent++;
+        const smsRes = await fetch(GUPSHUP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            userid: GUPSHUP_USER,
+            password: GUPSHUP_PASSWORD,
+            send_to: entry.mobile,
+            v: '1.1',
+            msg_type: 'TEXT',
+            method: 'SENDMESSAGE',
+            auth_scheme: 'PLAIN',
+            msg: `Dear Parent, your child ${entry.name} was absent today.`,
+          }),
+        });
+
+        const smsBody = await smsRes.text();
+        const successBool = smsBody.includes('success');
+        if (successBool) {
+          newEntry.smsSent = true;
+          await newEntry.save();
+          success++;
         } else {
           failed++;
         }
-        await doc.save();
-      } catch (e) {
+      } catch {
         failed++;
       }
     }
   }
 
-  res.json({ success: true, smsSummary: { sent, failed } });
+  res.json({ success: true, smsSummary: { sent: success, failed } });
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Vidyakunj Backend running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
