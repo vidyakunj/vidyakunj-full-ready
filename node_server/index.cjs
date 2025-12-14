@@ -1,12 +1,11 @@
 /* =======================================================
-   VIDYAKUNJ ATTENDANCE + SMS BACKEND
-   FINAL GUARANTEED WORKING VERSION
+   VIDYAKUNJ SCHOOL – FINAL BACKEND (STABLE)
    ======================================================= */
 
 const express = require("express");
 const cors = require("cors");
-const compression = require("compression");
 const bodyParser = require("body-parser");
+const compression = require("compression");
 const mongoose = require("mongoose");
 const axios = require("axios");
 require("dotenv").config();
@@ -16,13 +15,11 @@ require("dotenv").config();
    ======================================================= */
 const app = express();
 
-app.use(
-  cors({
-    origin: "https://vidyakunj-frontend.onrender.com",
-    methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type"],
-  })
-);
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type"],
+}));
 
 app.use(bodyParser.json());
 app.use(compression());
@@ -32,60 +29,76 @@ app.use(compression());
    ======================================================= */
 mongoose
   .connect(process.env.MONGO_URL || process.env.MONGODB_URI)
-  .then(() => console.log("✅ MongoDB Connected"))
-  .catch((err) => console.error("❌ MongoDB Error:", err));
+  .then(() => console.log("✅ MongoDB connected"))
+  .catch(err => console.error("❌ Mongo error:", err));
+
+/* =======================================================
+   LOGIN USERS
+   ======================================================= */
+const users = [
+  { username: "patil", password: "iken", role: "teacher" },
+  { username: "teacher1", password: "1234", role: "teacher" },
+  { username: "vks", password: "1234", role: "teacher" },
+  { username: "admin", password: "admin123", role: "admin" },
+];
 
 /* =======================================================
    SCHEMAS
    ======================================================= */
-const Student = mongoose.model(
-  "students",
-  new mongoose.Schema({
-    std: String,
-    div: String,
-    name: String,
-    roll: Number,
-    mobile: String,
-  })
-);
+const Student = mongoose.model("students", new mongoose.Schema({
+  std: String,
+  div: String,
+  name: String,
+  roll: Number,
+  mobile: String,
+}));
 
-const Attendance = mongoose.model(
-  "attendance",
-  new mongoose.Schema(
-    {
-      studentId: mongoose.Schema.Types.ObjectId,
-      std: String,
-      div: String,
-      roll: Number,
-      date: Date,
-      present: Boolean,
-    },
-    { timestamps: true }
-  )
-);
+const Attendance = mongoose.model("attendance", new mongoose.Schema({
+  studentId: mongoose.Schema.Types.ObjectId,
+  std: String,
+  div: String,
+  roll: Number,
+  date: Date,
+  present: Boolean,
+}, { timestamps: true }));
 
-const AttendanceLock = mongoose.model(
-  "attendance_locks",
-  new mongoose.Schema({
-    std: String,
-    div: String,
-    date: String,
-    locked: [Number],
-  })
-);
+const AttendanceLock = mongoose.model("attendance_locks", new mongoose.Schema({
+  std: String,
+  div: String,
+  date: String,
+  locked: [Number],
+}));
 
 /* =======================================================
-   CHECK LOCK (FRONTEND)
+   ROUTES
    ======================================================= */
+
+/* 🔐 LOGIN (FIXED) */
+app.post("/login", (req, res) => {
+  const { username, password } = req.body || {};
+  const user = users.find(
+    u => u.username === username && u.password === password
+  );
+
+  if (!user) {
+    return res.json({ success: false, message: "Invalid username or password" });
+  }
+
+  res.json({
+    success: true,
+    username: user.username,
+    role: user.role,
+  });
+});
+
+/* 🔒 CHECK ATTENDANCE LOCK */
 app.get("/attendance/check-lock", async (req, res) => {
   const { std, div, date } = req.query;
   const lock = await AttendanceLock.findOne({ std, div, date });
   res.json({ locked: lock?.locked || [] });
 });
 
-/* =======================================================
-   POST ATTENDANCE (FINAL FIX)
-   ======================================================= */
+/* 📩 POST ATTENDANCE (ABSENT ONLY) */
 app.post("/attendance", async (req, res) => {
   try {
     const { date, attendance } = req.body;
@@ -97,71 +110,51 @@ app.post("/attendance", async (req, res) => {
     const parsedDate = new Date(date);
     parsedDate.setHours(0, 0, 0, 0);
 
-    const dateStr =
-      parsedDate.getFullYear() +
-      "-" +
-      String(parsedDate.getMonth() + 1).padStart(2, "0") +
-      "-" +
-      String(parsedDate.getDate()).padStart(2, "0");
-
-    const std = attendance[0].std;
-    const div = attendance[0].div;
+    const dateStr = parsedDate.toISOString().split("T")[0];
+    const { std, div } = attendance[0];
 
     const existingLock = await AttendanceLock.findOne({ std, div, date: dateStr });
-    const alreadyLocked = existingLock?.locked || [];
+    const locked = existingLock?.locked || [];
 
-    const saveAttendance = [];
+    const save = [];
     const newLocks = [];
     const smsJobs = [];
+    let sent = 0, failed = 0;
 
-    let sent = 0;
-    let failed = 0;
+    for (const s of attendance) {
+      if (s.present === true) continue;
+      if (locked.includes(s.roll)) continue;
 
-    for (const entry of attendance) {
-      // 🔒 LOCK ONLY ABSENT STUDENTS
-      if (entry.present === true) continue;
-
-      // ⛔ Skip already locked
-      if (alreadyLocked.includes(entry.roll)) continue;
-
-      saveAttendance.push({
-        studentId: entry.studentId,
-        std,
-        div,
-        roll: entry.roll,
+      save.push({
+        studentId: s.studentId,
+        std, div,
+        roll: s.roll,
         date: parsedDate,
         present: false,
       });
 
-      newLocks.push(entry.roll);
+      newLocks.push(s.roll);
 
-      // 📩 SMS (ONLY ABSENT)
       smsJobs.push(
-        axios
-          .get(process.env.GUPSHUP_URL, {
-            params: {
-              method: "SendMessage",
-              send_to: entry.mobile,
-              msg: `Dear Parents, Your child ${entry.name} remained absent today.,Vidyakunj School`,
-              msg_type: "TEXT",
-              userid: process.env.GUPSHUP_USER,
-              password: process.env.GUPSHUP_PASSWORD,
-              auth_scheme: "PLAIN",
-              v: "1.1",
-            },
-          })
-          .then((r) =>
-            r.data.toLowerCase().includes("success") ? sent++ : failed++
-          )
-          .catch(() => failed++)
+        axios.get(process.env.GUPSHUP_URL, {
+          params: {
+            method: "SendMessage",
+            send_to: s.mobile,
+            msg: `Dear Parents, Your child ${s.name} remained absent today.,Vidyakunj School`,
+            msg_type: "TEXT",
+            userid: process.env.GUPSHUP_USER,
+            password: process.env.GUPSHUP_PASSWORD,
+            auth_scheme: "PLAIN",
+            v: "1.1",
+          },
+        })
+        .then(r => r.data.toLowerCase().includes("success") ? sent++ : failed++)
+        .catch(() => failed++)
       );
     }
 
-    if (saveAttendance.length > 0) {
-      await Attendance.insertMany(saveAttendance);
-    }
-
-    if (newLocks.length > 0) {
+    if (save.length) await Attendance.insertMany(save);
+    if (newLocks.length) {
       await AttendanceLock.updateOne(
         { std, div, date: dateStr },
         { $addToSet: { locked: { $each: newLocks } } },
@@ -173,9 +166,14 @@ app.post("/attendance", async (req, res) => {
 
     res.json({ success: true, smsSummary: { sent, failed } });
   } catch (err) {
-    console.error("❌ Error:", err);
+    console.error(err);
     res.status(500).json({ success: false });
   }
+});
+
+/* ✅ HEALTH CHECK (VERY IMPORTANT) */
+app.get("/", (req, res) => {
+  res.json({ status: "Vidyakunj Backend Running" });
 });
 
 /* =======================================================
@@ -183,5 +181,5 @@ app.post("/attendance", async (req, res) => {
    ======================================================= */
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () =>
-  console.log("🚀 Server running on port", PORT)
+  console.log("🚀 Backend running on port", PORT)
 );
