@@ -1,6 +1,6 @@
 /* =======================================================
    VIDYAKUNJ SMS + ATTENDANCE BACKEND
-   Node.js + Express + MongoDB + Gupshup
+   FINAL STABLE VERSION
    ======================================================= */
 
 const express = require("express");
@@ -40,10 +40,8 @@ app.use(compression());
 /* =======================================================
    MONGO CONNECTION
    ======================================================= */
-const MONGO_URL = process.env.MONGO_URL || process.env.MONGODB_URI;
-
 mongoose
-  .connect(MONGO_URL)
+  .connect(process.env.MONGO_URL || process.env.MONGODB_URI)
   .then(() => console.log("✅ MongoDB Connected"))
   .catch((err) => console.error("❌ MongoDB Error:", err));
 
@@ -62,7 +60,7 @@ const Student = mongoose.model("students", studentSchema);
 
 const attendanceSchema = new mongoose.Schema(
   {
-    studentId: { type: mongoose.Schema.Types.ObjectId, ref: "students" },
+    studentId: mongoose.Schema.Types.ObjectId,
     std: String,
     div: String,
     roll: Number,
@@ -72,19 +70,15 @@ const attendanceSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// 🚨 Safety unique index
 attendanceSchema.index({ studentId: 1, date: 1 }, { unique: true });
 
 const Attendance = mongoose.model("attendance", attendanceSchema);
 
-/* =======================================================
-   ATTENDANCE LOCK SCHEMA
-   ======================================================= */
 const attendanceLockSchema = new mongoose.Schema({
   std: String,
   div: String,
-  date: String,        // YYYY-MM-DD
-  locked: [Number],    // roll numbers
+  date: String,      // YYYY-MM-DD
+  locked: [Number],  // roll numbers
 });
 
 const AttendanceLock = mongoose.model(
@@ -121,43 +115,24 @@ app.get("/students", async (req, res) => {
   res.json({ students });
 });
 
-app.post("/students", async (req, res) => {
-  const existing = await Student.findOne({
-    std: req.body.std,
-    div: req.body.div,
-    roll: req.body.roll,
-  });
-
-  if (existing) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Roll already exists" });
-  }
-
-  const student = new Student(req.body);
-  await student.save();
-  res.json({ success: true, student });
-});
-
 /* =======================================================
-   ATTENDANCE LOCK CHECK (FLUTTER USE)
+   ATTENDANCE LOCK CHECK (FOR FLUTTER)
    ======================================================= */
 app.get("/attendance/check-lock", async (req, res) => {
   const { std, div, date } = req.query;
-
   const lock = await AttendanceLock.findOne({ std, div, date });
   res.json({ locked: lock?.locked || [] });
 });
 
 /* =======================================================
-   POST ATTENDANCE + SMS
+   POST ATTENDANCE (FINAL FIXED LOGIC)
    ======================================================= */
 app.post("/attendance", async (req, res) => {
   try {
     const { date, attendance } = req.body;
 
-    if (!date || !attendance) {
-      return res.status(400).json({ success: false, message: "Missing data" });
+    if (!date || !Array.isArray(attendance)) {
+      return res.status(400).json({ success: false, message: "Invalid data" });
     }
 
     const parsedDate = new Date(date);
@@ -170,23 +145,27 @@ app.post("/attendance", async (req, res) => {
       "-" +
       String(parsedDate.getDate()).padStart(2, "0");
 
-    let sent = 0;
-    let failed = 0;
-    const inserts = [];
+    // 🔒 Load existing locks ONCE
+    const existingLock = await AttendanceLock.findOne({
+      std: attendance[0].std,
+      div: attendance[0].div,
+      date: dateStr,
+    });
+
+    const alreadyLocked = existingLock?.locked || [];
+
+    const attendanceToSave = [];
+    const rollsToLock = [];
     const smsJobs = [];
 
+    let sent = 0;
+    let failed = 0;
+
     for (const entry of attendance) {
-      // 🔒 LOCK CHECK (MAIN FIX)
-      const locked = await AttendanceLock.findOne({
-        std: entry.std,
-        div: entry.div,
-        date: dateStr,
-        locked: entry.roll,
-      });
+      // ⛔ Skip locked students
+      if (alreadyLocked.includes(entry.roll)) continue;
 
-      if (locked) continue;
-
-      inserts.push({
+      attendanceToSave.push({
         studentId: entry.studentId,
         std: entry.std,
         div: entry.div,
@@ -195,14 +174,9 @@ app.post("/attendance", async (req, res) => {
         present: entry.present,
       });
 
-      // 🔐 SAVE LOCK
-      await AttendanceLock.updateOne(
-        { std: entry.std, div: entry.div, date: dateStr },
-        { $addToSet: { locked: entry.roll } },
-        { upsert: true }
-      );
+      rollsToLock.push(entry.roll);
 
-      // 📩 SEND SMS ONLY IF ABSENT
+      // 📩 Send SMS only if ABSENT
       if (!entry.present) {
         const message = `Dear Parents, Your child, ${entry.name} remained absent in school today.,Vidyakunj School`;
 
@@ -210,13 +184,13 @@ app.post("/attendance", async (req, res) => {
           axios
             .get(process.env.GUPSHUP_URL, {
               params: {
-                method: "sendMessage",
+                method: "SendMessage",
                 send_to: entry.mobile,
                 msg: message,
                 msg_type: "TEXT",
                 userid: process.env.GUPSHUP_USER,
                 password: process.env.GUPSHUP_PASSWORD,
-                auth_scheme: "plain",
+                auth_scheme: "PLAIN",
                 v: "1.1",
               },
             })
@@ -228,12 +202,25 @@ app.post("/attendance", async (req, res) => {
       }
     }
 
-    if (inserts.length) await Attendance.insertMany(inserts);
+    // ✅ Save attendance FIRST
+    if (attendanceToSave.length > 0) {
+      await Attendance.insertMany(attendanceToSave, { ordered: false });
+    }
+
+    // ✅ Lock ONLY saved rolls
+    if (rollsToLock.length > 0) {
+      await AttendanceLock.updateOne(
+        { std: attendance[0].std, div: attendance[0].div, date: dateStr },
+        { $addToSet: { locked: { $each: rollsToLock } } },
+        { upsert: true }
+      );
+    }
+
+    // ✅ Send SMS LAST
     await Promise.all(smsJobs);
 
     res.json({
       success: true,
-      message: "Attendance saved & locked",
       smsSummary: { sent, failed },
     });
   } catch (err) {
