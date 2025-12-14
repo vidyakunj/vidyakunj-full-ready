@@ -159,6 +159,27 @@ app.delete("/students/:id", async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+/* =======================================================
+   ATTENDANCE LOCK CHECK (USED BY FLUTTER TO DISABLE ROWS)
+   ======================================================= */
+app.get("/attendance/check-lock", async (req, res) => {
+  try {
+    const { std, div, date } = req.query;
+
+    if (!std || !div || !date) {
+      return res.status(400).json({ error: "Missing std, div or date" });
+    }
+
+    // Example date format: "2025-12-14"
+    const lockDoc = await AttendanceLock.findOne({ std, div, date });
+    const lockedRolls = lockDoc?.locked || [];
+
+    return res.json({ locked: lockedRolls });
+  } catch (err) {
+    console.error("❌ Error in /attendance/check-lock:", err);
+    return res.status(500).json({ error: err.message });
+  }
+});
 
 app.post("/students", async (req, res) => {
    console.log("📩 Attendance POST Payload:", JSON.stringify(req.body, null, 2));
