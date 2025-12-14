@@ -1,32 +1,40 @@
-// =========================
+// ===============================
 // FILE: index.cjs
-// =========================
+// ===============================
 
 const express = require('express');
 const cors = require('cors');
 const compression = require('compression');
 const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
 const dotenv = require('dotenv');
-const fetch = require('node-fetch');
+const axios = require('axios');
 
 dotenv.config();
 
 const app = express();
-app.use(express.json());
-app.use(cors());
-app.use(compression());
-
 const PORT = process.env.PORT || 10000;
 const MONGO_URL = process.env.MONGO_URL;
 const GUPSHUP_URL = process.env.GUPSHUP_URL;
 const GUPSHUP_USER = process.env.GUPSHUP_USER;
 const GUPSHUP_PASSWORD = process.env.GUPSHUP_PASSWORD;
 
+// Middleware
+app.use(cors());
+app.use(compression());
+app.use(bodyParser.json());
+
+// MongoDB Connect
 mongoose.connect(MONGO_URL, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
 
+const db = mongoose.connection;
+db.on('error', console.error.bind(console, 'MongoDB connection error:'));
+db.once('open', () => console.log('✅ MongoDB Connected'));
+
+// Schemas
 const studentSchema = new mongoose.Schema({
   name: String,
   roll: Number,
@@ -34,6 +42,7 @@ const studentSchema = new mongoose.Schema({
   div: String,
   mobile: String,
 });
+const Student = mongoose.model('Student', studentSchema);
 
 const attendanceSchema = new mongoose.Schema({
   studentId: mongoose.Types.ObjectId,
@@ -46,93 +55,82 @@ const attendanceSchema = new mongoose.Schema({
   present: Boolean,
   smsSent: { type: Boolean, default: false },
 });
-
-const Student = mongoose.model('Student', studentSchema);
 const Attendance = mongoose.model('Attendance', attendanceSchema);
 
-app.get('/students', async (req, res) => {
-  const { std, div } = req.query;
-  const students = await Student.find({ std, div }).sort({ roll: 1 });
-  res.json({ students });
+const teacherSchema = new mongoose.Schema({
+  username: String,
+  password: String,
+});
+const Teacher = mongoose.model('Teacher', teacherSchema);
+
+// ========== Routes ==========
+
+app.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+  const teacher = await Teacher.findOne({ username, password });
+  res.json({ success: !!teacher });
 });
 
 app.get('/divisions', async (req, res) => {
-  const { std } = req.query;
-  const divs = await Student.distinct('div', { std });
-  res.json({ divisions: divs });
+  const std = req.query.std;
+  const divisions = await Student.find({ std }).distinct('div');
+  res.json({ divisions });
+});
+
+app.get('/students', async (req, res) => {
+  const { std, div } = req.query;
+  const students = await Student.find({ std, div }).sort('roll');
+  res.json({ students });
 });
 
 app.get('/attendance/check-lock', async (req, res) => {
   const { std, div, date } = req.query;
-  const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(date);
-  end.setHours(23, 59, 59, 999);
-  const attendances = await Attendance.find({
-    std,
-    div,
-    date: { $gte: start, $lte: end },
-    smsSent: true,
-  });
-  const lockedRolls = attendances.map((a) => a.roll);
-  res.json({ locked: lockedRolls });
+  const attendances = await Attendance.find({ std, div, date: new Date(date), smsSent: true });
+  const locked = attendances.map((a) => a.roll);
+  res.json({ locked });
 });
 
 app.post('/attendance', async (req, res) => {
   const { date, attendance } = req.body;
-  const attendanceDate = new Date(date);
+  const parsedDate = new Date(date);
 
-  let success = 0;
+  let sent = 0;
   let failed = 0;
 
   for (const entry of attendance) {
-    const existing = await Attendance.findOne({
-      studentId: entry.studentId,
-      date: {
-        $gte: new Date(attendanceDate.setHours(0, 0, 0, 0)),
-        $lte: new Date(attendanceDate.setHours(23, 59, 59, 999)),
-      },
-    });
+    const { studentId, std, div, roll, name, mobile, present } = entry;
 
+    let existing = await Attendance.findOne({ studentId, date: parsedDate });
     if (existing) continue;
 
-    const newEntry = await Attendance.create({ ...entry, date: attendanceDate });
+    const saved = await Attendance.create({ ...entry, date: parsedDate });
 
-    if (!entry.present) {
+    if (!present && !saved.smsSent && mobile) {
+      const message = `Dear Parents, Your child, ${name} remained absent in school today. - Vidyakunj School`;
+      const smsUrl = `${GUPSHUP_URL}?method=sendMessage&send_to=${mobile}&msg=${encodeURIComponent(message)}&msg_type=TEXT&userid=${GUPSHUP_USER}&password=${GUPSHUP_PASSWORD}&auth_scheme=PLAIN&v=1.1`;
+
       try {
-        const smsRes = await fetch(GUPSHUP_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({
-            userid: GUPSHUP_USER,
-            password: GUPSHUP_PASSWORD,
-            send_to: entry.mobile,
-            v: '1.1',
-            msg_type: 'TEXT',
-            method: 'SENDMESSAGE',
-            auth_scheme: 'PLAIN',
-            msg: `Dear Parent, your child ${entry.name} was absent today.`,
-          }),
-        });
+        const smsRes = await axios.get(smsUrl);
+        const success = smsRes.data.response?.status === 'success';
 
-        const smsBody = await smsRes.text();
-        const successBool = smsBody.includes('success');
-        if (successBool) {
-          newEntry.smsSent = true;
-          await newEntry.save();
-          success++;
+        if (success) {
+          sent++;
+          saved.smsSent = true;
+          await saved.save();
         } else {
           failed++;
         }
-      } catch {
+      } catch (e) {
         failed++;
       }
     }
   }
 
-  res.json({ success: true, smsSummary: { sent: success, failed } });
+  res.json({ success: true, smsSummary: { sent, failed } });
 });
 
+// ========== Start Server ==========
+
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Vidyakunj Backend running on port ${PORT}`);
 });
