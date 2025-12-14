@@ -1,3 +1,7 @@
+// ===============================
+// FILE: new_attendance_screen.dart
+// ===============================
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,11 +22,10 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
   bool isLoadingDivs = false;
   bool isLoadingStudents = false;
-  bool hasExistingAttendance = false;
+  List<int> absentRollNumbers = [];
 
   List<String> divisions = [];
   List<_StudentRow> students = [];
-  List<int> absentRollNumbers = [];
 
   final List<String> stdOptions = List<String>.generate(12, (i) => '${i + 1}');
 
@@ -69,7 +72,6 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
       isLoadingStudents = true;
       students.clear();
       absentRollNumbers.clear();
-      hasExistingAttendance = false;
     });
 
     try {
@@ -137,6 +139,8 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
       "roll": s.roll,
       "date": dateStr,
       "present": s.isPresent,
+      "name": s.name,
+      "mobile": s.mobile,
     }).toList();
 
     try {
@@ -154,22 +158,9 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
         return;
       }
 
-      int success = 0;
-      int failed = 0;
-
-      for (final s in students.where((s) => !s.isPresent && !s.locked)) {
-        final smsRes = await http.post(
-          Uri.parse("$SERVER_URL/send-sms"),
-          headers: {"Content-Type": "application/json"},
-          body: jsonEncode({
-            "mobile": s.mobile,
-            "studentName": s.name,
-          }),
-        );
-
-        final isOk = smsRes.statusCode == 200 && jsonDecode(smsRes.body)['success'] == true;
-        if (isOk) success++; else failed++;
-      }
+      final data = jsonDecode(res.body);
+      final int sent = data['smsSummary']['sent'];
+      final int failed = data['smsSummary']['failed'];
 
       if (!mounted) return;
 
@@ -177,7 +168,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
         context: context,
         builder: (ctx) => AlertDialog(
           title: const Text("SMS Summary"),
-          content: Text("SMS Sent: $success | Failed: $failed"),
+          content: Text("SMS Sent: $sent | Failed: $failed"),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
@@ -186,6 +177,9 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
           ],
         ),
       );
+
+      await _loadStudents(); // Refresh lock states after sending
+
     } catch (e) {
       _showSnack("Error saving or sending: $e");
     }
@@ -311,19 +305,21 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
             flex: 3,
             child: Checkbox(
               value: s.isPresent,
-              onChanged: s.locked ? null : (v) {
-                setState(() {
-                  s.isPresent = v ?? true;
-                  if (!s.isPresent) {
-                    if (!absentRollNumbers.contains(s.roll)) {
-                      absentRollNumbers.add(s.roll);
-                      absentRollNumbers.sort();
-                    }
-                  } else {
-                    absentRollNumbers.remove(s.roll);
-                  }
-                });
-              },
+              onChanged: s.locked
+                  ? null
+                  : (v) {
+                      setState(() {
+                        s.isPresent = v ?? true;
+                        if (!s.isPresent) {
+                          if (!absentRollNumbers.contains(s.roll)) {
+                            absentRollNumbers.add(s.roll);
+                            absentRollNumbers.sort();
+                          }
+                        } else {
+                          absentRollNumbers.remove(s.roll);
+                        }
+                      });
+                    },
             ),
           ),
         ],
