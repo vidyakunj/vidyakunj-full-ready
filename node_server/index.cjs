@@ -148,7 +148,6 @@ app.delete("/students/:id", async (req, res) => {
 });
 
 app.post("/students", async (req, res) => {
-   console.log("📩 Attendance POST Payload:", JSON.stringify(req.body, null, 2));
   try {
     const { name, roll, mobile, std, div } = req.body;
     if (!name || !roll || !mobile || !std || !div)
@@ -185,40 +184,23 @@ app.get("/students-all", async (req, res) => {
   }
 });
 
-/* =======================================================
-   SEND SMS USING GUPSHUP
-   ======================================================= */
-app.post("/send-sms", async (req, res) => {
-  const { mobile, studentName } = req.body;
-  if (!mobile || !studentName)
-    return res.status(400).json({ success: false, error: "Missing data" });
+app.get("/attendance/check-lock", async (req, res) => {
+  const { std, div, date } = req.query;
+  const parsedDate = new Date(date);
+  parsedDate.setHours(0, 0, 0, 0);
+  const nextDay = new Date(parsedDate);
+  nextDay.setDate(parsedDate.getDate() + 1);
 
-  const message = `Dear Parents, Your child, ${studentName} remained absent in school today.,Vidyakunj School`;
-                   
-  const params = {
-    method: "SendMessage",
-    send_to: mobile,
-    msg: message,
-    msg_type: "TEXT",
-    userid: process.env.GUPSHUP_USER,
-    password: process.env.GUPSHUP_PASSWORD,
-    auth_scheme: "PLAIN",
-    v: "1.1",
-  };
+  const attendances = await Attendance.find({
+    std,
+    div,
+    date: { $gte: parsedDate, $lt: nextDay },
+  });
 
-  try {
-    const response = await axios.get(process.env.GUPSHUP_URL, { params });
-    res.json({
-      success: response.data.toLowerCase().includes("success"),
-      response: response.data,
-    });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+  const lockedRolls = attendances.map((a) => a.roll);
+  res.json({ locked: lockedRolls });
 });
-/* =======================================================
-   POST ATTENDANCE + SEND SMS IF ABSENT
-   ======================================================= */
+
 app.post("/attendance", async (req, res) => {
   try {
     console.log("📩 Attendance POST Payload:", JSON.stringify(req.body, null, 2));
@@ -257,7 +239,7 @@ app.post("/attendance", async (req, res) => {
         });
 
         if (!entry.present) {
-          const message = `Dear Parents, Your child, ${entry.name} remained absent in school today.,Vidyakunj School`;
+          const message = `Dear Parents, Your child, ${entry.name} remained absent in school today. - Vidyakunj School`;
 
           const params = {
             method: "sendMessage",
@@ -293,8 +275,5 @@ app.post("/attendance", async (req, res) => {
   }
 });
 
-/* =======================================================
-   START SERVER
-   ======================================================= */
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log("🚀 Vidyakunj Backend running on port " + PORT));
