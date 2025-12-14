@@ -1,279 +1,116 @@
-/* =======================================================
-   VIDYAKUNJ SMS + ATTENDANCE BACKEND
-   Node.js + Express + MongoDB + Gupshup
-   ======================================================= */
-const compression = require("compression");
-const express = require("express");
-const cors = require("cors");
-const bodyParser = require("body-parser");
-const mongoose = require("mongoose");
-require("dotenv").config();
-const axios = require("axios");
+// ===============================
+// FILE: index.cjs (Node.js backend)
+// ===============================
 
-/* =======================================================
-   SIMPLE LOGIN USERS
-   ======================================================= */
-const users = [
-  { username: "patil", password: "iken", role: "teacher" },
-  { username: "teacher1", password: "1234", role: "teacher" },
-  { username: "vks", password: "1234", role: "teacher" },
-  { username: "admin", password: "admin123", role: "admin" },
-];
+import express from 'express';
+import cors from 'cors';
+import compression from 'compression';
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+import fetch from 'node-fetch';
 
-/* =======================================================
-   APP SETUP
-   ======================================================= */
+dotenv.config();
+
 const app = express();
-
-app.options("*", cors());
-
-app.use(
-  cors({
-    origin: "https://vidyakunj-frontend.onrender.com",
-    methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Accept"],
-    credentials: true,
-  })
-);
-console.log("✅ CORS Middleware Applied");
-
-app.use(bodyParser.json());
+app.use(cors());
 app.use(compression());
-console.log("✅ Compression Middleware Applied");
+app.use(express.json());
 
-/* =======================================================
-   MONGO CONNECTION
-   ======================================================= */
-const MONGO_URL = process.env.MONGO_URL || process.env.MONGODB_URI;
+const PORT = process.env.PORT || 10000;
+const MONGO_URL = process.env.MONGO_URL;
+const GUPSHUP_URL = process.env.GUPSHUP_URL;
+const GUPSHUP_USER = process.env.GUPSHUP_USER;
+const GUPSHUP_PASSWORD = process.env.GUPSHUP_PASSWORD;
 
-mongoose
-  .connect(MONGO_URL)
-  .then(() => console.log("✅ MongoDB Connected"))
-  .catch((err) => console.log("❌ Mongo Error:", err));
+mongoose.connect(MONGO_URL, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
 
-/* =======================================================
-   SCHEMAS
-   ======================================================= */
 const studentSchema = new mongoose.Schema({
-  std: String,
-  div: String,
   name: String,
   roll: Number,
+  std: String,
+  div: String,
   mobile: String,
 });
 
-const Student = mongoose.model("students", studentSchema);
-
-const attendanceSchema = new mongoose.Schema(
-  {
-    studentId: { type: mongoose.Schema.Types.ObjectId, ref: "students", required: true },
-    std: String,
-    div: String,
-    roll: Number,
-    date: { type: Date, required: true },
-    present: { type: Boolean, default: false },
-  },
-  { timestamps: true }
-);
-
-const Attendance = mongoose.model("attendance", attendanceSchema);
-
-mongoose.connection.once("open", () => {
-  console.log("🔌 MongoDB connection open");
-  Student.collection.createIndex({ std: 1, div: 1 });
-  Attendance.collection.createIndex({ std: 1, div: 1, date: 1 });
-  Attendance.collection.createIndex({ studentId: 1, date: 1 });
-  console.log("📌 MongoDB indexes ensured");
+const attendanceSchema = new mongoose.Schema({
+  studentId: mongoose.Types.ObjectId,
+  std: String,
+  div: String,
+  roll: Number,
+  name: String,
+  mobile: String,
+  date: Date,
+  present: Boolean,
+  smsSent: { type: Boolean, default: false },
 });
 
-/* =======================================================
-   ROUTES
-   ======================================================= */
-app.post("/login", (req, res) => {
-  const { username, password } = req.body;
-  const user = users.find((u) => u.username === username && u.password === password);
-  if (!user) return res.json({ success: false, message: "Invalid username or password" });
-  res.json({ success: true, username: user.username, role: user.role });
+const Student = mongoose.model('Student', studentSchema);
+const Attendance = mongoose.model('Attendance', attendanceSchema);
+
+app.get('/students', async (req, res) => {
+  const { std, div } = req.query;
+  const students = await Student.find({ std, div });
+  res.json({ students });
 });
 
-app.get("/divisions", async (req, res) => {
-  try {
-    const { std } = req.query;
-    const divisions = await Student.distinct("div", { std });
-    res.json({ divisions });
-  } catch (err) {
-    res.status(500).json({ error: err });
-  }
+app.get('/divisions', async (req, res) => {
+  const { std } = req.query;
+  const divisions = await Student.find({ std }).distinct('div');
+  res.json({ divisions });
 });
 
-app.get("/students", async (req, res) => {
-  try {
-    const { std, div } = req.query;
-    const students = await Student.find({ std, div }).sort({ roll: 1 });
-    res.json({ students });
-  } catch (err) {
-    res.status(500).json({ error: err });
-  }
-});
-
-app.get("/students/:id", async (req, res) => {
-  try {
-    const student = await Student.findById(req.params.id);
-    if (!student) return res.status(404).json({ success: false, message: "Student not found" });
-    res.json({ success: true, student });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.put("/students/:id", async (req, res) => {
-  try {
-    const { name, roll, mobile, std, div } = req.body;
-    const updated = await Student.findByIdAndUpdate(req.params.id, { name, roll, mobile, std, div }, { new: true, runValidators: true });
-    if (!updated) return res.status(404).json({ success: false, message: "Student not found" });
-    res.json({ success: true, student: updated });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.delete("/students/:id", async (req, res) => {
-  try {
-    const deleted = await Student.findByIdAndDelete(req.params.id);
-    if (!deleted) return res.status(404).json({ success: false, message: "Student not found" });
-    res.json({ success: true, message: "Student deleted successfully" });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.post("/students", async (req, res) => {
-  try {
-    const { name, roll, mobile, std, div } = req.body;
-    if (!name || !roll || !mobile || !std || !div)
-      return res.status(400).json({ success: false, message: "Missing fields" });
-    const existing = await Student.findOne({ std, div, roll });
-    if (existing)
-      return res.status(400).json({ success: false, message: "Student with same roll already exists" });
-    const newStudent = new Student({ name, roll, mobile, std, div });
-    await newStudent.save();
-    res.json({ success: true, student: newStudent });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.post("/students/bulk", async (req, res) => {
-  try {
-    const { students } = req.body;
-    if (!students || !Array.isArray(students))
-      return res.status(400).json({ success: false, message: "Invalid students array" });
-    const inserted = await Student.insertMany(students, { ordered: false });
-    res.json({ success: true, insertedCount: inserted.length });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.get("/students-all", async (req, res) => {
-  try {
-    const allStudents = await Student.find().sort({ std: 1, div: 1, roll: 1 });
-    res.json({ success: true, students: allStudents });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.get("/attendance/check-lock", async (req, res) => {
+app.get('/attendance/check-lock', async (req, res) => {
   const { std, div, date } = req.query;
-  const parsedDate = new Date(date);
-  parsedDate.setHours(0, 0, 0, 0);
-  const nextDay = new Date(parsedDate);
-  nextDay.setDate(parsedDate.getDate() + 1);
-
-  const attendances = await Attendance.find({
-    std,
-    div,
-    date: { $gte: parsedDate, $lt: nextDay },
-  });
-
-  const lockedRolls = attendances.map((a) => a.roll);
-  res.json({ locked: lockedRolls });
+  const attendances = await Attendance.find({ std, div, date });
+  const locked = attendances.filter(a => a.smsSent).map(a => a.roll);
+  res.json({ locked });
 });
 
-app.post("/attendance", async (req, res) => {
-  try {
-    console.log("📩 Attendance POST Payload:", JSON.stringify(req.body, null, 2));
+app.post('/attendance', async (req, res) => {
+  const { date, attendance } = req.body;
 
-    const { date, attendance } = req.body;
+  let sent = 0;
+  let failed = 0;
 
-    if (!date || !attendance) {
-      return res.status(400).json({ success: false, message: "Missing data" });
-    }
+  for (const entry of attendance) {
+    const filter = {
+      studentId: entry.studentId,
+      std: entry.std,
+      div: entry.div,
+      roll: entry.roll,
+      date,
+    };
 
-    const parsedDate = new Date(date);
-    parsedDate.setHours(0, 0, 0, 0);
-    const nextDay = new Date(parsedDate);
-    nextDay.setDate(parsedDate.getDate() + 1);
+    const existing = await Attendance.findOne(filter);
 
-    let sent = 0,
-      failed = 0;
+    if (existing) continue; // skip if already saved
 
-    const newEntries = [];
-    const smsPromises = [];
+    const doc = await Attendance.create({ ...entry, date });
 
-    for (const entry of attendance) {
-      const alreadyExists = await Attendance.findOne({
-        studentId: entry.studentId,
-        date: { $gte: parsedDate, $lt: nextDay },
-      });
-
-      if (!alreadyExists) {
-        newEntries.push({
-          studentId: entry.studentId,
-          std: entry.std,
-          div: entry.div,
-          roll: entry.roll,
-          date: parsedDate,
-          present: entry.present,
-        });
-
-        if (!entry.present) {
-          const message = `Dear Parents, Your child, ${entry.name} remained absent in school today. - Vidyakunj School`;
-
-          const params = {
-            method: "sendMessage",
-            send_to: entry.mobile,
-            msg: message,
-            msg_type: "TEXT",
-            userid: process.env.GUPSHUP_USER,
-            password: process.env.GUPSHUP_PASSWORD,
-            auth_scheme: "plain",
-            v: "1.1",
-          };
-
-          smsPromises.push(
-            axios
-              .get(process.env.GUPSHUP_URL, { params })
-              .then((res) => {
-                if (res.data.toLowerCase().includes("success")) sent++;
-                else failed++;
-              })
-              .catch(() => failed++)
-          );
+    if (!entry.present) {
+      try {
+        const url = `${GUPSHUP_URL}?method=sendMessage&send_to=${entry.mobile}&msg=Dear Parent, your child ${entry.name} is absent today.&msg_type=TEXT&userid=${GUPSHUP_USER}&auth_scheme=plain&password=${GUPSHUP_PASSWORD}&v=1.1&format=JSON`;
+        const smsRes = await fetch(url);
+        const json = await smsRes.json();
+        if (json.response.status === 'success') {
+          doc.smsSent = true;
+          sent++;
+        } else {
+          failed++;
         }
+        await doc.save();
+      } catch (e) {
+        failed++;
       }
     }
-
-    if (newEntries.length) await Attendance.insertMany(newEntries);
-    await Promise.all(smsPromises);
-
-    res.json({ success: true, smsSummary: { sent, failed } });
-  } catch (err) {
-    console.error("❌ Error saving attendance:", err);
-    res.status(500).json({ success: false, error: err.message });
   }
+
+  res.json({ success: true, smsSummary: { sent, failed } });
 });
 
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log("🚀 Vidyakunj Backend running on port " + PORT));
+app.listen(PORT, () => {
+  console.log(`🚀 Vidyakunj Backend running on port ${PORT}`);
+});
