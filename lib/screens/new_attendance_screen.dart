@@ -159,16 +159,22 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
           .map((s) => s.id)
           .toList();
 
-      final smsRes = await http.post(
-        Uri.parse("$SERVER_URL/send-sms"),             
+      int success = 0;
+int failed = 0;
 
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "studentIds": absentIds,
-          "date": dateStr,
-        }),
-      );
+for (final s in students.where((s) => !s.isPresent && !s.locked)) {
+  final res = await http.post(
+    Uri.parse("$SERVER_URL/send-sms"),
+    headers: {"Content-Type": "application/json"},
+    body: jsonEncode({
+      "mobile": s.mobile,
+      "studentName": s.name,
+    }),
+  );
 
+  final isOk = res.statusCode == 200 && jsonDecode(res.body)['success'] == true;
+  if (isOk) success++; else failed++;
+}
       final smsSuccess = smsRes.statusCode == 200 &&
           jsonDecode(smsRes.body)['success'] == true;
 
