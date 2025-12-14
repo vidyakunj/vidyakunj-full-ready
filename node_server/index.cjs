@@ -2,13 +2,14 @@
    VIDYAKUNJ SMS + ATTENDANCE BACKEND
    Node.js + Express + MongoDB + Gupshup
    ======================================================= */
-const compression = require("compression");
+
 const express = require("express");
 const cors = require("cors");
+const compression = require("compression");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
-require("dotenv").config();
 const axios = require("axios");
+require("dotenv").config();
 
 /* =======================================================
    SIMPLE LOGIN USERS
@@ -25,21 +26,16 @@ const users = [
    ======================================================= */
 const app = express();
 
-app.options("*", cors());
-
 app.use(
   cors({
     origin: "https://vidyakunj-frontend.onrender.com",
-    methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Accept"],
-    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type"],
   })
 );
-console.log("✅ CORS Middleware Applied");
 
 app.use(bodyParser.json());
 app.use(compression());
-console.log("✅ Compression Middleware Applied");
 
 /* =======================================================
    MONGO CONNECTION
@@ -49,7 +45,7 @@ const MONGO_URL = process.env.MONGO_URL || process.env.MONGODB_URI;
 mongoose
   .connect(MONGO_URL)
   .then(() => console.log("✅ MongoDB Connected"))
-  .catch((err) => console.log("❌ Mongo Error:", err));
+  .catch((err) => console.error("❌ MongoDB Error:", err));
 
 /* =======================================================
    SCHEMAS
@@ -66,197 +62,98 @@ const Student = mongoose.model("students", studentSchema);
 
 const attendanceSchema = new mongoose.Schema(
   {
-    studentId: { type: mongoose.Schema.Types.ObjectId, ref: "students", required: true },
+    studentId: { type: mongoose.Schema.Types.ObjectId, ref: "students" },
     std: String,
     div: String,
     roll: Number,
-    date: { type: Date, required: true },
-    present: { type: Boolean, default: false },
+    date: Date,
+    present: Boolean,
   },
   { timestamps: true }
 );
 
+// 🚨 Safety unique index
+attendanceSchema.index({ studentId: 1, date: 1 }, { unique: true });
+
 const Attendance = mongoose.model("attendance", attendanceSchema);
+
 /* =======================================================
-   ATTENDANCE LOCK SCHEMA (NEW)
-   Prevents teacher from marking same student again
+   ATTENDANCE LOCK SCHEMA
    ======================================================= */
-
 const attendanceLockSchema = new mongoose.Schema({
-  std: String,          // Standard (e.g., "9")
-  div: String,          // Division (e.g., "D")
-  date: String,         // "YYYY-MM-DD"
-  locked: [Number],     // Array of roll numbers already marked
+  std: String,
+  div: String,
+  date: String,        // YYYY-MM-DD
+  locked: [Number],    // roll numbers
 });
 
-const AttendanceLock = mongoose.model("attendance_locks", attendanceLockSchema);
-
-mongoose.connection.once("open", () => {
-  console.log("🔌 MongoDB connection open");
-  Student.collection.createIndex({ std: 1, div: 1 });
-  Attendance.collection.createIndex({ std: 1, div: 1, date: 1 });
-  Attendance.collection.createIndex({ studentId: 1, date: 1 });
-  console.log("📌 MongoDB indexes ensured");
-});
+const AttendanceLock = mongoose.model(
+  "attendance_locks",
+  attendanceLockSchema
+);
 
 /* =======================================================
    ROUTES
    ======================================================= */
+
+/* ---------- LOGIN ---------- */
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
-  const user = users.find((u) => u.username === username && u.password === password);
-  if (!user) return res.json({ success: false, message: "Invalid username or password" });
+  const user = users.find(
+    (u) => u.username === username && u.password === password
+  );
+
+  if (!user) {
+    return res.json({ success: false, message: "Invalid login" });
+  }
+
   res.json({ success: true, username: user.username, role: user.role });
 });
 
+/* ---------- STUDENTS ---------- */
 app.get("/divisions", async (req, res) => {
-  try {
-    const { std } = req.query;
-    const divisions = await Student.distinct("div", { std });
-    res.json({ divisions });
-  } catch (err) {
-    res.status(500).json({ error: err });
-  }
+  const divisions = await Student.distinct("div", { std: req.query.std });
+  res.json({ divisions });
 });
 
 app.get("/students", async (req, res) => {
-  try {
-    const { std, div } = req.query;
-    const students = await Student.find({ std, div }).sort({ roll: 1 });
-    res.json({ students });
-  } catch (err) {
-    res.status(500).json({ error: err });
-  }
-});
-
-app.get("/students/:id", async (req, res) => {
-  try {
-    const student = await Student.findById(req.params.id);
-    if (!student) return res.status(404).json({ success: false, message: "Student not found" });
-    res.json({ success: true, student });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.put("/students/:id", async (req, res) => {
-  try {
-    const { name, roll, mobile, std, div } = req.body;
-    const updated = await Student.findByIdAndUpdate(req.params.id, { name, roll, mobile, std, div }, { new: true, runValidators: true });
-    if (!updated) return res.status(404).json({ success: false, message: "Student not found" });
-    res.json({ success: true, student: updated });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.delete("/students/:id", async (req, res) => {
-  try {
-    const deleted = await Student.findByIdAndDelete(req.params.id);
-    if (!deleted) return res.status(404).json({ success: false, message: "Student not found" });
-    res.json({ success: true, message: "Student deleted successfully" });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-/* =======================================================
-   ATTENDANCE LOCK CHECK (USED BY FLUTTER TO DISABLE ROWS)
-   ======================================================= */
-app.get("/attendance/check-lock", async (req, res) => {
-  try {
-    const { std, div, date } = req.query;
-
-    if (!std || !div || !date) {
-      return res.status(400).json({ error: "Missing std, div or date" });
-    }
-
-    // Example date format: "2025-12-14"
-    const lockDoc = await AttendanceLock.findOne({ std, div, date });
-    const lockedRolls = lockDoc?.locked || [];
-
-    return res.json({ locked: lockedRolls });
-  } catch (err) {
-    console.error("❌ Error in /attendance/check-lock:", err);
-    return res.status(500).json({ error: err.message });
-  }
+  const students = await Student.find(req.query).sort({ roll: 1 });
+  res.json({ students });
 });
 
 app.post("/students", async (req, res) => {
-   console.log("📩 Attendance POST Payload:", JSON.stringify(req.body, null, 2));
-  try {
-    const { name, roll, mobile, std, div } = req.body;
-    if (!name || !roll || !mobile || !std || !div)
-      return res.status(400).json({ success: false, message: "Missing fields" });
-    const existing = await Student.findOne({ std, div, roll });
-    if (existing)
-      return res.status(400).json({ success: false, message: "Student with same roll already exists" });
-    const newStudent = new Student({ name, roll, mobile, std, div });
-    await newStudent.save();
-    res.json({ success: true, student: newStudent });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
+  const existing = await Student.findOne({
+    std: req.body.std,
+    div: req.body.div,
+    roll: req.body.roll,
+  });
 
-app.post("/students/bulk", async (req, res) => {
-  try {
-    const { students } = req.body;
-    if (!students || !Array.isArray(students))
-      return res.status(400).json({ success: false, message: "Invalid students array" });
-    const inserted = await Student.insertMany(students, { ordered: false });
-    res.json({ success: true, insertedCount: inserted.length });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+  if (existing) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Roll already exists" });
   }
-});
 
-app.get("/students-all", async (req, res) => {
-  try {
-    const allStudents = await Student.find().sort({ std: 1, div: 1, roll: 1 });
-    res.json({ success: true, students: allStudents });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+  const student = new Student(req.body);
+  await student.save();
+  res.json({ success: true, student });
 });
 
 /* =======================================================
-   SEND SMS USING GUPSHUP
+   ATTENDANCE LOCK CHECK (FLUTTER USE)
    ======================================================= */
-app.post("/send-sms", async (req, res) => {
-  const { mobile, studentName } = req.body;
-  if (!mobile || !studentName)
-    return res.status(400).json({ success: false, error: "Missing data" });
+app.get("/attendance/check-lock", async (req, res) => {
+  const { std, div, date } = req.query;
 
-  const message = `Dear Parents, Your child, ${studentName} remained absent in school today.,Vidyakunj School`;
-                   
-  const params = {
-    method: "SendMessage",
-    send_to: mobile,
-    msg: message,
-    msg_type: "TEXT",
-    userid: process.env.GUPSHUP_USER,
-    password: process.env.GUPSHUP_PASSWORD,
-    auth_scheme: "PLAIN",
-    v: "1.1",
-  };
-
-  try {
-    const response = await axios.get(process.env.GUPSHUP_URL, { params });
-    res.json({
-      success: response.data.toLowerCase().includes("success"),
-      response: response.data,
-    });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+  const lock = await AttendanceLock.findOne({ std, div, date });
+  res.json({ locked: lock?.locked || [] });
 });
+
 /* =======================================================
-   POST ATTENDANCE + SEND SMS IF ABSENT
+   POST ATTENDANCE + SMS
    ======================================================= */
 app.post("/attendance", async (req, res) => {
   try {
-    console.log("📩 Attendance POST Payload:", JSON.stringify(req.body, null, 2));
-
     const { date, attendance } = req.body;
 
     if (!date || !attendance) {
@@ -265,64 +162,82 @@ app.post("/attendance", async (req, res) => {
 
     const parsedDate = new Date(date);
     parsedDate.setHours(0, 0, 0, 0);
-    const nextDay = new Date(parsedDate);
-    nextDay.setDate(parsedDate.getDate() + 1);
 
-    let sent = 0,
-      failed = 0;
+    const dateStr =
+      parsedDate.getFullYear() +
+      "-" +
+      String(parsedDate.getMonth() + 1).padStart(2, "0") +
+      "-" +
+      String(parsedDate.getDate()).padStart(2, "0");
 
-    const newEntries = [];
-    const smsPromises = [];
+    let sent = 0;
+    let failed = 0;
+    const inserts = [];
+    const smsJobs = [];
 
     for (const entry of attendance) {
-      const alreadyExists = await Attendance.findOne({
-        studentId: entry.studentId,
-        date: { $gte: parsedDate, $lt: nextDay },
+      // 🔒 LOCK CHECK (MAIN FIX)
+      const locked = await AttendanceLock.findOne({
+        std: entry.std,
+        div: entry.div,
+        date: dateStr,
+        locked: entry.roll,
       });
 
-      if (!alreadyExists) {
-        newEntries.push({
-          studentId: entry.studentId,
-          std: entry.std,
-          div: entry.div,
-          roll: entry.roll,
-          date: parsedDate,
-          present: entry.present,
-        });
+      if (locked) continue;
 
-        if (!entry.present) {
-          const message = `Dear Parents, Your child, ${entry.name} remained absent in school today.,Vidyakunj School`;
+      inserts.push({
+        studentId: entry.studentId,
+        std: entry.std,
+        div: entry.div,
+        roll: entry.roll,
+        date: parsedDate,
+        present: entry.present,
+      });
 
-          const params = {
-            method: "sendMessage",
-            send_to: entry.mobile,
-            msg: message,
-            msg_type: "TEXT",
-            userid: process.env.GUPSHUP_USER,
-            password: process.env.GUPSHUP_PASSWORD,
-            auth_scheme: "plain",
-            v: "1.1",
-          };
+      // 🔐 SAVE LOCK
+      await AttendanceLock.updateOne(
+        { std: entry.std, div: entry.div, date: dateStr },
+        { $addToSet: { locked: entry.roll } },
+        { upsert: true }
+      );
 
-          smsPromises.push(
-            axios
-              .get(process.env.GUPSHUP_URL, { params })
-              .then((res) => {
-                if (res.data.toLowerCase().includes("success")) sent++;
-                else failed++;
-              })
-              .catch(() => failed++)
-          );
-        }
+      // 📩 SEND SMS ONLY IF ABSENT
+      if (!entry.present) {
+        const message = `Dear Parents, Your child, ${entry.name} remained absent in school today.,Vidyakunj School`;
+
+        smsJobs.push(
+          axios
+            .get(process.env.GUPSHUP_URL, {
+              params: {
+                method: "sendMessage",
+                send_to: entry.mobile,
+                msg: message,
+                msg_type: "TEXT",
+                userid: process.env.GUPSHUP_USER,
+                password: process.env.GUPSHUP_PASSWORD,
+                auth_scheme: "plain",
+                v: "1.1",
+              },
+            })
+            .then((r) =>
+              r.data.toLowerCase().includes("success") ? sent++ : failed++
+            )
+            .catch(() => failed++)
+        );
       }
     }
 
-    if (newEntries.length) await Attendance.insertMany(newEntries);
-    await Promise.all(smsPromises);
+    if (inserts.length) await Attendance.insertMany(inserts);
+    await Promise.all(smsJobs);
 
-    res.json({ success: true, smsSummary: { sent, failed } });
+    res.json({
+      success: true,
+      message: "Attendance saved & locked",
+      smsSummary: { sent, failed },
+    });
   } catch (err) {
-    console.error("❌ Error saving attendance:", err);
+    console.error("❌ Attendance Error:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -331,4 +246,6 @@ app.post("/attendance", async (req, res) => {
    START SERVER
    ======================================================= */
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log("🚀 Vidyakunj Backend running on port " + PORT));
+app.listen(PORT, () =>
+  console.log("🚀 Vidyakunj Backend running on port", PORT)
+);
