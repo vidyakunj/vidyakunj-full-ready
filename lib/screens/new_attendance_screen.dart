@@ -178,8 +178,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
         ),
       );
 
-      await _loadStudents(); // Refresh lock states
-
+      await _loadStudents();
     } catch (e) {
       _showSnack("Error saving or sending: $e");
     }
