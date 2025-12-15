@@ -1,16 +1,29 @@
 /* =======================================================
-   VIDYAKUNJ SCHOOL BACKEND – FINAL STABLE
+   VIDYAKUNJ SMS + ATTENDANCE BACKEND
+   FINAL STABLE VERSION (DLT SAFE)
    ======================================================= */
 
+const compression = require("compression");
 const express = require("express");
 const cors = require("cors");
-const compression = require("compression");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const axios = require("axios");
 require("dotenv").config();
 
-/* ================= APP SETUP ================= */
+/* =======================================================
+   LOGIN USERS
+   ======================================================= */
+const users = [
+  { username: "patil", password: "iken", role: "teacher" },
+  { username: "teacher1", password: "1234", role: "teacher" },
+  { username: "vks", password: "1234", role: "teacher" },
+  { username: "admin", password: "admin123", role: "admin" },
+];
+
+/* =======================================================
+   APP SETUP
+   ======================================================= */
 const app = express();
 
 app.use(cors({
@@ -22,18 +35,17 @@ app.use(cors({
 app.use(bodyParser.json());
 app.use(compression());
 
-/* ================= MONGO ================= */
-mongoose.connect(process.env.MONGO_URL || process.env.MONGODB_URI)
+/* =======================================================
+   MONGO CONNECTION
+   ======================================================= */
+mongoose
+  .connect(process.env.MONGO_URL || process.env.MONGODB_URI)
   .then(() => console.log("✅ MongoDB Connected"))
-  .catch(err => console.error("❌ Mongo Error", err));
+  .catch((err) => console.error("❌ MongoDB Error:", err));
 
-/* ================= USERS ================= */
-const users = [
-  { username: "teacher1", password: "1234", role: "teacher" },
-  { username: "admin", password: "admin123", role: "admin" },
-];
-
-/* ================= SCHEMAS ================= */
+/* =======================================================
+   SCHEMAS
+   ======================================================= */
 const Student = mongoose.model("students", new mongoose.Schema({
   std: String,
   div: String,
@@ -58,34 +70,62 @@ const AttendanceLock = mongoose.model("attendance_locks", new mongoose.Schema({
   locked: [Number],
 }));
 
-/* ================= LOGIN ================= */
+/* =======================================================
+   LOGIN
+   ======================================================= */
 app.post("/login", (req, res) => {
-  const { username, password } = req.body;
-  const user = users.find(u => u.username === username && u.password === password);
-  if (!user) return res.json({ success: false, message: "Invalid login" });
+  const user = users.find(
+    u => u.username === req.body.username && u.password === req.body.password
+  );
+  if (!user) return res.json({ success: false });
   res.json({ success: true, role: user.role });
 });
 
-/* ================= DIVISIONS ================= */
+/* =======================================================
+   DIV / STUDENTS
+   ======================================================= */
 app.get("/divisions", async (req, res) => {
   const divisions = await Student.distinct("div", { std: req.query.std });
   res.json({ divisions });
 });
 
-/* ================= STUDENTS ================= */
 app.get("/students", async (req, res) => {
   const students = await Student.find(req.query).sort({ roll: 1 });
   res.json({ students });
 });
 
-/* ================= LOCK CHECK ================= */
+/* =======================================================
+   LOCK CHECK
+   ======================================================= */
 app.get("/attendance/check-lock", async (req, res) => {
-  const { std, div, date } = req.query;
-  const lock = await AttendanceLock.findOne({ std, div, date });
+  const lock = await AttendanceLock.findOne(req.query);
   res.json({ locked: lock?.locked || [] });
 });
 
-/* ================= ATTENDANCE ================= */
+/* =======================================================
+   SEND SMS (DLT APPROVED – DO NOT TOUCH)
+   ======================================================= */
+app.post("/send-sms", async (req, res) => {
+  const { mobile, studentName } = req.body;
+
+  const params = {
+    method: "SendMessage",
+    send_to: mobile,
+    msg: `Dear Parents, Your child, ${studentName} remained absent in school today.,Vidyakunj School`,
+    msg_type: "TEXT",
+    userid: process.env.GUPSHUP_USER,
+    password: process.env.GUPSHUP_PASSWORD,
+    auth_scheme: "PLAIN",
+    v: "1.1",
+  };
+
+  const response = await axios.get(process.env.GUPSHUP_URL, { params });
+  res.json({ success: response.data.toLowerCase().includes("success") });
+});
+
+/* =======================================================
+   ATTENDANCE (FINAL FIXED LOGIC)
+   ======================================================= */
 app.post("/attendance", async (req, res) => {
   try {
     const { date, attendance } = req.body;
@@ -96,20 +136,17 @@ app.post("/attendance", async (req, res) => {
     const std = attendance[0].std;
     const div = attendance[0].div;
 
-    const existingLock = await AttendanceLock.findOne({ std, div, date: dateStr });
-    const locked = existingLock?.locked || [];
+    const lockDoc = await AttendanceLock.findOne({ std, div, date: dateStr });
+    const locked = lockDoc?.locked || [];
 
-    const save = [];
-    const lockNew = [];
-    const sms = [];
-
-    let sent = 0, failed = 0;
+    const toSave = [];
+    const toLock = [];
 
     for (const e of attendance) {
       if (e.present === true) continue;
       if (locked.includes(e.roll)) continue;
 
-      save.push({
+      toSave.push({
         studentId: e.studentId,
         std, div,
         roll: e.roll,
@@ -117,42 +154,43 @@ app.post("/attendance", async (req, res) => {
         present: false,
       });
 
-      lockNew.push(e.roll);
+      toLock.push(e.roll);
 
-      sms.push(
-        axios.get(process.env.GUPSHUP_URL, {
-          params: {
-            method: "SendMessage",
-            send_to: e.mobile,
-            msg: `Dear Parents, Your child ${e.name} remained absent in school today.,Vidyakunj School`,
-            msg_type: "TEXT",
-            userid: process.env.GUPSHUP_USER,
-            password: process.env.GUPSHUP_PASSWORD,
-            auth_scheme: "PLAIN",
-            v: "1.1",
-          }
-        })
-        .then(r => r.data.toLowerCase().includes("success") ? sent++ : failed++)
-        .catch(() => failed++)
-      );
+      // ✅ SMS CALL (DLT SAFE)
+      await axios.get(process.env.GUPSHUP_URL, {
+        params: {
+          method: "SendMessage",
+          send_to: e.mobile,
+          msg: `Dear Parents, Your child, ${e.name} remained absent in school today.,Vidyakunj School`,
+          msg_type: "TEXT",
+          userid: process.env.GUPSHUP_USER,
+          password: process.env.GUPSHUP_PASSWORD,
+          auth_scheme: "PLAIN",
+          v: "1.1",
+        }
+      });
     }
 
-    if (save.length) await Attendance.insertMany(save);
-    if (lockNew.length) {
+    if (toSave.length) await Attendance.insertMany(toSave);
+
+    if (toLock.length) {
       await AttendanceLock.updateOne(
         { std, div, date: dateStr },
-        { $addToSet: { locked: { $each: lockNew } } },
+        { $addToSet: { locked: { $each: toLock } } },
         { upsert: true }
       );
     }
 
-    await Promise.all(sms);
-    res.json({ success: true, smsSummary: { sent, failed } });
+    res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    console.error(err);
+    res.status(500).json({ success: false });
   }
 });
 
-/* ================= START ================= */
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log("🚀 Backend running on", PORT));
+/* =======================================================
+   START SERVER
+   ======================================================= */
+app.listen(process.env.PORT || 10000, () =>
+  console.log("🚀 Server running")
+);
