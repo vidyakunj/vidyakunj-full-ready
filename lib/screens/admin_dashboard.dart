@@ -15,13 +15,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
   String? selectedDiv;
   DateTime selectedDate = DateTime.now();
 
-  List<String> divisions = [];
-
-  int total = 0;
-  int present = 0;
-  int absent = 0;
+  Map<String, dynamic>? summary;
 
   final List<String> stdOptions = List.generate(12, (i) => "${i + 1}");
+  List<String> divisions = [];
 
   /* ================= LOAD DIVISIONS ================= */
   Future<void> loadDivisions() async {
@@ -34,15 +31,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
       setState(() {
-        divisions =
-            (data["divisions"] ?? []).map<String>((e) => e.toString()).toList();
-        selectedDiv = null;
+        divisions = List<String>.from(data["divisions"] ?? []);
       });
     }
   }
 
   /* ================= LOAD SUMMARY ================= */
-  Future<void> loadSummary() async {
+  Future<void> loadAttendanceSummary() async {
     if (selectedStd == null || selectedDiv == null) return;
 
     final dateStr =
@@ -57,11 +52,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
-
       setState(() {
-        total = data["summary"]["total"];
-        present = data["summary"]["present"];
-        absent = data["summary"]["absent"];
+        summary = data["summary"];
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -84,44 +76,43 @@ class _AdminDashboardState extends State<AdminDashboard> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            /* ================= STD ================= */
+            /* ===== STD ===== */
             DropdownButtonFormField<String>(
-              decoration: const InputDecoration(labelText: "Select STD"),
               value: selectedStd,
+              hint: const Text("Select STD"),
               items: stdOptions
-                  .map(
-                    (s) => DropdownMenuItem(value: s, child: Text(s)),
-                  )
+                  .map((e) =>
+                      DropdownMenuItem(value: e, child: Text(e)))
                   .toList(),
               onChanged: (v) {
                 setState(() {
                   selectedStd = v;
-                  divisions.clear();
                   selectedDiv = null;
+                  summary = null;
                 });
                 loadDivisions();
               },
             ),
-
             const SizedBox(height: 10),
 
-            /* ================= DIV ================= */
+            /* ===== DIV ===== */
             DropdownButtonFormField<String>(
-              decoration: const InputDecoration(labelText: "Select DIV"),
               value: selectedDiv,
+              hint: const Text("Select DIV"),
               items: divisions
-                  .map(
-                    (d) => DropdownMenuItem(value: d, child: Text(d)),
-                  )
+                  .map((e) =>
+                      DropdownMenuItem(value: e, child: Text(e)))
                   .toList(),
               onChanged: (v) {
-                setState(() => selectedDiv = v);
+                setState(() {
+                  selectedDiv = v;
+                  summary = null;
+                });
               },
             ),
+            const SizedBox(height: 20),
 
-            const SizedBox(height: 15),
-
-            /* ================= DATE ================= */
+            /* ===== DATE ===== */
             ElevatedButton(
               onPressed: () async {
                 final picked = await showDatePicker(
@@ -130,30 +121,31 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   firstDate: DateTime(2023),
                   lastDate: DateTime.now(),
                 );
-
                 if (picked != null) {
                   setState(() => selectedDate = picked);
-                  await loadSummary();
+                  await loadAttendanceSummary();
                 }
               },
               child: const Text("Select Date"),
             ),
-
             const SizedBox(height: 20),
 
-            /* ================= SUMMARY ================= */
-            if (selectedStd != null && selectedDiv != null)
-              Card(
-                child: ListTile(
-                  title: Text(
-                    "STD $selectedStd  |  DIV $selectedDiv",
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+            /* ===== SUMMARY ===== */
+            summary == null
+                ? const Text("No summary available.")
+                : Card(
+                    child: ListTile(
+                      title: Text(
+                        "STD ${summary!['std']} | DIV ${summary!['div']}",
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(
+                        "Total: ${summary!['total']}  |  "
+                        "Present: ${summary!['present']}  |  "
+                        "Absent: ${summary!['absent']}",
+                      ),
+                    ),
                   ),
-                  subtitle: Text(
-                    "Total: $total  |  Present: $present  |  Absent: $absent",
-                  ),
-                ),
-              ),
           ],
         ),
       ),
