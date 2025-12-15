@@ -13,16 +13,13 @@ class AdminDashboard extends StatefulWidget {
 class _AdminDashboardState extends State<AdminDashboard> {
   String? selectedStd;
   String? selectedDiv;
-  List<String> divisions = [];
-
   DateTime selectedDate = DateTime.now();
+
+  List<String> divisions = [];
 
   int total = 0;
   int present = 0;
   int absent = 0;
-
-  bool loading = false;
-  String message = "No summary available.";
 
   final List<String> stdOptions = List.generate(12, (i) => "${i + 1}");
 
@@ -37,31 +34,23 @@ class _AdminDashboardState extends State<AdminDashboard> {
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
       setState(() {
-        divisions = List<String>.from(data["divisions"] ?? []);
+        divisions =
+            (data["divisions"] ?? []).map<String>((e) => e.toString()).toList();
         selectedDiv = null;
       });
     }
   }
 
   /* ================= LOAD SUMMARY ================= */
-  Future<void> loadAttendanceSummary() async {
-    if (selectedStd == null || selectedDiv == null) {
-      setState(() {
-        message = "Please select STD and DIV";
-      });
-      return;
-    }
-
-    setState(() {
-      loading = true;
-      message = "";
-    });
+  Future<void> loadSummary() async {
+    if (selectedStd == null || selectedDiv == null) return;
 
     final dateStr =
         "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
 
     final uri = Uri.parse(
-      "$SERVER_URL/attendance/summary?date=$dateStr&std=$selectedStd&div=$selectedDiv",
+      "$SERVER_URL/attendance/summary"
+      "?date=$dateStr&std=$selectedStd&div=$selectedDiv",
     );
 
     final res = await http.get(uri);
@@ -69,28 +58,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
 
-      if (data["success"] == true) {
-        setState(() {
-          total = data["summary"]["total"];
-          present = data["summary"]["present"];
-          absent = data["summary"]["absent"];
-          loading = false;
-        });
-      } else {
-        setState(() {
-          message = "No summary available.";
-          loading = false;
-        });
-      }
-    } else {
       setState(() {
-        message = "Failed to load summary";
-        loading = false;
+        total = data["summary"]["total"];
+        present = data["summary"]["present"];
+        absent = data["summary"]["absent"];
       });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Failed to load summary")),
+      );
     }
   }
 
-  /* ================= UI ================= */
   @override
   Widget build(BuildContext context) {
     const navy = Color(0xFF110E38);
@@ -105,12 +84,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            /* ===== STD ===== */
+            /* ================= STD ================= */
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(labelText: "Select STD"),
               value: selectedStd,
               items: stdOptions
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                  .map(
+                    (s) => DropdownMenuItem(value: s, child: Text(s)),
+                  )
                   .toList(),
               onChanged: (v) {
                 setState(() {
@@ -124,12 +105,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
             const SizedBox(height: 10),
 
-            /* ===== DIV ===== */
+            /* ================= DIV ================= */
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(labelText: "Select DIV"),
               value: selectedDiv,
               items: divisions
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                  .map(
+                    (d) => DropdownMenuItem(value: d, child: Text(d)),
+                  )
                   .toList(),
               onChanged: (v) {
                 setState(() => selectedDiv = v);
@@ -138,18 +121,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
             const SizedBox(height: 15),
 
-            /* ===== DATE ===== */
+            /* ================= DATE ================= */
             ElevatedButton(
               onPressed: () async {
-                DateTime? picked = await showDatePicker(
+                final picked = await showDatePicker(
                   context: context,
                   initialDate: selectedDate,
                   firstDate: DateTime(2023),
                   lastDate: DateTime.now(),
                 );
+
                 if (picked != null) {
                   setState(() => selectedDate = picked);
-                  loadAttendanceSummary();
+                  await loadSummary();
                 }
               },
               child: const Text("Select Date"),
@@ -157,14 +141,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
             const SizedBox(height: 20),
 
-            /* ===== SUMMARY ===== */
-            if (loading)
-              const CircularProgressIndicator()
-            else if (message.isNotEmpty)
-              Text(message)
-            else
+            /* ================= SUMMARY ================= */
+            if (selectedStd != null && selectedDiv != null)
               Card(
-                color: Colors.white,
                 child: ListTile(
                   title: Text(
                     "STD $selectedStd  |  DIV $selectedDiv",
