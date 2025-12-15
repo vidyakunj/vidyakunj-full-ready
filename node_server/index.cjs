@@ -1,6 +1,6 @@
 /* =======================================================
    VIDYAKUNJ SMS + ATTENDANCE BACKEND
-   FINAL STABLE VERSION (DLT SAFE)
+   FINAL VERSION WITH SCHOOL SUMMARY
    ======================================================= */
 
 const compression = require("compression");
@@ -61,7 +61,7 @@ const Attendance = mongoose.model("attendance", new mongoose.Schema({
   roll: Number,
   date: Date,
   present: Boolean,
-}, { timestamps: true }));
+}));
 
 const AttendanceLock = mongoose.model("attendance_locks", new mongoose.Schema({
   std: String,
@@ -82,7 +82,7 @@ app.post("/login", (req, res) => {
 });
 
 /* =======================================================
-   DIV / STUDENTS
+   BASIC APIs
    ======================================================= */
 app.get("/divisions", async (req, res) => {
   const divisions = await Student.distinct("div", { std: req.query.std });
@@ -94,16 +94,13 @@ app.get("/students", async (req, res) => {
   res.json({ students });
 });
 
-/* =======================================================
-   LOCK CHECK
-   ======================================================= */
 app.get("/attendance/check-lock", async (req, res) => {
   const lock = await AttendanceLock.findOne(req.query);
   res.json({ locked: lock?.locked || [] });
 });
 
 /* =======================================================
-   SEND SMS (DLT APPROVED – DO NOT TOUCH)
+   SEND SMS (DLT SAFE – FINAL)
    ======================================================= */
 app.post("/send-sms", async (req, res) => {
   const { mobile, studentName } = req.body;
@@ -124,7 +121,7 @@ app.post("/send-sms", async (req, res) => {
 });
 
 /* =======================================================
-   ATTENDANCE (FINAL FIXED LOGIC)
+   ATTENDANCE (ABSENT ONLY STORED)
    ======================================================= */
 app.post("/attendance", async (req, res) => {
   try {
@@ -156,7 +153,6 @@ app.post("/attendance", async (req, res) => {
 
       toLock.push(e.roll);
 
-      // ✅ SMS CALL (DLT SAFE)
       await axios.get(process.env.GUPSHUP_URL, {
         params: {
           method: "SendMessage",
@@ -187,55 +183,62 @@ app.post("/attendance", async (req, res) => {
     res.status(500).json({ success: false });
   }
 });
+
 /* =======================================================
-   ADMIN ATTENDANCE SUMMARY (FINAL – CORRECT)
+   ADMIN SCHOOL SUMMARY (PRIMARY + SECONDARY)
    ======================================================= */
-app.get("/attendance/summary", async (req, res) => {
+app.get("/attendance/summary-school", async (req, res) => {
   try {
-    const { date, std, div } = req.query;
+    const { date } = req.query;
+    if (!date) return res.status(400).json({ success: false });
 
-    if (!date || !std || !div) {
-      return res.status(400).json({
-        success: false,
-        message: "date, std and div are required",
-      });
-    }
-
-    // Normalize date
     const parsedDate = new Date(date);
     parsedDate.setHours(0, 0, 0, 0);
-
     const nextDay = new Date(parsedDate);
     nextDay.setDate(parsedDate.getDate() + 1);
 
-    // 1️⃣ Total students in class
-    const totalStudents = await Student.countDocuments({ std, div });
+    const classes = await Student.aggregate([
+      { $group: { _id: { std: "$std", div: "$div" }, total: { $sum: 1 } } },
+      { $sort: { "_id.std": 1, "_id.div": 1 } }
+    ]);
 
-    // 2️⃣ Absent students (only these are stored)
-    const absentCount = await Attendance.countDocuments({
-      std,
-      div,
-      date: { $gte: parsedDate, $lt: nextDay },
-      present: false,
-    });
+    let primary = [];
+    let secondary = [];
+    let schoolTotal = { total: 0, present: 0, absent: 0 };
 
-    // 3️⃣ Present = Total − Absent
-    const presentCount = totalStudents - absentCount;
+    for (const c of classes) {
+      const std = c._id.std;
+      const div = c._id.div;
+      const total = c.total;
 
-    return res.json({
+      const absent = await Attendance.countDocuments({
+        std, div,
+        date: { $gte: parsedDate, $lt: nextDay },
+        present: false,
+      });
+
+      const present = total - absent;
+
+      const row = { std, div, total, present, absent };
+
+      schoolTotal.total += total;
+      schoolTotal.present += present;
+      schoolTotal.absent += absent;
+
+      if (parseInt(std) <= 8) primary.push(row);
+      else secondary.push(row);
+    }
+
+    res.json({
       success: true,
-      summary: {
-        date,
-        std,
-        div,
-        total: totalStudents,
-        present: presentCount,
-        absent: absentCount,
-      },
+      date,
+      primary,
+      secondary,
+      schoolTotal,
     });
   } catch (err) {
-    console.error("❌ Summary error:", err);
-    res.status(500).json({ success: false, error: err.message });
+    console.error(err);
+    res.status(500).json({ success: false });
   }
 });
 
