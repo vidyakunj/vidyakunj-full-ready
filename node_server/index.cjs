@@ -188,43 +188,49 @@ app.post("/attendance", async (req, res) => {
   }
 });
 /* =======================================================
-   ADMIN ATTENDANCE SUMMARY (READ ONLY)
+   ADMIN ATTENDANCE SUMMARY (FINAL – CORRECT)
    ======================================================= */
 app.get("/attendance/summary", async (req, res) => {
   try {
-    const { date } = req.query;
+    const { date, std, div } = req.query;
 
-    if (!date) {
-      return res.status(400).json({ success: false, message: "Date required" });
+    if (!date || !std || !div) {
+      return res.status(400).json({
+        success: false,
+        message: "date, std and div are required",
+      });
     }
 
+    // Normalize date
     const parsedDate = new Date(date);
     parsedDate.setHours(0, 0, 0, 0);
 
     const nextDay = new Date(parsedDate);
     nextDay.setDate(parsedDate.getDate() + 1);
 
-    const total = await Attendance.countDocuments({
-      date: { $gte: parsedDate, $lt: nextDay },
-    });
+    // 1️⃣ Total students in class
+    const totalStudents = await Student.countDocuments({ std, div });
 
-    const present = await Attendance.countDocuments({
-      date: { $gte: parsedDate, $lt: nextDay },
-      present: true,
-    });
-
-    const absent = await Attendance.countDocuments({
+    // 2️⃣ Absent students (only these are stored)
+    const absentCount = await Attendance.countDocuments({
+      std,
+      div,
       date: { $gte: parsedDate, $lt: nextDay },
       present: false,
     });
 
-    res.json({
+    // 3️⃣ Present = Total − Absent
+    const presentCount = totalStudents - absentCount;
+
+    return res.json({
       success: true,
       summary: {
         date,
-        total,
-        present,
-        absent,
+        std,
+        div,
+        total: totalStudents,
+        present: presentCount,
+        absent: absentCount,
       },
     });
   } catch (err) {
