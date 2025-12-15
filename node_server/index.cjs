@@ -187,6 +187,51 @@ app.post("/attendance", async (req, res) => {
     res.status(500).json({ success: false });
   }
 });
+/* =======================================================
+   ADMIN ATTENDANCE SUMMARY (READ ONLY)
+   ======================================================= */
+app.get("/attendance/summary", async (req, res) => {
+  try {
+    const { date } = req.query;
+
+    if (!date) {
+      return res.status(400).json({ success: false, message: "Date required" });
+    }
+
+    const parsedDate = new Date(date);
+    parsedDate.setHours(0, 0, 0, 0);
+
+    const nextDay = new Date(parsedDate);
+    nextDay.setDate(parsedDate.getDate() + 1);
+
+    const total = await Attendance.countDocuments({
+      date: { $gte: parsedDate, $lt: nextDay },
+    });
+
+    const present = await Attendance.countDocuments({
+      date: { $gte: parsedDate, $lt: nextDay },
+      present: true,
+    });
+
+    const absent = await Attendance.countDocuments({
+      date: { $gte: parsedDate, $lt: nextDay },
+      present: false,
+    });
+
+    res.json({
+      success: true,
+      summary: {
+        date,
+        total,
+        present,
+        absent,
+      },
+    });
+  } catch (err) {
+    console.error("❌ Summary error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 /* =======================================================
    START SERVER
