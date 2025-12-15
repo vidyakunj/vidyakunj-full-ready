@@ -11,118 +11,71 @@ class AdminDashboard extends StatefulWidget {
 }
 
 class _AdminDashboardState extends State<AdminDashboard> {
+  String? selectedStd;
+  String? selectedDiv;
   DateTime selectedDate = DateTime.now();
 
-  List<dynamic> classWiseSummary = [];
+  List<String> divisions = [];
 
-  int primaryTotal = 0;
-  int primaryPresent = 0;
-  int primaryAbsent = 0;
+  int total = 0;
+  int present = 0;
+  int absent = 0;
 
-  int secondaryTotal = 0;
-  int secondaryPresent = 0;
-  int secondaryAbsent = 0;
+  final List<String> stdOptions = List.generate(12, (i) => "${i + 1}");
 
-  int schoolTotal = 0;
-  int schoolPresent = 0;
-  int schoolAbsent = 0;
+  /* ================================
+     LOAD DIVISIONS
+     ================================ */
+  Future<void> loadDivisions() async {
+    if (selectedStd == null) return;
 
-  @override
-  void initState() {
-    super.initState();
-    loadSummary();
+    final res = await http.get(
+      Uri.parse("$SERVER_URL/divisions?std=$selectedStd"),
+    );
+
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      setState(() {
+        divisions = List<String>.from(data["divisions"] ?? []);
+      });
+    }
   }
 
-  String get dateStr =>
-      "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
-
+  /* ================================
+     LOAD SUMMARY (ADMIN)
+     ================================ */
   Future<void> loadSummary() async {
-    final uri = Uri.parse("$SERVER_URL/attendance-summary-all?date=$dateStr");
+    if (selectedStd == null || selectedDiv == null) return;
+
+    final dateStr =
+        "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
+
+    final uri = Uri.parse(
+      "$SERVER_URL/attendance/summary?date=$dateStr&std=$selectedStd&div=$selectedDiv",
+    );
+
     final res = await http.get(uri);
 
-    if (res.statusCode != 200) {
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+
+      if (data["success"] == true) {
+        setState(() {
+          total = data["summary"]["total"];
+          present = data["summary"]["present"];
+          absent = data["summary"]["absent"];
+        });
+      }
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Failed to load summary")),
       );
-      return;
     }
-
-    final data = jsonDecode(res.body);
-    final List<dynamic> rows = data["data"] ?? [];
-
-    int pT = 0, pP = 0, pA = 0;
-    int sT = 0, sP = 0, sA = 0;
-
-    for (var r in rows) {
-      int std = int.tryParse(r["std"].toString()) ?? 0;
-      int total = r["total"];
-      int present = r["present"];
-      int absent = r["absent"];
-
-      if (std >= 1 && std <= 8) {
-        pT += total;
-        pP += present;
-        pA += absent;
-      } else if (std >= 9 && std <= 12) {
-        sT += total;
-        sP += present;
-        sA += absent;
-      }
-    }
-
-    setState(() {
-      classWiseSummary = rows;
-      primaryTotal = pT;
-      primaryPresent = pP;
-      primaryAbsent = pA;
-      secondaryTotal = sT;
-      secondaryPresent = sP;
-      secondaryAbsent = sA;
-      schoolTotal = pT + sT;
-      schoolPresent = pP + sP;
-      schoolAbsent = pA + sA;
-    });
   }
 
-  Widget summaryCard(String title, int total, int present, int absent) {
-    return Card(
-      color: Colors.yellow[100],
-      child: ListTile(
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(
-          "Total: $total  |  Present: $present  |  Absent: $absent",
-        ),
-      ),
-    );
-  }
-
-  Widget classList(bool primary) {
-    final filtered = classWiseSummary.where((r) {
-      int std = int.tryParse(r["std"].toString()) ?? 0;
-      return primary ? std <= 8 : std >= 9;
-    }).toList();
-
-    filtered.sort((a, b) {
-      int s1 = int.parse(a["std"]);
-      int s2 = int.parse(b["std"]);
-      if (s1 != s2) return s1.compareTo(s2);
-      return a["div"].compareTo(b["div"]);
-    });
-
-    return Column(
-      children: filtered.map((e) {
-        return Card(
-          child: ListTile(
-            title: Text("STD ${e['std']} | DIV ${e['div']}"),
-            subtitle: Text(
-              "Total: ${e['total']}  |  Present: ${e['present']}  |  Absent: ${e['absent']}",
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
+  /* ================================
+     UI
+     ================================ */
   @override
   Widget build(BuildContext context) {
     const navy = Color(0xFF110E38);
@@ -131,60 +84,76 @@ class _AdminDashboardState extends State<AdminDashboard> {
       backgroundColor: const Color(0xffeef3ff),
       appBar: AppBar(
         backgroundColor: navy,
-        title: const Text("Admin Attendance Summary"),
+        title: const Text("Admin Dashboard"),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ElevatedButton(
-                onPressed: () async {
-                  DateTime? picked = await showDatePicker(
-                    context: context,
-                    initialDate: selectedDate,
-                    firstDate: DateTime(2023),
-                    lastDate: DateTime.now(),
-                  );
-                  if (picked != null) {
-                    setState(() => selectedDate = picked);
-                    loadSummary();
-                  }
-                },
-                child: Text("Select Date ($dateStr)"),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            // STD
+            DropdownButtonFormField<String>(
+              decoration: const InputDecoration(labelText: "Select STD"),
+              value: selectedStd,
+              items: stdOptions
+                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                  .toList(),
+              onChanged: (v) {
+                setState(() {
+                  selectedStd = v;
+                  selectedDiv = null;
+                  divisions.clear();
+                });
+                loadDivisions();
+              },
+            ),
+
+            const SizedBox(height: 10),
+
+            // DIV
+            DropdownButtonFormField<String>(
+              decoration: const InputDecoration(labelText: "Select DIV"),
+              value: selectedDiv,
+              items: divisions
+                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                  .toList(),
+              onChanged: (v) {
+                setState(() => selectedDiv = v);
+              },
+            ),
+
+            const SizedBox(height: 15),
+
+            // DATE
+            ElevatedButton(
+              onPressed: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: selectedDate,
+                  firstDate: DateTime(2023),
+                  lastDate: DateTime.now(),
+                );
+
+                if (picked != null) {
+                  setState(() => selectedDate = picked);
+                  loadSummary();
+                }
+              },
+              child: const Text("Select Date"),
+            ),
+
+            const SizedBox(height: 20),
+
+            // SUMMARY CARD
+            if (selectedStd != null && selectedDiv != null)
+              Card(
+                child: ListTile(
+                  title: Text("STD $selectedStd | DIV $selectedDiv"),
+                  subtitle: Text(
+                    "Total: $total  |  Present: $present  |  Absent: $absent",
+                  ),
+                ),
               ),
-
-              const SizedBox(height: 16),
-
-              summaryCard(
-                "PRIMARY SECTION (STD 1–8)",
-                primaryTotal,
-                primaryPresent,
-                primaryAbsent,
-              ),
-              classList(true),
-
-              const SizedBox(height: 16),
-
-              summaryCard(
-                "SECONDARY & HIGH SECONDARY (STD 9–12)",
-                secondaryTotal,
-                secondaryPresent,
-                secondaryAbsent,
-              ),
-              classList(false),
-
-              const SizedBox(height: 16),
-
-              summaryCard(
-                "WHOLE SCHOOL SUMMARY",
-                schoolTotal,
-                schoolPresent,
-                schoolAbsent,
-              ),
-            ],
-          ),
+          ],
         ),
       ),
     );
