@@ -11,76 +11,57 @@ class AdminDashboard extends StatefulWidget {
 }
 
 class _AdminDashboardState extends State<AdminDashboard> {
-  String? selectedStd;
-  String? selectedDiv;
+  String selectedStd = "9";
+  String selectedDiv = "A";
   DateTime selectedDate = DateTime.now();
-
-  List<String> divisions = [];
 
   int total = 0;
   int present = 0;
   int absent = 0;
 
   bool loading = false;
+  bool hasData = false;
 
-  final List<String> stdOptions =
+  final List<String> stdList =
       List.generate(12, (i) => (i + 1).toString());
+  final List<String> divList = ["A", "B", "C", "D"];
 
-  /* ===============================
-     LOAD DIVISIONS
-     =============================== */
-  Future<void> loadDivisions() async {
-    if (selectedStd == null) return;
-
-    final uri = Uri.parse(
-        "$SERVER_URL/divisions?std=$selectedStd");
-
-    final res = await http.get(uri);
-
-    if (res.statusCode == 200) {
-      final data = jsonDecode(res.body);
-      setState(() {
-        divisions = List<String>.from(data["divisions"] ?? []);
-        selectedDiv = null;
-      });
-    }
-  }
-
-  /* ===============================
-     LOAD SUMMARY (SINGLE CLASS)
-     =============================== */
   Future<void> loadSummary() async {
-    if (selectedStd == null || selectedDiv == null) return;
-
     setState(() {
       loading = true;
-      total = present = absent = 0;
+      hasData = false;
     });
 
     final dateStr =
         "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
 
-    final uri = Uri.parse(
-      "$SERVER_URL/attendance/summary"
-      "?date=$dateStr&std=$selectedStd&div=$selectedDiv",
-    );
+    final url =
+        "$SERVER_URL/attendance/summary?date=$dateStr&std=$selectedStd&div=$selectedDiv";
 
-    final res = await http.get(uri);
+    try {
+      final res = await http.get(Uri.parse(url));
 
-    if (res.statusCode == 200) {
-      final data = jsonDecode(res.body);
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
 
-      if (data["success"] == true) {
-        final s = data["summary"];
-        setState(() {
-          total = (s["total"] ?? 0) as int;
-          present = (s["present"] ?? 0) as int;
-          absent = (s["absent"] ?? 0) as int;
-        });
+        if (data["success"] == true && data["summary"] != null) {
+          final s = data["summary"];
+
+          setState(() {
+            total = (s["total"] ?? 0).toInt();
+            present = (s["present"] ?? 0).toInt();
+            absent = (s["absent"] ?? 0).toInt();
+            hasData = true;
+          });
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Failed to load summary")),
+        );
       }
-    } else {
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Failed to load summary")),
+        const SnackBar(content: Text("Server error")),
       );
     }
 
@@ -100,44 +81,32 @@ class _AdminDashboardState extends State<AdminDashboard> {
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /* STD */
+            // STD
             DropdownButtonFormField<String>(
               value: selectedStd,
               decoration: const InputDecoration(labelText: "Select STD"),
-              items: stdOptions
+              items: stdList
                   .map((e) =>
                       DropdownMenuItem(value: e, child: Text(e)))
                   .toList(),
-              onChanged: (v) {
-                setState(() {
-                  selectedStd = v;
-                  divisions = [];
-                  selectedDiv = null;
-                });
-                loadDivisions();
-              },
+              onChanged: (v) => setState(() => selectedStd = v!),
             ),
+            const SizedBox(height: 10),
 
-            const SizedBox(height: 12),
-
-            /* DIV */
+            // DIV
             DropdownButtonFormField<String>(
               value: selectedDiv,
               decoration: const InputDecoration(labelText: "Select DIV"),
-              items: divisions
+              items: divList
                   .map((e) =>
                       DropdownMenuItem(value: e, child: Text(e)))
                   .toList(),
-              onChanged: (v) {
-                setState(() => selectedDiv = v);
-              },
+              onChanged: (v) => setState(() => selectedDiv = v!),
             ),
+            const SizedBox(height: 15),
 
-            const SizedBox(height: 12),
-
-            /* DATE */
+            // DATE
             ElevatedButton(
               onPressed: () async {
                 final picked = await showDatePicker(
@@ -151,40 +120,38 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 }
               },
               child: Text(
-                "Select Date (${selectedDate.toString().split(' ')[0]})",
+                "Select Date (${selectedDate.toString().split(" ")[0]})",
               ),
             ),
+            const SizedBox(height: 10),
 
-            const SizedBox(height: 12),
-
-            /* LOAD */
             ElevatedButton(
               onPressed: loadSummary,
               child: const Text("Load Summary"),
             ),
-
             const SizedBox(height: 20),
 
-            if (loading)
-              const Center(child: CircularProgressIndicator())
-            else if (selectedStd != null &&
-                selectedDiv != null &&
-                total > 0)
+            if (loading) const CircularProgressIndicator(),
+
+            if (!loading && hasData)
               Card(
                 color: Colors.yellow[100],
                 child: ListTile(
                   title: Text(
-                    "STD $selectedStd | DIV $selectedDiv",
-                    style:
-                        const TextStyle(fontWeight: FontWeight.bold),
+                    "STD $selectedStd  |  DIV $selectedDiv",
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(
-                    "TOTAL: $total | PRESENT: $present | ABSENT: $absent",
+                    "Total: $total   |   Present: $present   |   Absent: $absent",
                   ),
                 ),
-              )
-            else
-              const Text("No data available"),
+              ),
+
+            if (!loading && !hasData)
+              const Padding(
+                padding: EdgeInsets.only(top: 20),
+                child: Text("No data available"),
+              ),
           ],
         ),
       ),
