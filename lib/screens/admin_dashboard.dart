@@ -11,9 +11,11 @@ class AdminDashboard extends StatefulWidget {
 }
 
 class _AdminDashboardState extends State<AdminDashboard> {
-  String selectedStd = "9";
-  String selectedDiv = "A";
+  String? selectedStd;
+  String? selectedDiv;
   DateTime selectedDate = DateTime.now();
+
+  List<String> divisions = [];
 
   int total = 0;
   int present = 0;
@@ -22,11 +24,40 @@ class _AdminDashboardState extends State<AdminDashboard> {
   bool loading = false;
   bool hasData = false;
 
-  final List<String> stdList =
+  final List<String> stdOptions =
       List.generate(12, (i) => (i + 1).toString());
-  final List<String> divList = ["A", "B", "C", "D"];
 
+  /* ==============================
+     LOAD DIVISIONS
+     ============================== */
+  Future<void> loadDivisions() async {
+    if (selectedStd == null) return;
+
+    final res = await http.get(
+      Uri.parse("$SERVER_URL/divisions?std=$selectedStd"),
+    );
+
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      setState(() {
+        divisions =
+            (data["divisions"] as List).map((e) => e.toString()).toList();
+        selectedDiv = null;
+      });
+    }
+  }
+
+  /* ==============================
+     LOAD SUMMARY (SINGLE CLASS)
+     ============================== */
   Future<void> loadSummary() async {
+    if (selectedStd == null || selectedDiv == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select STD and DIV")),
+      );
+      return;
+    }
+
     setState(() {
       loading = true;
       hasData = false;
@@ -38,30 +69,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final url =
         "$SERVER_URL/attendance/summary?date=$dateStr&std=$selectedStd&div=$selectedDiv";
 
-    try {
-      final res = await http.get(Uri.parse(url));
+    final res = await http.get(Uri.parse(url));
 
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
 
-        if (data["success"] == true && data["summary"] != null) {
-          final s = data["summary"];
-
-          setState(() {
-            total = (s["total"] ?? 0).toInt();
-            present = (s["present"] ?? 0).toInt();
-            absent = (s["absent"] ?? 0).toInt();
-            hasData = true;
-          });
-        }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Failed to load summary")),
-        );
-      }
-    } catch (e) {
+      setState(() {
+        total = data["summary"]["total"] ?? 0;
+        present = data["summary"]["present"] ?? 0;
+        absent = data["summary"]["absent"] ?? 0;
+        hasData = true;
+      });
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Server error")),
+        const SnackBar(content: Text("Failed to load summary")),
       );
     }
 
@@ -84,27 +105,34 @@ class _AdminDashboardState extends State<AdminDashboard> {
           children: [
             // STD
             DropdownButtonFormField<String>(
-              value: selectedStd,
               decoration: const InputDecoration(labelText: "Select STD"),
-              items: stdList
-                  .map((e) =>
-                      DropdownMenuItem(value: e, child: Text(e)))
+              value: selectedStd,
+              items: stdOptions
+                  .map((s) =>
+                      DropdownMenuItem(value: s, child: Text(s)))
                   .toList(),
-              onChanged: (v) => setState(() => selectedStd = v!),
+              onChanged: (v) {
+                setState(() {
+                  selectedStd = v;
+                  divisions.clear();
+                  selectedDiv = null;
+                });
+                loadDivisions();
+              },
             ),
             const SizedBox(height: 10),
 
             // DIV
             DropdownButtonFormField<String>(
-              value: selectedDiv,
               decoration: const InputDecoration(labelText: "Select DIV"),
-              items: divList
-                  .map((e) =>
-                      DropdownMenuItem(value: e, child: Text(e)))
+              value: selectedDiv,
+              items: divisions
+                  .map((d) =>
+                      DropdownMenuItem(value: d, child: Text(d)))
                   .toList(),
-              onChanged: (v) => setState(() => selectedDiv = v!),
+              onChanged: (v) => setState(() => selectedDiv = v),
             ),
-            const SizedBox(height: 15),
+            const SizedBox(height: 10),
 
             // DATE
             ElevatedButton(
@@ -120,15 +148,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 }
               },
               child: Text(
-                "Select Date (${selectedDate.toString().split(" ")[0]})",
+                "Select Date (${selectedDate.toIso8601String().split("T")[0]})",
               ),
             ),
+
             const SizedBox(height: 10),
 
             ElevatedButton(
               onPressed: loadSummary,
               child: const Text("Load Summary"),
             ),
+
             const SizedBox(height: 20),
 
             if (loading) const CircularProgressIndicator(),
@@ -138,20 +168,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 color: Colors.yellow[100],
                 child: ListTile(
                   title: Text(
-                    "STD $selectedStd  |  DIV $selectedDiv",
+                    "STD $selectedStd | DIV $selectedDiv",
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(
-                    "Total: $total   |   Present: $present   |   Absent: $absent",
+                    "Total: $total | Present: $present | Absent: $absent",
                   ),
                 ),
               ),
 
             if (!loading && !hasData)
-              const Padding(
-                padding: EdgeInsets.only(top: 20),
-                child: Text("No data available"),
-              ),
+              const Text("No data available"),
           ],
         ),
       ),
