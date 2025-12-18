@@ -24,35 +24,38 @@ class _AdminDashboardState extends State<AdminDashboard> {
   bool loading = false;
 
   final List<String> stdOptions =
-      List.generate(12, (index) => (index + 1).toString());
+      List.generate(12, (i) => (i + 1).toString());
 
-  /* =========================
+  /* ===============================
      LOAD DIVISIONS
-     ========================= */
+     =============================== */
   Future<void> loadDivisions() async {
     if (selectedStd == null) return;
 
-    final res = await http.get(
-      Uri.parse("$SERVER_URL/divisions?std=$selectedStd"),
-    );
+    final uri = Uri.parse(
+        "$SERVER_URL/divisions?std=$selectedStd");
+
+    final res = await http.get(uri);
 
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
       setState(() {
-        divisions =
-            (data["divisions"] ?? []).map<String>((e) => e.toString()).toList();
+        divisions = List<String>.from(data["divisions"] ?? []);
         selectedDiv = null;
       });
     }
   }
 
-  /* =========================
+  /* ===============================
      LOAD SUMMARY (SINGLE CLASS)
-     ========================= */
+     =============================== */
   Future<void> loadSummary() async {
     if (selectedStd == null || selectedDiv == null) return;
 
-    setState(() => loading = true);
+    setState(() {
+      loading = true;
+      total = present = absent = 0;
+    });
 
     final dateStr =
         "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
@@ -66,13 +69,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
-      final summary = data["summary"];
 
-      setState(() {
-        total = (summary["total"] ?? 0) as int;
-        present = (summary["present"] ?? 0) as int;
-        absent = (summary["absent"] ?? 0) as int;
-      });
+      if (data["success"] == true) {
+        final s = data["summary"];
+        setState(() {
+          total = (s["total"] ?? 0) as int;
+          present = (s["present"] ?? 0) as int;
+          absent = (s["absent"] ?? 0) as int;
+        });
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Failed to load summary")),
@@ -82,9 +87,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     setState(() => loading = false);
   }
 
-  /* =========================
-     UI
-     ========================= */
   @override
   Widget build(BuildContext context) {
     const navy = Color(0xFF110E38);
@@ -100,19 +102,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// STD SELECT
+            /* STD */
             DropdownButtonFormField<String>(
               value: selectedStd,
-              hint: const Text("Select STD"),
+              decoration: const InputDecoration(labelText: "Select STD"),
               items: stdOptions
-                  .map(
-                    (e) => DropdownMenuItem(value: e, child: Text(e)),
-                  )
+                  .map((e) =>
+                      DropdownMenuItem(value: e, child: Text(e)))
                   .toList(),
               onChanged: (v) {
                 setState(() {
                   selectedStd = v;
-                  divisions.clear();
+                  divisions = [];
                   selectedDiv = null;
                 });
                 loadDivisions();
@@ -121,14 +122,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
             const SizedBox(height: 12),
 
-            /// DIV SELECT
+            /* DIV */
             DropdownButtonFormField<String>(
               value: selectedDiv,
-              hint: const Text("Select DIV"),
+              decoration: const InputDecoration(labelText: "Select DIV"),
               items: divisions
-                  .map(
-                    (e) => DropdownMenuItem(value: e, child: Text(e)),
-                  )
+                  .map((e) =>
+                      DropdownMenuItem(value: e, child: Text(e)))
                   .toList(),
               onChanged: (v) {
                 setState(() => selectedDiv = v);
@@ -137,7 +137,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
             const SizedBox(height: 12),
 
-            /// DATE PICKER
+            /* DATE */
             ElevatedButton(
               onPressed: () async {
                 final picked = await showDatePicker(
@@ -157,7 +157,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
             const SizedBox(height: 12),
 
-            /// LOAD BUTTON
+            /* LOAD */
             ElevatedButton(
               onPressed: loadSummary,
               child: const Text("Load Summary"),
@@ -165,24 +165,26 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
             const SizedBox(height: 20),
 
-            /// RESULT
             if (loading)
               const Center(child: CircularProgressIndicator())
-            else if (total == 0)
-              const Text("No data available")
-            else
+            else if (selectedStd != null &&
+                selectedDiv != null &&
+                total > 0)
               Card(
                 color: Colors.yellow[100],
                 child: ListTile(
                   title: Text(
                     "STD $selectedStd | DIV $selectedDiv",
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style:
+                        const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(
-                    "Total: $total  |  Present: $present  |  Absent: $absent",
+                    "TOTAL: $total | PRESENT: $present | ABSENT: $absent",
                   ),
                 ),
-              ),
+              )
+            else
+              const Text("No data available"),
           ],
         ),
       ),
