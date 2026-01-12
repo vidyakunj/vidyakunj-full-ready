@@ -1,6 +1,6 @@
 /* =======================================================
    VIDYAKUNJ SMS + ATTENDANCE BACKEND
-   FINAL VERSION WITH SCHOOL SUMMARY
+   FINAL – STABLE – PRODUCTION READY
    ======================================================= */
 
 const compression = require("compression");
@@ -34,6 +34,13 @@ app.use(cors({
 
 app.use(bodyParser.json());
 app.use(compression());
+
+/* =======================================================
+   HEALTH CHECK (IMPORTANT)
+   ======================================================= */
+app.get("/", (req, res) => {
+  res.send("Vidyakunj Backend Running");
+});
 
 /* =======================================================
    MONGO CONNECTION
@@ -100,7 +107,7 @@ app.get("/attendance/check-lock", async (req, res) => {
 });
 
 /* =======================================================
-   SEND SMS (DLT SAFE – FINAL)
+   SEND SMS (DLT SAFE – DO NOT MODIFY)
    ======================================================= */
 app.post("/send-sms", async (req, res) => {
   const { mobile, studentName } = req.body;
@@ -145,7 +152,8 @@ app.post("/attendance", async (req, res) => {
 
       toSave.push({
         studentId: e.studentId,
-        std, div,
+        std,
+        div,
         roll: e.roll,
         date: parsedDate,
         present: false,
@@ -185,11 +193,11 @@ app.post("/attendance", async (req, res) => {
 });
 
 /* =======================================================
-   ADMIN SCHOOL SUMMARY (PRIMARY + SECONDARY)
+   ADMIN SUMMARY (SCHOOL + SINGLE CLASS)
    ======================================================= */
 app.get("/attendance/summary-school", async (req, res) => {
   try {
-    const {date, std, div } = req.query;
+    const { date, std, div } = req.query;
     if (!date) return res.status(400).json({ success: false });
 
     const parsedDate = new Date(date);
@@ -198,40 +206,39 @@ app.get("/attendance/summary-school", async (req, res) => {
     nextDay.setDate(parsedDate.getDate() + 1);
 
     const match = {};
-   if (std) match.std = String(std);
-   if (div) match.div = div;
+    if (std) match.std = String(std);
+    if (div) match.div = div;
 
-   const classes = await Student.aggregate([
-     { $match: match },
-     { $group: { _id: { std: "$std", div: "$div" }, total: { $sum: 1 } } },
-     { $sort: { "_id.std": 1, "_id.div": 1 } }
-]);
-
+    const classes = await Student.aggregate([
+      { $match: match },
+      { $group: { _id: { std: "$std", div: "$div" }, total: { $sum: 1 } } },
+      { $sort: { "_id.std": 1, "_id.div": 1 } }
+    ]);
 
     let primary = [];
     let secondary = [];
     let schoolTotal = { total: 0, present: 0, absent: 0 };
 
     for (const c of classes) {
-      const std = c._id.std;
-      const div = c._id.div;
+      const cStd = c._id.std;
+      const cDiv = c._id.div;
       const total = c.total;
 
       const absent = await Attendance.countDocuments({
-        std, div,
+        std: cStd,
+        div: cDiv,
         date: { $gte: parsedDate, $lt: nextDay },
         present: false,
       });
 
       const present = total - absent;
-
-      const row = { std, div, total, present, absent };
+      const row = { std: cStd, div: cDiv, total, present, absent };
 
       schoolTotal.total += total;
       schoolTotal.present += present;
       schoolTotal.absent += absent;
 
-      if (parseInt(std) <= 8) primary.push(row);
+      if (parseInt(cStd) <= 8) primary.push(row);
       else secondary.push(row);
     }
 
@@ -249,8 +256,16 @@ app.get("/attendance/summary-school", async (req, res) => {
 });
 
 /* =======================================================
+   ALIAS FOR OLD FRONTEND URL (CRITICAL)
+   ======================================================= */
+app.get("/attendance/summary", (req, res) => {
+  req.url = "/attendance/summary-school";
+  app._router.handle(req, res);
+});
+
+/* =======================================================
    START SERVER
    ======================================================= */
 app.listen(process.env.PORT || 10000, () =>
-  console.log("🚀 Server running")
+  console.log("🚀 Vidyakunj Backend Running")
 );
