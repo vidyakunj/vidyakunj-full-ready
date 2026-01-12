@@ -1,6 +1,6 @@
 /* =======================================================
    VIDYAKUNJ SMS + ATTENDANCE BACKEND
-   FINAL – STABLE – PRODUCTION READY
+   FINAL – LOOP-FREE – PRODUCTION SAFE
    ======================================================= */
 
 const compression = require("compression");
@@ -36,7 +36,7 @@ app.use(bodyParser.json());
 app.use(compression());
 
 /* =======================================================
-   HEALTH CHECK (IMPORTANT)
+   HEALTH CHECK
    ======================================================= */
 app.get("/", (req, res) => {
   res.send("Vidyakunj Backend Running");
@@ -107,7 +107,7 @@ app.get("/attendance/check-lock", async (req, res) => {
 });
 
 /* =======================================================
-   SEND SMS (DLT SAFE – DO NOT MODIFY)
+   SEND SMS (DLT SAFE – DO NOT TOUCH)
    ======================================================= */
 app.post("/send-sms", async (req, res) => {
   const { mobile, studentName } = req.body;
@@ -193,9 +193,9 @@ app.post("/attendance", async (req, res) => {
 });
 
 /* =======================================================
-   ADMIN SUMMARY (SCHOOL + SINGLE CLASS)
+   SHARED SUMMARY HANDLER (IMPORTANT)
    ======================================================= */
-app.get("/attendance/summary-school", async (req, res) => {
+async function handleAttendanceSummary(req, res) {
   try {
     const { date, std, div } = req.query;
     if (!date) return res.status(400).json({ success: false });
@@ -253,15 +253,13 @@ app.get("/attendance/summary-school", async (req, res) => {
     console.error(err);
     res.status(500).json({ success: false });
   }
-});
+}
 
 /* =======================================================
-   ALIAS FOR OLD FRONTEND URL (CRITICAL)
+   SUMMARY ROUTES (NO LOOP)
    ======================================================= */
-app.get("/attendance/summary", (req, res) => {
-  req.url = "/attendance/summary-school";
-  app._router.handle(req, res);
-});
+app.get("/attendance/summary-school", handleAttendanceSummary);
+app.get("/attendance/summary", handleAttendanceSummary);
 
 /* =======================================================
    START SERVER
