@@ -189,7 +189,7 @@ app.post("/attendance", async (req, res) => {
    ======================================================= */
 app.get("/attendance/summary-school", async (req, res) => {
   try {
-    const { date } = req.query;
+    const {date, std, div } = req.query;
     if (!date) return res.status(400).json({ success: false });
 
     const parsedDate = new Date(date);
@@ -197,10 +197,16 @@ app.get("/attendance/summary-school", async (req, res) => {
     const nextDay = new Date(parsedDate);
     nextDay.setDate(parsedDate.getDate() + 1);
 
-    const classes = await Student.aggregate([
-      { $group: { _id: { std: "$std", div: "$div" }, total: { $sum: 1 } } },
-      { $sort: { "_id.std": 1, "_id.div": 1 } }
-    ]);
+    const match = {};
+   if (std) match.std = String(std);
+   if (div) match.div = div;
+
+   const classes = await Student.aggregate([
+     { $match: match },
+     { $group: { _id: { std: "$std", div: "$div" }, total: { $sum: 1 } } },
+     { $sort: { "_id.std": 1, "_id.div": 1 } }
+]);
+
 
     let primary = [];
     let secondary = [];
