@@ -1,15 +1,21 @@
 // ==========================
 // Vidyakunj Server Config
 // ==========================
+//
+// IMPORTANT:
+// - AUTH & SMS use SMS server
+// - ATTENDANCE & SUMMARY use Backend server
+// - Do NOT add "/" at end of URLs
+//
 
-// 🔴 CHANGE THIS TO YOUR SERVER URL IF NEEDED
-// Do NOT put "/" at the end.
-const String SERVER_URL = "https://vidyakunj-sms-server.onrender.com";
-//const String SERVER_URL = "https://vidyakunj-backend.onrender.com";
-// You can switch servers easily if needed:
-// const String SERVER_URL = "https://vidyakunj-server.onrender.com";
-// const String SERVER_URL = "http://localhost:3000";
+/// 🔐 AUTH + SMS SERVER
+const String AUTH_SERVER_URL =
+    "https://vidyakunj-sms-server.onrender.com";
 
+/// 📊 ATTENDANCE + SUMMARY SERVER
+const String DATA_SERVER_URL =
+    "https://vidyakunj-backend.onrender.com";
 
-
-
+/// 🧪 LOCAL BACKEND (optional)
+// const String AUTH_SERVER_URL = "http://localhost:3000";
+// const String DATA_SERVER_URL = "http://localhost:10000";

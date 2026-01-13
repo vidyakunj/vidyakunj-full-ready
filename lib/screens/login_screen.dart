@@ -35,11 +35,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('$SERVER_URL/login'),
+        /// 🔐 LOGIN MUST USE AUTH SERVER
+        Uri.parse('$AUTH_SERVER_URL/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'username': username,
           'password': password,
+          'role': role,
         }),
       );
 
@@ -135,7 +137,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         fillColor: navy,
                         selectedColor: Colors.white,
                         color: navy,
-                        constraints: const BoxConstraints(minHeight: 40.0, minWidth: 100.0),
+                        constraints: const BoxConstraints(
+                          minHeight: 40.0,
+                          minWidth: 100.0,
+                        ),
                         isSelected: _isSelected,
                         onPressed: (int index) {
                           setState(() {
@@ -184,15 +189,16 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         child: const Text(
                           'LOGIN',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 12),
                       Center(
                         child: TextButton(
-                          onPressed: () {
-                            // Add forgot password action
-                          },
+                          onPressed: () {},
                           child: const Text(
                             'Forgot Password?',
                             style: TextStyle(color: Colors.blue),
@@ -205,7 +211,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-          // ✅ Footer bar with Powered By
           Container(
             width: double.infinity,
             color: navy,
