@@ -23,6 +23,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
   List<String> divisions = [];
   List<_StudentRow> students = [];
   List<int> absentRollNumbers = [];
+  List<int> lateRollNumbers = [];
 
   final List<String> stdOptions = List<String>.generate(12, (i) => '${i + 1}');
 
@@ -267,18 +268,32 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                 Expanded(
                   child: Align(
                     alignment: Alignment.centerLeft,
-                    child: Text(
-                      absentRollNumbers.isEmpty
-                          ? "Absent: None"
-                          : "Absent (${absentRollNumbers.length}): ${absentRollNumbers.join(', ')}",
-                      style: const TextStyle(
-                        color: Colors.red,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
+                    child: Column(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    Text(
+      absentRollNumbers.isEmpty
+          ? "Absent: None"
+          : "Absent (${absentRollNumbers.length}): ${absentRollNumbers.join(', ')}",
+      style: const TextStyle(
+        color: Colors.red,
+        fontSize: 14,
+        fontWeight: FontWeight.bold,
+      ),
+    ),
+    const SizedBox(height: 4),
+    Text(
+      lateRollNumbers.isEmpty
+          ? "Late: None"
+          : "Late (${lateRollNumbers.length}): ${lateRollNumbers.join(', ')}",
+      style: const TextStyle(
+        color: Colors.orange,
+        fontSize: 14,
+        fontWeight: FontWeight.bold,
+      ),
+    ),
+  ],
+),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade900),
                   onPressed: _saveAttendance,
@@ -344,6 +359,7 @@ Widget _studentTile(_StudentRow s) {
 
                           if (!s.isPresent) {
                             s.late = false;
+                            lateRollNumbers.remove(s.roll); // ✅ ADD THIS LINE
                             if (!absentRollNumbers.contains(s.roll)) {
                               absentRollNumbers.add(s.roll);
                               absentRollNumbers.sort();
@@ -367,20 +383,28 @@ Widget _studentTile(_StudentRow s) {
               const SizedBox(width: 8),
 
               // LATE
-              Checkbox(
-                value: s.late,
-                onChanged: (s.isPresent && !s.locked)
-                    ? (v) {
-                        setState(() {
-                          s.late = v ?? false;
-                          if (s.late) {
-                            s.isPresent = true;
-                            absentRollNumbers.remove(s.roll);
-                          }
-                        });
-                      }
-                    : null,
-              ),
+Checkbox(
+  value: s.late,
+  onChanged: (s.isPresent && !s.locked)
+      ? (v) {
+          setState(() {
+            s.late = v ?? false;
+
+            if (s.late) {
+              s.isPresent = true;
+              absentRollNumbers.remove(s.roll);
+
+              if (!lateRollNumbers.contains(s.roll)) {
+                lateRollNumbers.add(s.roll);
+                lateRollNumbers.sort();
+              }
+            } else {
+              lateRollNumbers.remove(s.roll);
+            }
+          });
+        }
+      : null,
+),
 
               Tooltip(
                 message: "Late Coming",
