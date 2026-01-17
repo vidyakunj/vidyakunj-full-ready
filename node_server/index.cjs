@@ -1,6 +1,6 @@
 /* =======================================================
    VIDYAKUNJ SMS + ATTENDANCE BACKEND
-   FINAL VERSION – CORS + DIVISIONS FIXED
+   FINAL VERSION WITH SCHOOL SUMMARY
    ======================================================= */
 
 const compression = require("compression");
@@ -26,14 +26,11 @@ const users = [
    ======================================================= */
 const app = express();
 
-/* ================= CORS ================= */
 app.use(cors({
   origin: "https://vidyakunj-frontend.onrender.com",
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type"],
 }));
-
-app.options("*", cors());
 
 app.use(bodyParser.json());
 app.use(compression());
@@ -50,7 +47,7 @@ mongoose
    SCHEMAS
    ======================================================= */
 const Student = mongoose.model("students", new mongoose.Schema({
-  std: String,   // keep as-is
+  std: String,
   div: String,
   name: String,
   roll: Number,
@@ -87,38 +84,14 @@ app.post("/login", (req, res) => {
 /* =======================================================
    BASIC APIs
    ======================================================= */
-
-/* ===== DIVISIONS (CRITICAL FIX) ===== */
 app.get("/divisions", async (req, res) => {
-  try {
-    const std = req.query.std;
-
-    if (!std) {
-      return res.json({ divisions: [] });
-    }
-
-    const divisions = await Student.distinct("div", {
-      $or: [
-        { std: std },
-        { std: Number(std) }
-      ]
-    });
-
-    res.json({ divisions });
-  } catch (err) {
-    console.error("❌ /divisions error:", err);
-    res.status(500).json({ divisions: [] });
-  }
+  const divisions = await Student.distinct("div", { std: req.query.std });
+  res.json({ divisions });
 });
 
 app.get("/students", async (req, res) => {
-  try {
-    const students = await Student.find(req.query).sort({ roll: 1 });
-    res.json({ students });
-  } catch (err) {
-    console.error("❌ /students error:", err);
-    res.status(500).json({ students: [] });
-  }
+  const students = await Student.find(req.query).sort({ roll: 1 });
+  res.json({ students });
 });
 
 app.get("/attendance/check-lock", async (req, res) => {
@@ -127,7 +100,7 @@ app.get("/attendance/check-lock", async (req, res) => {
 });
 
 /* =======================================================
-   SEND SMS (DLT SAFE – UNCHANGED)
+   SEND SMS (DLT SAFE – FINAL)
    ======================================================= */
 app.post("/send-sms", async (req, res) => {
   const { mobile, studentName } = req.body;
@@ -153,7 +126,6 @@ app.post("/send-sms", async (req, res) => {
 app.post("/attendance", async (req, res) => {
   try {
     const { date, attendance } = req.body;
-
     const parsedDate = new Date(date);
     parsedDate.setHours(0, 0, 0, 0);
 
@@ -173,8 +145,7 @@ app.post("/attendance", async (req, res) => {
 
       toSave.push({
         studentId: e.studentId,
-        std,
-        div,
+        std, div,
         roll: e.roll,
         date: parsedDate,
         present: false,
@@ -208,13 +179,13 @@ app.post("/attendance", async (req, res) => {
 
     res.json({ success: true });
   } catch (err) {
-    console.error("❌ /attendance error:", err);
+    console.error(err);
     res.status(500).json({ success: false });
   }
 });
 
 /* =======================================================
-   SCHOOL SUMMARY
+   ADMIN SCHOOL SUMMARY (PRIMARY + SECONDARY)
    ======================================================= */
 app.get("/attendance/summary-school", async (req, res) => {
   try {
@@ -236,29 +207,37 @@ app.get("/attendance/summary-school", async (req, res) => {
     let schoolTotal = { total: 0, present: 0, absent: 0 };
 
     for (const c of classes) {
-      const { std, div } = c._id;
+      const std = c._id.std;
+      const div = c._id.div;
       const total = c.total;
 
       const absent = await Attendance.countDocuments({
-        std,
-        div,
+        std, div,
         date: { $gte: parsedDate, $lt: nextDay },
         present: false,
       });
 
       const present = total - absent;
+
       const row = { std, div, total, present, absent };
 
       schoolTotal.total += total;
       schoolTotal.present += present;
       schoolTotal.absent += absent;
 
-      parseInt(std) <= 8 ? primary.push(row) : secondary.push(row);
+      if (parseInt(std) <= 8) primary.push(row);
+      else secondary.push(row);
     }
 
-    res.json({ success: true, date, primary, secondary, schoolTotal });
+    res.json({
+      success: true,
+      date,
+      primary,
+      secondary,
+      schoolTotal,
+    });
   } catch (err) {
-    console.error("❌ summary error:", err);
+    console.error(err);
     res.status(500).json({ success: false });
   }
 });
