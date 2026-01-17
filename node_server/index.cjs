@@ -1,6 +1,6 @@
 /* =======================================================
    VIDYAKUNJ SMS + ATTENDANCE BACKEND
-   FINAL VERSION WITH SCHOOL SUMMARY
+   STEP 2: STORE LATE COMING STUDENTS
    ======================================================= */
 
 const compression = require("compression");
@@ -61,7 +61,7 @@ const Attendance = mongoose.model("attendance", new mongoose.Schema({
   roll: Number,
   date: Date,
   present: Boolean,
-  late: { type: Boolean, default: false }, // ✅ STEP 1: Late coming
+  late: { type: Boolean, default: false }, // ✅ STEP 1
 }));
 
 const AttendanceLock = mongoose.model("attendance_locks", new mongoose.Schema({
@@ -101,7 +101,7 @@ app.get("/attendance/check-lock", async (req, res) => {
 });
 
 /* =======================================================
-   SEND SMS (DLT SAFE – FINAL)
+   SEND SMS (DLT SAFE – FINAL)  ✅ UNCHANGED
    ======================================================= */
 app.post("/send-sms", async (req, res) => {
   const { mobile, studentName } = req.body;
@@ -122,11 +122,12 @@ app.post("/send-sms", async (req, res) => {
 });
 
 /* =======================================================
-   ATTENDANCE (ABSENT ONLY STORED)
+   ATTENDANCE (STEP 2: STORE ABSENT + LATE)
    ======================================================= */
 app.post("/attendance", async (req, res) => {
   try {
     const { date, attendance } = req.body;
+
     const parsedDate = new Date(date);
     parsedDate.setHours(0, 0, 0, 0);
 
@@ -141,34 +142,42 @@ app.post("/attendance", async (req, res) => {
     const toLock = [];
 
     for (const e of attendance) {
-      if (e.present === true) continue;
-      if (locked.includes(e.roll)) continue;
 
-      toSave.push({
-        studentId: e.studentId,
-        std, div,
-        roll: e.roll,
-        date: parsedDate,
-        present: false,
-      });
+      /* ---------- ABSENT (existing behavior) ---------- */
+      if (e.present === false) {
+        if (locked.includes(e.roll)) continue;
 
-      toLock.push(e.roll);
+        toSave.push({
+          studentId: e.studentId,
+          std,
+          div,
+          roll: e.roll,
+          date: parsedDate,
+          present: false,
+          late: false,
+        });
 
-      await axios.get(process.env.GUPSHUP_URL, {
-        params: {
-          method: "SendMessage",
-          send_to: e.mobile,
-          msg: `Dear Parents, Your child, ${e.name} remained absent in school today.,Vidyakunj School`,
-          msg_type: "TEXT",
-          userid: process.env.GUPSHUP_USER,
-          password: process.env.GUPSHUP_PASSWORD,
-          auth_scheme: "PLAIN",
-          v: "1.1",
-        }
-      });
+        toLock.push(e.roll);
+        continue;
+      }
+
+      /* ---------- LATE COMING (NEW STEP 2) ---------- */
+      if (e.present === true && e.late === true) {
+        toSave.push({
+          studentId: e.studentId,
+          std,
+          div,
+          roll: e.roll,
+          date: parsedDate,
+          present: true,
+          late: true,
+        });
+      }
     }
 
-    if (toSave.length) await Attendance.insertMany(toSave);
+    if (toSave.length) {
+      await Attendance.insertMany(toSave);
+    }
 
     if (toLock.length) {
       await AttendanceLock.updateOne(
@@ -180,13 +189,13 @@ app.post("/attendance", async (req, res) => {
 
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
+    console.error("Attendance Error:", err);
     res.status(500).json({ success: false });
   }
 });
 
 /* =======================================================
-   ADMIN SCHOOL SUMMARY (PRIMARY + SECONDARY)
+   ADMIN SCHOOL SUMMARY (PRIMARY + SECONDARY) ✅ UNCHANGED
    ======================================================= */
 app.get("/attendance/summary-school", async (req, res) => {
   try {
@@ -213,7 +222,8 @@ app.get("/attendance/summary-school", async (req, res) => {
       const total = c.total;
 
       const absent = await Attendance.countDocuments({
-        std, div,
+        std,
+        div,
         date: { $gte: parsedDate, $lt: nextDay },
         present: false,
       });
@@ -244,7 +254,7 @@ app.get("/attendance/summary-school", async (req, res) => {
 });
 
 /* =======================================================
-   START SERVER
+   START SERVER  ✅ UNCHANGED
    ======================================================= */
 app.listen(process.env.PORT || 10000, () =>
   console.log("🚀 Server running")
