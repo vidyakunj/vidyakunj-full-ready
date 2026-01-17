@@ -386,7 +386,7 @@ Widget _studentTile(_StudentRow s) {
     ),
   );
 }
-
+} // ✅ ADD THIS LINE — closes _NewAttendanceScreenState
 
 class _StudentRow {
   final String id;
