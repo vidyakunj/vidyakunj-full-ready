@@ -38,7 +38,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     );
   }
 
-  /* ================= LOAD DIVS ================= */
+  /* ================= LOAD DIVISIONS ================= */
   Future<void> _loadDivisions() async {
     if (selectedStd == null) return;
 
@@ -55,6 +55,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
       final res = await http.get(
         Uri.parse('$SERVER_URL/divisions?std=$selectedStd'),
       );
+
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         divisions =
@@ -116,18 +117,26 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
       final locked = data['locked'] ?? [];
+
       for (final s in students) {
         if (locked.contains(s.roll)) {
           s.locked = true;
           s.isPresent = false;
-          absentRollNumbers.add(s.roll);
+          if (!absentRollNumbers.contains(s.roll)) {
+            absentRollNumbers.add(s.roll);
+          }
         }
       }
     }
   }
 
-  /* ================= SAVE ================= */
+  /* ================= SAVE ATTENDANCE ================= */
   Future<void> _saveAttendance() async {
+    if (selectedStd == null || selectedDiv == null) {
+      _showSnack("Select STD & DIV first");
+      return;
+    }
+
     final dateStr = DateTime.now().toIso8601String();
 
     final payload = students.map((s) => {
@@ -140,11 +149,24 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
           "late": s.late,
         }).toList();
 
-    await http.post(
-      Uri.parse("$SERVER_URL/attendance"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({"date": dateStr, "attendance": payload}),
-    );
+    try {
+      final res = await http.post(
+        Uri.parse("$SERVER_URL/attendance"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "date": dateStr,
+          "attendance": payload,
+        }),
+      );
+
+      if (res.statusCode == 200) {
+        _showSnack("Attendance saved & SMS sent successfully");
+      } else {
+        _showSnack("Attendance save failed");
+      }
+    } catch (e) {
+      _showSnack("Network error");
+    }
   }
 
   void _showSnack(String msg) {
@@ -239,7 +261,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                 ),
                 ElevatedButton(
                   onPressed: _saveAttendance,
-                  child: const Text("Send SMS"),
+                  child: const Text("Save Attendance"),
                 ),
               ],
             ),
@@ -287,7 +309,9 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                             if (!s.isPresent) {
                               s.late = false;
                               lateRollNumbers.remove(s.roll);
-                              absentRollNumbers.add(s.roll);
+                              if (!absentRollNumbers.contains(s.roll)) {
+                                absentRollNumbers.add(s.roll);
+                              }
                             } else {
                               absentRollNumbers.remove(s.roll);
                             }
@@ -301,7 +325,9 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                           setState(() {
                             s.late = v ?? false;
                             if (s.late) {
-                              lateRollNumbers.add(s.roll);
+                              if (!lateRollNumbers.contains(s.roll)) {
+                                lateRollNumbers.add(s.roll);
+                              }
                             } else {
                               lateRollNumbers.remove(s.roll);
                             }
