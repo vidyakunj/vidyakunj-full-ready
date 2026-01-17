@@ -18,15 +18,16 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
   bool isLoadingDivs = false;
   bool isLoadingStudents = false;
-  bool hasExistingAttendance = false;
 
   List<String> divisions = [];
   List<_StudentRow> students = [];
   List<int> absentRollNumbers = [];
   List<int> lateRollNumbers = [];
 
-  final List<String> stdOptions = List<String>.generate(12, (i) => '${i + 1}');
+  final List<String> stdOptions =
+      List<String>.generate(12, (i) => '${i + 1}');
 
+  /* ================= LOGOUT ================= */
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
@@ -37,32 +38,36 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     );
   }
 
+  /* ================= LOAD DIVS ================= */
   Future<void> _loadDivisions() async {
     if (selectedStd == null) return;
 
     setState(() {
       isLoadingDivs = true;
-      divisions = [];
+      divisions.clear();
       selectedDiv = null;
-      students = [];
-      absentRollNumbers = [];
+      students.clear();
+      absentRollNumbers.clear();
+      lateRollNumbers.clear();
     });
 
     try {
-      final uri = Uri.parse('$SERVER_URL/divisions?std=${Uri.encodeComponent(selectedStd!)}');
-      final res = await http.get(uri);
-
+      final res = await http.get(
+        Uri.parse('$SERVER_URL/divisions?std=$selectedStd'),
+      );
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
-        divisions = (data['divisions'] ?? []).map<String>((e) => e.toString()).toList();
+        divisions =
+            (data['divisions'] ?? []).map<String>((e) => e.toString()).toList();
       }
     } catch (e) {
-      _showSnack('Error loading divisions: $e');
+      _showSnack("Error loading divisions");
     }
 
     setState(() => isLoadingDivs = false);
   }
 
+  /* ================= LOAD STUDENTS ================= */
   Future<void> _loadStudents() async {
     if (selectedStd == null || selectedDiv == null) return;
 
@@ -70,16 +75,17 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
       isLoadingStudents = true;
       students.clear();
       absentRollNumbers.clear();
-      hasExistingAttendance = false;
+      lateRollNumbers.clear();
     });
 
     try {
-      final uri = Uri.parse('$SERVER_URL/students?std=$selectedStd&div=$selectedDiv');
-      final res = await http.get(uri);
+      final res = await http.get(
+        Uri.parse('$SERVER_URL/students?std=$selectedStd&div=$selectedDiv'),
+      );
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
-        final loadedStudents = (data['students'] ?? []).map<_StudentRow>((e) {
+        students = (data['students'] ?? []).map<_StudentRow>((e) {
           return _StudentRow(
             id: e['_id'],
             name: e['name'],
@@ -87,33 +93,31 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
             mobile: e['mobile'],
           );
         }).toList();
-
-        students = loadedStudents;
       }
     } catch (e) {
-      _showSnack('Error loading students: $e');
+      _showSnack("Error loading students");
     }
 
     await _checkAttendanceLock();
-
-    if (mounted) {
-      setState(() {
-        isLoadingStudents = false;
-      });
-    }
+    setState(() => isLoadingStudents = false);
   }
 
+  /* ================= LOCK CHECK ================= */
   Future<void> _checkAttendanceLock() async {
     final today = DateTime.now();
-    final dateStr = "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
-    final uri = Uri.parse("$SERVER_URL/attendance/check-lock?std=$selectedStd&div=$selectedDiv&date=$dateStr");
-    final res = await http.get(uri);
+    final date =
+        "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
+
+    final res = await http.get(
+      Uri.parse(
+          "$SERVER_URL/attendance/check-lock?std=$selectedStd&div=$selectedDiv&date=$date"),
+    );
 
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
-      List lockedRolls = data['locked'] ?? [];
-      for (var s in students) {
-        if (lockedRolls.contains(s.roll)) {
+      final locked = data['locked'] ?? [];
+      for (final s in students) {
+        if (locked.contains(s.roll)) {
           s.locked = true;
           s.isPresent = false;
           absentRollNumbers.add(s.roll);
@@ -122,102 +126,42 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     }
   }
 
+  /* ================= SAVE ================= */
   Future<void> _saveAttendance() async {
-    if (selectedStd == null || selectedDiv == null) {
-      _showSnack('Select STD & DIV');
-      return;
-    }
+    final dateStr = DateTime.now().toIso8601String();
 
-    final now = DateTime.now();
-    final dateStr = now.toIso8601String();
-
-    final attendanceData = students.map((s) => {
-      "studentId": s.id,
-      "std": selectedStd,
-      "div": selectedDiv,
-      "roll": s.roll,
-      "date": dateStr,
-      "present": s.isPresent,
-      "late": s.late, // ✅ SEND TO BACKEND
-    }).toList();
-
-    try {
-      final res = await http.post(
-        Uri.parse("$SERVER_URL/attendance"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
+    final payload = students.map((s) => {
+          "studentId": s.id,
+          "std": selectedStd,
+          "div": selectedDiv,
+          "roll": s.roll,
           "date": dateStr,
-          "attendance": attendanceData,
-        }),
-      );
+          "present": s.isPresent,
+          "late": s.late,
+        }).toList();
 
-      if (res.statusCode != 200) {
-        _showSnack("Attendance save failed");
-        return;
-      }
-
-      int success = 0;
-      int failed = 0;
-
-      for (final s in students.where((s) => !s.isPresent && !s.locked)) {
-        final smsRes = await http.post(
-          Uri.parse("$SERVER_URL/send-sms"),
-          headers: {"Content-Type": "application/json"},
-          body: jsonEncode({
-            "mobile": s.mobile,
-            "studentName": s.name,
-          }),
-        );
-
-        final isOk = smsRes.statusCode == 200 && jsonDecode(smsRes.body)['success'] == true;
-        if (isOk) success++; else failed++;
-      }
-
-      if (!mounted) return;
-
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text("SMS Summary"),
-          content: Text("SMS Sent: $success | Failed: $failed"),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text("OK"),
-            ),
-          ],
-        ),
-      );
-    } catch (e) {
-      _showSnack("Error saving or sending: $e");
-    }
+    await http.post(
+      Uri.parse("$SERVER_URL/attendance"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"date": dateStr, "attendance": payload}),
+    );
   }
 
-  void _showSnack(String msg) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  void _showSnack(String msg) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(msg)));
+  }
 
+  /* ================= UI ================= */
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xffeef3ff),
       appBar: AppBar(
         backgroundColor: const Color(0xff003366),
-        elevation: 4,
-        titleSpacing: 0,
-        title: const Text(
-          "Vidyakunj School",
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            letterSpacing: 1.2,
-          ),
-        ),
+        title: const Text("Vidyakunj School"),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _logout,
-          )
+          IconButton(icon: const Icon(Icons.logout), onPressed: _logout),
         ],
       ),
       body: Column(
@@ -228,10 +172,13 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
             child: Row(
               children: [
                 Expanded(
-                  child: DropdownButtonFormField<String>(
+                  child: DropdownButtonFormField(
                     value: selectedStd,
                     decoration: _inputDeco("Select STD"),
-                    items: stdOptions.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                    items: stdOptions
+                        .map((e) =>
+                            DropdownMenuItem(value: e, child: Text(e)))
+                        .toList(),
                     onChanged: (v) {
                       setState(() => selectedStd = v);
                       _loadDivisions();
@@ -242,10 +189,13 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                 Expanded(
                   child: isLoadingDivs
                       ? const Center(child: CircularProgressIndicator())
-                      : DropdownButtonFormField<String>(
+                      : DropdownButtonFormField(
                           value: selectedDiv,
                           decoration: _inputDeco("Select DIV"),
-                          items: divisions.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                          items: divisions
+                              .map((e) => DropdownMenuItem(
+                                  value: e, child: Text(e)))
+                              .toList(),
                           onChanged: (v) {
                             setState(() => selectedDiv = v);
                             _loadStudents();
@@ -255,184 +205,127 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 10),
           Expanded(
             child: isLoadingStudents
                 ? const Center(child: CircularProgressIndicator())
                 : ListView(children: students.map(_studentTile).toList()),
           ),
           Padding(
-  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-  child: Row(
-    children: [
-      Expanded(
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                absentRollNumbers.isEmpty
-                    ? "Absent: None"
-                    : "Absent (${absentRollNumbers.length}): ${absentRollNumbers.join(', ')}",
-                style: const TextStyle(
-                  color: Colors.red,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        absentRollNumbers.isEmpty
+                            ? "Absent: None"
+                            : "Absent (${absentRollNumbers.length}): ${absentRollNumbers.join(', ')}",
+                        style: const TextStyle(
+                            color: Colors.red,
+                            fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        lateRollNumbers.isEmpty
+                            ? "Late: None"
+                            : "Late (${lateRollNumbers.length}): ${lateRollNumbers.join(', ')}",
+                        style: const TextStyle(
+                            color: Colors.orange,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                lateRollNumbers.isEmpty
-                    ? "Late: None"
-                    : "Late (${lateRollNumbers.length}): ${lateRollNumbers.join(', ')}",
-                style: const TextStyle(
-                  color: Colors.orange,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
+                ElevatedButton(
+                  onPressed: _saveAttendance,
+                  child: const Text("Send SMS"),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ),
-      ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blue.shade900,
-        ),
-        onPressed: _saveAttendance,
-        child: const Text(
-          "Send SMS",
-          style: TextStyle(color: Colors.white),
-        ),
-      ),
-    ],
-  ),
-),
-
-  InputDecoration _inputDeco(String label) =>
-    InputDecoration(
-      labelText: label,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        ],
       ),
     );
+  }
 
-Widget _studentTile(_StudentRow s) {
-  return Container(
-    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-    decoration: BoxDecoration(
-  color: !s.isPresent
-      ? Colors.red.shade50
-      : s.late
-          ? Colors.amber.shade50   // ✅ LATE = YELLOW
-          : Colors.green.shade50,  // ✅ PRESENT
-
-  borderRadius: BorderRadius.circular(12),
-
-  border: Border.all(
-    color: !s.isPresent
-        ? Colors.red.shade200
-        : s.late
-            ? Colors.amber.shade300 // ✅ LATE BORDER
-            : Colors.green.shade200,
-  ),
-),
-
-    child: Row(
-      children: [
-        Expanded(flex: 5, child: Text(s.name)),
-        Expanded(
-          flex: 2,
-          child: Text("${s.roll}", textAlign: TextAlign.center),
+  /* ================= HELPERS ================= */
+  InputDecoration _inputDeco(String label) => InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
-        Expanded(
-          flex: 4,
-          child: Row(
-            children: [
-              // PRESENT
-              Checkbox(
-                value: s.isPresent,
-                onChanged: s.locked
-                    ? null
-                    : (v) {
-                        setState(() {
-                          s.isPresent = v ?? true;
+      );
 
-                          if (!s.isPresent) {
-                            s.late = false;
-                            lateRollNumbers.remove(s.roll); // ✅ ADD THIS LINE
-                            if (!absentRollNumbers.contains(s.roll)) {
+  Widget _studentTile(_StudentRow s) {
+    return Container(
+      margin: const EdgeInsets.all(6),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: !s.isPresent
+            ? Colors.red.shade50
+            : s.late
+                ? Colors.amber.shade50
+                : Colors.green.shade50,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(flex: 5, child: Text(s.name)),
+          Expanded(flex: 2, child: Text("${s.roll}")),
+          Expanded(
+            flex: 4,
+            child: Row(
+              children: [
+                Checkbox(
+                  value: s.isPresent,
+                  onChanged: s.locked
+                      ? null
+                      : (v) {
+                          setState(() {
+                            s.isPresent = v ?? true;
+                            if (!s.isPresent) {
+                              s.late = false;
+                              lateRollNumbers.remove(s.roll);
                               absentRollNumbers.add(s.roll);
-                              absentRollNumbers.sort();
+                            } else {
+                              absentRollNumbers.remove(s.roll);
                             }
-                          } else {
-                            absentRollNumbers.remove(s.roll);
-                          }
-                        });
-                      },
-              ),
-
-              Tooltip(
-                message: "Present",
-                child: Icon(
-                  Icons.check_circle,
-                  color: Colors.green,
-                  size: 20,
+                          });
+                        },
                 ),
-              ),
-
-              const SizedBox(width: 8),
-
-              // LATE
-Checkbox(
-  value: s.late,
-  onChanged: (s.isPresent && !s.locked)
-      ? (v) {
-          setState(() {
-            s.late = v ?? false;
-
-            if (s.late) {
-              s.isPresent = true;
-              absentRollNumbers.remove(s.roll);
-
-              if (!lateRollNumbers.contains(s.roll)) {
-                lateRollNumbers.add(s.roll);
-                lateRollNumbers.sort();
-              }
-            } else {
-              lateRollNumbers.remove(s.roll);
-            }
-          });
-        }
-      : null,
-),
-
-              Tooltip(
-                message: "Late Coming",
-                child: Icon(
-                  Icons.access_time,
-                  color: Colors.orange,
-                  size: 20,
+                Checkbox(
+                  value: s.late,
+                  onChanged: (s.isPresent && !s.locked)
+                      ? (v) {
+                          setState(() {
+                            s.late = v ?? false;
+                            if (s.late) {
+                              lateRollNumbers.add(s.roll);
+                            } else {
+                              lateRollNumbers.remove(s.roll);
+                            }
+                          });
+                        }
+                      : null,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }
-} // ✅ ADD THIS LINE — closes _NewAttendanceScreenState
 
+/* ================= MODEL ================= */
 class _StudentRow {
   final String id;
   final String name;
   final int roll;
   final String mobile;
   bool isPresent;
-  bool late;        // ✅ NEW
+  bool late;
   bool locked;
 
   _StudentRow({
@@ -441,8 +334,7 @@ class _StudentRow {
     required this.roll,
     required this.mobile,
     this.isPresent = true,
-    this.late = false, // ✅ DEFAULT
+    this.late = false,
     this.locked = false,
   });
 }
-
