@@ -305,12 +305,23 @@ Widget _studentTile(_StudentRow s) {
     margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
     decoration: BoxDecoration(
-      color: s.isPresent ? Colors.green.shade50 : Colors.red.shade50,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(
-        color: s.isPresent ? Colors.green.shade200 : Colors.red.shade200,
-      ),
-    ),
+  color: !s.isPresent
+      ? Colors.red.shade50
+      : s.late
+          ? Colors.amber.shade50   // ✅ LATE = YELLOW
+          : Colors.green.shade50,  // ✅ PRESENT
+
+  borderRadius: BorderRadius.circular(12),
+
+  border: Border.all(
+    color: !s.isPresent
+        ? Colors.red.shade200
+        : s.late
+            ? Colors.amber.shade300 // ✅ LATE BORDER
+            : Colors.green.shade200,
+  ),
+),
+
     child: Row(
       children: [
         Expanded(flex: 5, child: Text(s.name)),
