@@ -61,6 +61,7 @@ const Attendance = mongoose.model("attendance", new mongoose.Schema({
   roll: Number,
   date: Date,
   present: Boolean,
+  late: { type: Boolean, default: false }, // ✅ STEP 1: Late coming
 }));
 
 const AttendanceLock = mongoose.model("attendance_locks", new mongoose.Schema({
