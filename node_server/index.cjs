@@ -172,10 +172,23 @@ app.post("/attendance", async (req, res) => {
           present: true,
           late: true,
         });
-      }
+         // ✅ SEND LATE COMING SMS
+     await axios.get(process.env.GUPSHUP_URL, {
+       params: {
+         method: "SendMessage",
+         send_to: e.mobile,
+         msg: `Dear Parents, Your child ${e.name} came late to school today.,Vidyakunj School`,
+         msg_type: "TEXT",
+         userid: process.env.GUPSHUP_USER,
+         password: process.env.GUPSHUP_PASSWORD,
+         auth_scheme: "PLAIN",
+         v: "1.1",
     }
+  });
+} 
+} // ✅ FOR LOOP ENDS HERE (THIS WAS MISSING)
 
-    if (toSave.length) {
+       if (toSave.length) {
       await Attendance.insertMany(toSave);
     }
 
