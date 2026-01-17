@@ -137,6 +137,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
       "roll": s.roll,
       "date": dateStr,
       "present": s.isPresent,
+      "late": s.late, // ✅ SEND TO BACKEND
     }).toList();
 
     try {
@@ -292,45 +293,95 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
   }
 
   InputDecoration _inputDeco(String label) =>
-      InputDecoration(labelText: label, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)));
-
-  Widget _studentTile(_StudentRow s) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      decoration: BoxDecoration(
-        color: s.isPresent ? Colors.green.shade50 : Colors.red.shade50,
+    InputDecoration(
+      labelText: label,
+      border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: s.isPresent ? Colors.green.shade200 : Colors.red.shade200),
-      ),
-      child: Row(
-        children: [
-          Expanded(flex: 5, child: Text(s.name)),
-          Expanded(flex: 2, child: Text("${s.roll}", textAlign: TextAlign.center)),
-          Expanded(
-            flex: 3,
-            child: Checkbox(
-              value: s.isPresent,
-              onChanged: s.locked ? null : (v) {
-                setState(() {
-                  s.isPresent = v ?? true;
-                  if (!s.isPresent) {
-                    if (!absentRollNumbers.contains(s.roll)) {
-                      absentRollNumbers.add(s.roll);
-                      absentRollNumbers.sort();
-                    }
-                  } else {
-                    absentRollNumbers.remove(s.roll);
-                  }
-                });
-              },
-            ),
-          ),
-        ],
       ),
     );
-  }
-}
+
+Widget _studentTile(_StudentRow s) {
+  return Container(
+    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+    decoration: BoxDecoration(
+      color: s.isPresent ? Colors.green.shade50 : Colors.red.shade50,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(
+        color: s.isPresent ? Colors.green.shade200 : Colors.red.shade200,
+      ),
+    ),
+    child: Row(
+      children: [
+        Expanded(flex: 5, child: Text(s.name)),
+        Expanded(
+          flex: 2,
+          child: Text("${s.roll}", textAlign: TextAlign.center),
+        ),
+
+        // PRESENT + LATE ICON CHECKBOXES
+        Expanded(
+          flex: 4,
+          child: Row(
+            children: [
+            // PRESENT
+Checkbox(
+  value: s.isPresent,
+  onChanged: s.locked
+      ? null
+      : (v) {
+          setState(() {
+            s.isPresent = v ?? true;
+
+            if (!s.isPresent) {
+              s.late = false;
+              if (!absentRollNumbers.contains(s.roll)) {
+                absentRollNumbers.add(s.roll);
+                absentRollNumbers.sort();
+              }
+            } else {
+              absentRollNumbers.remove(s.roll);
+            }
+          });
+        },
+),
+
+Tooltip(
+  message: "Present",
+  child: Icon(
+    Icons.check_circle,
+    color: Colors.green,
+    size: 20,
+  ),
+),
+
+const SizedBox(width: 8),
+
+// LATE
+Checkbox(
+  value: s.late,
+  onChanged: (s.isPresent && !s.locked)
+      ? (v) {
+          setState(() {
+            s.late = v ?? false;
+            if (s.late) {
+              s.isPresent = true;
+              absentRollNumbers.remove(s.roll);
+            }
+          });
+        }
+      : null,
+),
+
+Tooltip(
+  message: "Late Coming",
+  child: Icon(
+    Icons.access_time,
+    color: Colors.orange,
+    size: 20,
+  ),
+),
+
 
 class _StudentRow {
   final String id;
@@ -338,6 +389,7 @@ class _StudentRow {
   final int roll;
   final String mobile;
   bool isPresent;
+  bool late;        // ✅ NEW
   bool locked;
 
   _StudentRow({
@@ -346,6 +398,8 @@ class _StudentRow {
     required this.roll,
     required this.mobile,
     this.isPresent = true,
+    this.late = false, // ✅ DEFAULT
     this.locked = false,
   });
 }
+
