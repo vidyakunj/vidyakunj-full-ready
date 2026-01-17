@@ -262,50 +262,53 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                 : ListView(children: students.map(_studentTile).toList()),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Column(
-  crossAxisAlignment: CrossAxisAlignment.start,
-  children: [
-    Text(
-      absentRollNumbers.isEmpty
-          ? "Absent: None"
-          : "Absent (${absentRollNumbers.length}): ${absentRollNumbers.join(', ')}",
-      style: const TextStyle(
-        color: Colors.red,
-        fontSize: 14,
-        fontWeight: FontWeight.bold,
-      ),
-    ),
-    const SizedBox(height: 4),
-    Text(
-      lateRollNumbers.isEmpty
-          ? "Late: None"
-          : "Late (${lateRollNumbers.length}): ${lateRollNumbers.join(', ')}",
-      style: const TextStyle(
-        color: Colors.orange,
-        fontSize: 14,
-        fontWeight: FontWeight.bold,
-      ),
-    ),
-  ],
-),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade900),
-                  onPressed: _saveAttendance,
-                  child: const Text("Send SMS", style: TextStyle(color: Colors.white)),
+  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+  child: Row(
+    children: [
+      Expanded(
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                absentRollNumbers.isEmpty
+                    ? "Absent: None"
+                    : "Absent (${absentRollNumbers.length}): ${absentRollNumbers.join(', ')}",
+                style: const TextStyle(
+                  color: Colors.red,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                lateRollNumbers.isEmpty
+                    ? "Late: None"
+                    : "Late (${lateRollNumbers.length}): ${lateRollNumbers.join(', ')}",
+                style: const TextStyle(
+                  color: Colors.orange,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
-    );
-  }
+      ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blue.shade900,
+        ),
+        onPressed: _saveAttendance,
+        child: const Text(
+          "Send SMS",
+          style: TextStyle(color: Colors.white),
+        ),
+      ),
+    ],
+  ),
+),
 
   InputDecoration _inputDeco(String label) =>
     InputDecoration(
