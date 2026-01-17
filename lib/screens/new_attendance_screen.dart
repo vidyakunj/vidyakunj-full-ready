@@ -318,69 +318,74 @@ Widget _studentTile(_StudentRow s) {
           flex: 2,
           child: Text("${s.roll}", textAlign: TextAlign.center),
         ),
-
-        // PRESENT + LATE ICON CHECKBOXES
         Expanded(
           flex: 4,
           child: Row(
             children: [
-            // PRESENT
-Checkbox(
-  value: s.isPresent,
-  onChanged: s.locked
-      ? null
-      : (v) {
-          setState(() {
-            s.isPresent = v ?? true;
+              // PRESENT
+              Checkbox(
+                value: s.isPresent,
+                onChanged: s.locked
+                    ? null
+                    : (v) {
+                        setState(() {
+                          s.isPresent = v ?? true;
 
-            if (!s.isPresent) {
-              s.late = false;
-              if (!absentRollNumbers.contains(s.roll)) {
-                absentRollNumbers.add(s.roll);
-                absentRollNumbers.sort();
-              }
-            } else {
-              absentRollNumbers.remove(s.roll);
-            }
-          });
-        },
-),
+                          if (!s.isPresent) {
+                            s.late = false;
+                            if (!absentRollNumbers.contains(s.roll)) {
+                              absentRollNumbers.add(s.roll);
+                              absentRollNumbers.sort();
+                            }
+                          } else {
+                            absentRollNumbers.remove(s.roll);
+                          }
+                        });
+                      },
+              ),
 
-Tooltip(
-  message: "Present",
-  child: Icon(
-    Icons.check_circle,
-    color: Colors.green,
-    size: 20,
-  ),
-),
+              Tooltip(
+                message: "Present",
+                child: Icon(
+                  Icons.check_circle,
+                  color: Colors.green,
+                  size: 20,
+                ),
+              ),
 
-const SizedBox(width: 8),
+              const SizedBox(width: 8),
 
-// LATE
-Checkbox(
-  value: s.late,
-  onChanged: (s.isPresent && !s.locked)
-      ? (v) {
-          setState(() {
-            s.late = v ?? false;
-            if (s.late) {
-              s.isPresent = true;
-              absentRollNumbers.remove(s.roll);
-            }
-          });
-        }
-      : null,
-),
+              // LATE
+              Checkbox(
+                value: s.late,
+                onChanged: (s.isPresent && !s.locked)
+                    ? (v) {
+                        setState(() {
+                          s.late = v ?? false;
+                          if (s.late) {
+                            s.isPresent = true;
+                            absentRollNumbers.remove(s.roll);
+                          }
+                        });
+                      }
+                    : null,
+              ),
 
-Tooltip(
-  message: "Late Coming",
-  child: Icon(
-    Icons.access_time,
-    color: Colors.orange,
-    size: 20,
-  ),
-),
+              Tooltip(
+                message: "Late Coming",
+                child: Icon(
+                  Icons.access_time,
+                  color: Colors.orange,
+                  size: 20,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
 
 class _StudentRow {
