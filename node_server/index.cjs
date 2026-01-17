@@ -1,6 +1,6 @@
 /* =======================================================
    VIDYAKUNJ SMS + ATTENDANCE BACKEND
-   FINAL VERSION WITH SCHOOL SUMMARY
+   FINAL VERSION – CORS FIXED
    ======================================================= */
 
 const compression = require("compression");
@@ -26,11 +26,14 @@ const users = [
    ======================================================= */
 const app = express();
 
+/* ===== CORS (CRITICAL FIX) ===== */
 app.use(cors({
   origin: "https://vidyakunj-frontend.onrender.com",
-  methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
 }));
+
+app.options("*", cors()); // ⬅️ PRE-FLIGHT FIX
 
 app.use(bodyParser.json());
 app.use(compression());
@@ -85,8 +88,13 @@ app.post("/login", (req, res) => {
    BASIC APIs
    ======================================================= */
 app.get("/divisions", async (req, res) => {
-  const divisions = await Student.distinct("div", { std: req.query.std });
-  res.json({ divisions });
+  try {
+    const divisions = await Student.distinct("div", { std: req.query.std });
+    res.json({ divisions });
+  } catch (err) {
+    console.error("❌ divisions error", err);
+    res.status(500).json({ divisions: [] });
+  }
 });
 
 app.get("/students", async (req, res) => {
@@ -100,7 +108,7 @@ app.get("/attendance/check-lock", async (req, res) => {
 });
 
 /* =======================================================
-   SEND SMS (DLT SAFE – FINAL)
+   SEND SMS (DLT SAFE – UNTOUCHED)
    ======================================================= */
 app.post("/send-sms", async (req, res) => {
   const { mobile, studentName } = req.body;
@@ -185,7 +193,7 @@ app.post("/attendance", async (req, res) => {
 });
 
 /* =======================================================
-   ADMIN SCHOOL SUMMARY (PRIMARY + SECONDARY)
+   SCHOOL SUMMARY
    ======================================================= */
 app.get("/attendance/summary-school", async (req, res) => {
   try {
@@ -207,8 +215,7 @@ app.get("/attendance/summary-school", async (req, res) => {
     let schoolTotal = { total: 0, present: 0, absent: 0 };
 
     for (const c of classes) {
-      const std = c._id.std;
-      const div = c._id.div;
+      const { std, div } = c._id;
       const total = c.total;
 
       const absent = await Attendance.countDocuments({
@@ -218,24 +225,16 @@ app.get("/attendance/summary-school", async (req, res) => {
       });
 
       const present = total - absent;
-
       const row = { std, div, total, present, absent };
 
       schoolTotal.total += total;
       schoolTotal.present += present;
       schoolTotal.absent += absent;
 
-      if (parseInt(std) <= 8) primary.push(row);
-      else secondary.push(row);
+      parseInt(std) <= 8 ? primary.push(row) : secondary.push(row);
     }
 
-    res.json({
-      success: true,
-      date,
-      primary,
-      secondary,
-      schoolTotal,
-    });
+    res.json({ success: true, date, primary, secondary, schoolTotal });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false });
