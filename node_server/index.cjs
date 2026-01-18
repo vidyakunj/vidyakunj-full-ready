@@ -1,6 +1,6 @@
 /* =======================================================
    VIDYAKUNJ SMS + ATTENDANCE BACKEND
-   FINAL: ABSENT + LATE (DLT SAFE)
+   FINAL – ABSENT + LATE (DLT SAFE)
    ======================================================= */
 
 const compression = require("compression");
@@ -11,9 +11,7 @@ const mongoose = require("mongoose");
 const axios = require("axios");
 require("dotenv").config();
 
-/* =======================================================
-   LOGIN USERS
-   ======================================================= */
+/* ================= LOGIN USERS ================= */
 const users = [
   { username: "patil", password: "iken", role: "teacher" },
   { username: "teacher1", password: "1234", role: "teacher" },
@@ -21,9 +19,7 @@ const users = [
   { username: "admin", password: "admin123", role: "admin" },
 ];
 
-/* =======================================================
-   APP SETUP
-   ======================================================= */
+/* ================= APP SETUP ================= */
 const app = express();
 
 app.use(cors({
@@ -35,17 +31,13 @@ app.use(cors({
 app.use(bodyParser.json());
 app.use(compression());
 
-/* =======================================================
-   MONGO CONNECTION
-   ======================================================= */
+/* ================= MONGO ================= */
 mongoose
   .connect(process.env.MONGO_URL || process.env.MONGODB_URI)
   .then(() => console.log("✅ MongoDB Connected"))
   .catch((err) => console.error("❌ MongoDB Error:", err));
 
-/* =======================================================
-   SCHEMAS
-   ======================================================= */
+/* ================= SCHEMAS ================= */
 const Student = mongoose.model("students", new mongoose.Schema({
   std: String,
   div: String,
@@ -71,9 +63,7 @@ const AttendanceLock = mongoose.model("attendance_locks", new mongoose.Schema({
   locked: [Number],
 }));
 
-/* =======================================================
-   LOGIN
-   ======================================================= */
+/* ================= LOGIN ================= */
 app.post("/login", (req, res) => {
   const user = users.find(
     u => u.username === req.body.username && u.password === req.body.password
@@ -82,9 +72,7 @@ app.post("/login", (req, res) => {
   res.json({ success: true, role: user.role });
 });
 
-/* =======================================================
-   BASIC APIs
-   ======================================================= */
+/* ================= BASIC APIs ================= */
 app.get("/divisions", async (req, res) => {
   const divisions = await Student.distinct("div", { std: req.query.std });
   res.json({ divisions });
@@ -100,17 +88,15 @@ app.get("/attendance/check-lock", async (req, res) => {
   res.json({ locked: lock?.locked || [] });
 });
 
-/* =======================================================
-   ATTENDANCE (ABSENT + LATE + SMS)
-   ======================================================= */
+/* ================= ATTENDANCE ================= */
 app.post("/attendance", async (req, res) => {
   try {
     const { date, attendance } = req.body;
 
     const parsedDate = new Date(date);
     parsedDate.setHours(0, 0, 0, 0);
-
     const dateStr = parsedDate.toISOString().split("T")[0];
+
     const std = attendance[0].std;
     const div = attendance[0].div;
 
@@ -121,6 +107,8 @@ app.post("/attendance", async (req, res) => {
     const toLock = [];
 
     for (const e of attendance) {
+      const student = await Student.findById(e.studentId);
+      if (!student) continue;
 
       /* ---------- ABSENT ---------- */
       if (e.present === false) {
@@ -141,23 +129,21 @@ app.post("/attendance", async (req, res) => {
         await axios.get(process.env.GUPSHUP_URL, {
           params: {
             method: "SendMessage",
-            send_to: e.mobile,
-            msg: `Dear Parents, Your child, ${studentName} remained absent in school today.,Vidyakunj School`,
+            send_to: student.mobile,
+            msg: "Dear Parents,Your child, {#var#} remained absent in school today.,Vidyakunj School",
+            template_id: "1007169234113023297",
             msg_type: "TEXT",
             userid: process.env.GUPSHUP_USER,
             password: process.env.GUPSHUP_PASSWORD,
             auth_scheme: "PLAIN",
             v: "1.1",
+            var1: student.name,
           },
         });
-
-        continue;
       }
 
-      /* ---------- LATE (TEMP SAME DLT TEXT) ---------- */
+      /* ---------- LATE (SAME SMS FOR TESTING) ---------- */
       if (e.present === true && e.late === true) {
-        if (locked.includes(e.roll)) continue;
-
         toSave.push({
           studentId: e.studentId,
           std,
@@ -171,23 +157,21 @@ app.post("/attendance", async (req, res) => {
         await axios.get(process.env.GUPSHUP_URL, {
           params: {
             method: "SendMessage",
-            send_to: e.mobile,
-            msg: `Dear Parents, Your child, ${studentName} remained absent in school today.,Vidyakunj School`,
+            send_to: student.mobile,
+            msg: "Dear Parents,Your child, {#var#} remained absent in school today.,Vidyakunj School",
+            template_id: "1007169234113023297",
             msg_type: "TEXT",
             userid: process.env.GUPSHUP_USER,
             password: process.env.GUPSHUP_PASSWORD,
             auth_scheme: "PLAIN",
             v: "1.1",
+            var1: student.name,
           },
         });
-
-        continue;
       }
     }
 
-    if (toSave.length) {
-      await Attendance.insertMany(toSave);
-    }
+    if (toSave.length) await Attendance.insertMany(toSave);
 
     if (toLock.length) {
       await AttendanceLock.updateOne(
@@ -204,9 +188,7 @@ app.post("/attendance", async (req, res) => {
   }
 });
 
-/* =======================================================
-   START SERVER
-   ======================================================= */
+/* ================= START ================= */
 app.listen(process.env.PORT || 10000, () =>
   console.log("🚀 Server running")
 );
