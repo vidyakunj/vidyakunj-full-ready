@@ -142,7 +142,7 @@ app.post("/attendance", async (req, res) => {
           params: {
             method: "SendMessage",
             send_to: e.mobile,
-            msg: `Dear Parents,Your child, ${e.name} remained absent in school today.,Vidyakunj School`,
+            msg: `Dear Parents, Your child, ${studentName} remained absent in school today.,Vidyakunj School`,
             msg_type: "TEXT",
             userid: process.env.GUPSHUP_USER,
             password: process.env.GUPSHUP_PASSWORD,
@@ -172,7 +172,7 @@ app.post("/attendance", async (req, res) => {
           params: {
             method: "SendMessage",
             send_to: e.mobile,
-            msg: `Dear Parents,Your child, ${e.name} remained absent in school today.,Vidyakunj School`,
+            msg: `Dear Parents, Your child, ${studentName} remained absent in school today.,Vidyakunj School`,
             msg_type: "TEXT",
             userid: process.env.GUPSHUP_USER,
             password: process.env.GUPSHUP_PASSWORD,
