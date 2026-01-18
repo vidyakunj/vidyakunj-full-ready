@@ -1,6 +1,6 @@
 /* =======================================================
    VIDYAKUNJ SMS + ATTENDANCE BACKEND
-   STEP 2: STORE LATE COMING STUDENTS
+   FINAL: ABSENT + LATE (DLT SAFE)
    ======================================================= */
 
 const compression = require("compression");
@@ -61,7 +61,7 @@ const Attendance = mongoose.model("attendance", new mongoose.Schema({
   roll: Number,
   date: Date,
   present: Boolean,
-  late: { type: Boolean, default: false }, // ✅ STEP 1
+  late: { type: Boolean, default: false },
 }));
 
 const AttendanceLock = mongoose.model("attendance_locks", new mongoose.Schema({
@@ -101,28 +101,7 @@ app.get("/attendance/check-lock", async (req, res) => {
 });
 
 /* =======================================================
-   SEND SMS (DLT SAFE – FINAL)  ✅ UNCHANGED
-   ======================================================= */
-app.post("/send-sms", async (req, res) => {
-  const { mobile, studentName } = req.body;
-
-  const params = {
-    method: "SendMessage",
-    send_to: mobile,
-    msg: `Dear Parents,Your child, ${studentName} remained absent in school today.,Vidyakunj School`,
-    msg_type: "TEXT",
-    userid: process.env.GUPSHUP_USER,
-    password: process.env.GUPSHUP_PASSWORD,
-    auth_scheme: "PLAIN",
-    v: "1.1",
-  };
-
-  const response = await axios.get(process.env.GUPSHUP_URL, { params });
-  res.json({ success: response.data.toLowerCase().includes("success") });
-});
-
-/* =======================================================
-   ATTENDANCE (STEP 2: STORE ABSENT + LATE)
+   ATTENDANCE (ABSENT + LATE + SMS)
    ======================================================= */
 app.post("/attendance", async (req, res) => {
   try {
@@ -143,7 +122,7 @@ app.post("/attendance", async (req, res) => {
 
     for (const e of attendance) {
 
-      /* ---------- ABSENT (existing behavior) ---------- */
+      /* ---------- ABSENT ---------- */
       if (e.present === false) {
         if (locked.includes(e.roll)) continue;
 
@@ -158,11 +137,27 @@ app.post("/attendance", async (req, res) => {
         });
 
         toLock.push(e.roll);
+
+        await axios.get(process.env.GUPSHUP_URL, {
+          params: {
+            method: "SendMessage",
+            send_to: e.mobile,
+            msg: `Dear Parents,Your child, ${e.name} remained absent in school today.,Vidyakunj School`,
+            msg_type: "TEXT",
+            userid: process.env.GUPSHUP_USER,
+            password: process.env.GUPSHUP_PASSWORD,
+            auth_scheme: "PLAIN",
+            v: "1.1",
+          },
+        });
+
         continue;
       }
 
-      /* ---------- LATE COMING (NEW STEP 2) ---------- */
+      /* ---------- LATE (TEMP SAME DLT TEXT) ---------- */
       if (e.present === true && e.late === true) {
+        if (locked.includes(e.roll)) continue;
+
         toSave.push({
           studentId: e.studentId,
           std,
@@ -172,23 +167,25 @@ app.post("/attendance", async (req, res) => {
           present: true,
           late: true,
         });
-         // ✅ SEND LATE COMING SMS
-     await axios.get(process.env.GUPSHUP_URL, {
-       params: {
-         method: "SendMessage",
-         send_to: e.mobile,
-         msg: `Dear Parents,Your child, ${studentName} remained absent in school today.,Vidyakunj School`,
-         msg_type: "TEXT",
-         userid: process.env.GUPSHUP_USER,
-         password: process.env.GUPSHUP_PASSWORD,
-         auth_scheme: "PLAIN",
-         v: "1.1",
-    }
-  });
-} 
-} // ✅ FOR LOOP ENDS HERE (THIS WAS MISSING)
 
-       if (toSave.length) {
+        await axios.get(process.env.GUPSHUP_URL, {
+          params: {
+            method: "SendMessage",
+            send_to: e.mobile,
+            msg: `Dear Parents,Your child, ${e.name} remained absent in school today.,Vidyakunj School`,
+            msg_type: "TEXT",
+            userid: process.env.GUPSHUP_USER,
+            password: process.env.GUPSHUP_PASSWORD,
+            auth_scheme: "PLAIN",
+            v: "1.1",
+          },
+        });
+
+        continue;
+      }
+    }
+
+    if (toSave.length) {
       await Attendance.insertMany(toSave);
     }
 
@@ -208,66 +205,7 @@ app.post("/attendance", async (req, res) => {
 });
 
 /* =======================================================
-   ADMIN SCHOOL SUMMARY (PRIMARY + SECONDARY) ✅ UNCHANGED
-   ======================================================= */
-app.get("/attendance/summary-school", async (req, res) => {
-  try {
-    const { date } = req.query;
-    if (!date) return res.status(400).json({ success: false });
-
-    const parsedDate = new Date(date);
-    parsedDate.setHours(0, 0, 0, 0);
-    const nextDay = new Date(parsedDate);
-    nextDay.setDate(parsedDate.getDate() + 1);
-
-    const classes = await Student.aggregate([
-      { $group: { _id: { std: "$std", div: "$div" }, total: { $sum: 1 } } },
-      { $sort: { "_id.std": 1, "_id.div": 1 } }
-    ]);
-
-    let primary = [];
-    let secondary = [];
-    let schoolTotal = { total: 0, present: 0, absent: 0 };
-
-    for (const c of classes) {
-      const std = c._id.std;
-      const div = c._id.div;
-      const total = c.total;
-
-      const absent = await Attendance.countDocuments({
-        std,
-        div,
-        date: { $gte: parsedDate, $lt: nextDay },
-        present: false,
-      });
-
-      const present = total - absent;
-
-      const row = { std, div, total, present, absent };
-
-      schoolTotal.total += total;
-      schoolTotal.present += present;
-      schoolTotal.absent += absent;
-
-      if (parseInt(std) <= 8) primary.push(row);
-      else secondary.push(row);
-    }
-
-    res.json({
-      success: true,
-      date,
-      primary,
-      secondary,
-      schoolTotal,
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false });
-  }
-});
-
-/* =======================================================
-   START SERVER  ✅ UNCHANGED
+   START SERVER
    ======================================================= */
 app.listen(process.env.PORT || 10000, () =>
   console.log("🚀 Server running")
