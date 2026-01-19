@@ -189,6 +189,81 @@ app.post("/attendance", async (req, res) => {
   }
 });
 
+/* ================= ADMIN SCHOOL SUMMARY ================= */
+app.get("/attendance/summary-school", async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (!date) {
+      return res.json({
+        success: true,
+        primary: [],
+        secondary: [],
+        schoolTotal: { total: 0, present: 0, absent: 0 }
+      });
+    }
+
+    const parsedDate = new Date(date);
+    parsedDate.setHours(0, 0, 0, 0);
+
+    const nextDay = new Date(parsedDate);
+    nextDay.setDate(parsedDate.getDate() + 1);
+
+    const classes = await Student.aggregate([
+      {
+        $group: {
+          _id: { std: "$std", div: "$div" },
+          total: { $sum: 1 }
+        }
+      }
+    ]);
+
+    let primary = [];
+    let secondary = [];
+    let schoolTotal = { total: 0, present: 0, absent: 0 };
+
+    for (const c of classes) {
+      const std = c._id.std;
+      const div = c._id.div;
+      const total = c.total;
+
+      const absent = await Attendance.countDocuments({
+        std,
+        div,
+        present: false,
+        date: { $gte: parsedDate, $lt: nextDay }
+      });
+
+      const present = total - absent;
+
+      const row = { std, div, total, present, absent };
+
+      schoolTotal.total += total;
+      schoolTotal.present += present;
+      schoolTotal.absent += absent;
+
+      if (parseInt(std) <= 8) primary.push(row);
+      else secondary.push(row);
+    }
+
+    res.json({
+      success: true,
+      primary,
+      secondary,
+      schoolTotal
+    });
+
+  } catch (err) {
+    console.error("SUMMARY ERROR:", err);
+    res.json({
+      success: true,
+      primary: [],
+      secondary: [],
+      schoolTotal: { total: 0, present: 0, absent: 0 }
+    });
+  }
+});
+
+
 /* ================= START ================= */
 app.listen(process.env.PORT || 10000, () =>
   console.log("🚀 Server running")
