@@ -73,59 +73,64 @@ class _AdminDashboardState extends State<AdminDashboard> {
         backgroundColor: navy,
         title: const Text("Admin Attendance Summary"),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            // DATE PICKER
-            ElevatedButton(
-              onPressed: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: selectedDate,
-                  firstDate: DateTime(2023),
-                  lastDate: DateTime.now(),
-                );
-                if (picked != null) {
-                  setState(() => selectedDate = picked);
-                }
-              },
-              child: Text(
-                "Select Date (${selectedDate.toIso8601String().split('T')[0]})",
-              ),
-            ),
-
-            const SizedBox(height: 10),
-
-            ElevatedButton(
-              onPressed: loadSummary,
-              child: const Text("Load Summary"),
-            ),
-
-            const SizedBox(height: 20),
-
-            if (loading) const CircularProgressIndicator(),
-
-            if (errorMessage != null)
-              Text(
-                errorMessage!,
-                style: const TextStyle(color: Colors.red),
-              ),
-
-            if (!loading && errorMessage == null) ...[
-              _schoolTotalCard(),
-              const SizedBox(height: 10),
-              _sectionTitle("Primary (STD 1–8)"),
-              _summaryTable(primary),
-              const SizedBox(height: 10),
-              _sectionTitle("Secondary (STD 9–12)"),
-              _summaryTable(secondary),
-            ],
-          ],
+      body: SingleChildScrollView(
+  padding: const EdgeInsets.all(20),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      // DATE PICKER
+      ElevatedButton(
+        onPressed: () async {
+          final picked = await showDatePicker(
+            context: context,
+            initialDate: selectedDate,
+            firstDate: DateTime(2023),
+            lastDate: DateTime.now(),
+          );
+          if (picked != null) {
+            setState(() => selectedDate = picked);
+          }
+        },
+        child: Text(
+          "Select Date (${selectedDate.toIso8601String().split('T')[0]})",
         ),
       ),
-    );
-  }
+
+      const SizedBox(height: 10),
+
+      ElevatedButton(
+        onPressed: loadSummary,
+        child: const Text("Load Summary"),
+      ),
+
+      const SizedBox(height: 20),
+
+      if (loading) const Center(child: CircularProgressIndicator()),
+
+      if (errorMessage != null)
+        Text(
+          errorMessage!,
+          style: const TextStyle(color: Colors.red),
+        ),
+
+      if (!loading && errorMessage == null) ...[
+        _schoolTotalCard(),
+        const SizedBox(height: 20),
+
+        _sectionTitle("Primary (STD 1–8)"),
+        const SizedBox(height: 10),
+        _summaryTable(primary),
+
+        const SizedBox(height: 30),
+
+        _sectionTitle("Secondary (STD 9–12)"),
+        const SizedBox(height: 10),
+        _summaryTable(secondary),
+      ],
+    ],
+  ),
+),
+
 
   /* ==============================
      WIDGETS
