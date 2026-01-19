@@ -18,10 +18,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   List<Map<String, dynamic>> primary = [];
   List<Map<String, dynamic>> secondary = [];
+
   Map<String, dynamic> schoolTotal = {
     "total": 0,
     "present": 0,
-    "absent": 0
+    "absent": 0,
+    "late": 0
   };
 
   /* =============================
@@ -48,9 +50,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
       final data = jsonDecode(res.body);
 
       setState(() {
-        primary = List<Map<String, dynamic>>.from(data["primary"]);
-        secondary = List<Map<String, dynamic>>.from(data["secondary"]);
-        schoolTotal = data["schoolTotal"];
+        primary = List<Map<String, dynamic>>.from(data["primary"] ?? []);
+        secondary = List<Map<String, dynamic>>.from(data["secondary"] ?? []);
+        schoolTotal = data["schoolTotal"] ??
+            {"total": 0, "present": 0, "absent": 0, "late": 0};
       });
     } catch (e) {
       setState(() {
@@ -61,6 +64,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
     setState(() => loading = false);
   }
 
+  /* =============================
+     UI
+     ============================= */
   @override
   Widget build(BuildContext context) {
     const navy = Color(0xFF110E38);
@@ -76,6 +82,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            /// DATE PICKER
             ElevatedButton(
               onPressed: () async {
                 final picked = await showDatePicker(
@@ -113,12 +120,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
             if (!loading && errorMessage == null) ...[
               _schoolTotalCard(),
-              const SizedBox(height: 20),
+              const SizedBox(height: 30),
 
               _sectionTitle("Primary (STD 1–8)"),
               _summaryTable(primary),
 
-              const SizedBox(height: 30),
+              const SizedBox(height: 40),
 
               _sectionTitle("Secondary (STD 9–12)"),
               _summaryTable(secondary),
@@ -130,7 +137,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   /* =============================
-     UI HELPERS (OUTSIDE build)
+     UI HELPERS
      ============================= */
 
   Widget _schoolTotalCard() {
@@ -144,7 +151,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
         subtitle: Text(
           "Total: ${schoolTotal["total"]} | "
           "Present: ${schoolTotal["present"]} | "
-          "Absent: ${schoolTotal["absent"]}",
+          "Absent: ${schoolTotal["absent"]} | "
+          "Late: ${schoolTotal["late"]}",
         ),
       ),
     );
@@ -162,30 +170,52 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Widget _summaryTable(List<Map<String, dynamic>> data) {
     if (data.isEmpty) {
-      return const Text("No data available");
+      return const Padding(
+        padding: EdgeInsets.all(10),
+        child: Text("No data available"),
+      );
     }
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: DataTable(
+        headingRowColor:
+            MaterialStateProperty.all(Colors.blueGrey.shade50),
         columns: const [
           DataColumn(label: Text("STD")),
           DataColumn(label: Text("DIV")),
           DataColumn(label: Text("Total")),
           DataColumn(label: Text("Present")),
           DataColumn(label: Text("Absent")),
+          DataColumn(label: Text("Late")),
+          DataColumn(label: Text("%")),
         ],
-        rows: data
-            .map(
-              (r) => DataRow(cells: [
-                DataCell(Text(r["std"].toString())),
-                DataCell(Text(r["div"].toString())),
-                DataCell(Text(r["total"].toString())),
-                DataCell(Text(r["present"].toString())),
-                DataCell(Text(r["absent"].toString())),
-              ]),
-            )
-            .toList(),
+        rows: data.map((r) {
+          return DataRow(cells: [
+            DataCell(Center(child: Text(r["std"].toString()))),
+            DataCell(Center(child: Text(r["div"].toString()))),
+            DataCell(Center(child: Text(r["total"].toString()))),
+            DataCell(Center(child: Text(r["present"].toString()))),
+            DataCell(Center(child: Text(r["absent"].toString()))),
+            DataCell(
+              Center(
+                child: Text(
+                  r["late"].toString(),
+                  style: TextStyle(
+                    color: r["late"] > 0 ? Colors.red : Colors.black,
+                    fontWeight:
+                        r["late"] > 0 ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              ),
+            ),
+            DataCell(
+              Center(
+                child: Text("${r["attendancePercent"]}%"),
+              ),
+            ),
+          ]);
+        }).toList(),
       ),
     );
   }
