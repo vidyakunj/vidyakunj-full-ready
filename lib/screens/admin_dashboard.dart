@@ -24,9 +24,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
     "absent": 0
   };
 
-  /* ==============================
+  /* =============================
      LOAD SCHOOL SUMMARY
-     ============================== */
+     ============================= */
   Future<void> loadSummary() async {
     setState(() {
       loading = true;
@@ -41,28 +41,26 @@ class _AdminDashboardState extends State<AdminDashboard> {
         Uri.parse("$SERVER_URL/attendance/summary-school?date=$dateStr"),
       );
 
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-
-        setState(() {
-          primary = List<Map<String, dynamic>>.from(data["primary"] ?? []);
-          secondary = List<Map<String, dynamic>>.from(data["secondary"] ?? []);
-          schoolTotal = data["schoolTotal"] ??
-              {"total": 0, "present": 0, "absent": 0};
-        });
-      } else {
-        errorMessage = "Failed to load summary";
+      if (res.statusCode != 200) {
+        throw "Server error";
       }
+
+      final data = jsonDecode(res.body);
+
+      setState(() {
+        primary = List<Map<String, dynamic>>.from(data["primary"]);
+        secondary = List<Map<String, dynamic>>.from(data["secondary"]);
+        schoolTotal = data["schoolTotal"];
+      });
     } catch (e) {
-      errorMessage = "Error loading summary";
+      setState(() {
+        errorMessage = "Failed to load summary";
+      });
     }
 
     setState(() => loading = false);
   }
 
-  /* ==============================
-     UI
-     ============================== */
   @override
   Widget build(BuildContext context) {
     const navy = Color(0xFF110E38);
@@ -74,67 +72,66 @@ class _AdminDashboardState extends State<AdminDashboard> {
         title: const Text("Admin Attendance Summary"),
       ),
       body: SingleChildScrollView(
-  padding: const EdgeInsets.all(20),
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      // DATE PICKER
-      ElevatedButton(
-        onPressed: () async {
-          final picked = await showDatePicker(
-            context: context,
-            initialDate: selectedDate,
-            firstDate: DateTime(2023),
-            lastDate: DateTime.now(),
-          );
-          if (picked != null) {
-            setState(() => selectedDate = picked);
-          }
-        },
-        child: Text(
-          "Select Date (${selectedDate.toIso8601String().split('T')[0]})",
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ElevatedButton(
+              onPressed: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: selectedDate,
+                  firstDate: DateTime(2023),
+                  lastDate: DateTime.now(),
+                );
+                if (picked != null) {
+                  setState(() => selectedDate = picked);
+                }
+              },
+              child: Text(
+                "Select Date (${selectedDate.toIso8601String().split('T')[0]})",
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            ElevatedButton(
+              onPressed: loadSummary,
+              child: const Text("Load Summary"),
+            ),
+
+            const SizedBox(height: 20),
+
+            if (loading)
+              const Center(child: CircularProgressIndicator()),
+
+            if (errorMessage != null)
+              Text(
+                errorMessage!,
+                style: const TextStyle(color: Colors.red),
+              ),
+
+            if (!loading && errorMessage == null) ...[
+              _schoolTotalCard(),
+              const SizedBox(height: 20),
+
+              _sectionTitle("Primary (STD 1–8)"),
+              _summaryTable(primary),
+
+              const SizedBox(height: 30),
+
+              _sectionTitle("Secondary (STD 9–12)"),
+              _summaryTable(secondary),
+            ],
+          ],
         ),
       ),
+    );
+  }
 
-      const SizedBox(height: 10),
-
-      ElevatedButton(
-        onPressed: loadSummary,
-        child: const Text("Load Summary"),
-      ),
-
-      const SizedBox(height: 20),
-
-      if (loading) const Center(child: CircularProgressIndicator()),
-
-      if (errorMessage != null)
-        Text(
-          errorMessage!,
-          style: const TextStyle(color: Colors.red),
-        ),
-
-      if (!loading && errorMessage == null) ...[
-        _schoolTotalCard(),
-        const SizedBox(height: 20),
-
-        _sectionTitle("Primary (STD 1–8)"),
-        const SizedBox(height: 10),
-        _summaryTable(primary),
-
-        const SizedBox(height: 30),
-
-        _sectionTitle("Secondary (STD 9–12)"),
-        const SizedBox(height: 10),
-        _summaryTable(secondary),
-      ],
-    ],
-  ),
-),
-
-
-  /* ==============================
-     WIDGETS
-     ============================== */
+  /* =============================
+     UI HELPERS (OUTSIDE build)
+     ============================= */
 
   Widget _schoolTotalCard() {
     return Card(
@@ -145,20 +142,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
-          "Total: ${schoolTotal['total']} | "
-          "Present: ${schoolTotal['present']} | "
-          "Absent: ${schoolTotal['absent']}",
+          "Total: ${schoolTotal["total"]} | "
+          "Present: ${schoolTotal["present"]} | "
+          "Absent: ${schoolTotal["absent"]}",
         ),
       ),
     );
   }
 
   Widget _sectionTitle(String title) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Text(
-        title,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+    return Text(
+      title,
+      style: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.bold,
       ),
     );
   }
@@ -180,15 +177,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
         ],
         rows: data
             .map(
-              (row) => DataRow(
-                cells: [
-                  DataCell(Text(row["std"].toString())),
-                  DataCell(Text(row["div"].toString())),
-                  DataCell(Text(row["total"].toString())),
-                  DataCell(Text(row["present"].toString())),
-                  DataCell(Text(row["absent"].toString())),
-                ],
-              ),
+              (r) => DataRow(cells: [
+                DataCell(Text(r["std"].toString())),
+                DataCell(Text(r["div"].toString())),
+                DataCell(Text(r["total"].toString())),
+                DataCell(Text(r["present"].toString())),
+                DataCell(Text(r["absent"].toString())),
+              ]),
             )
             .toList(),
       ),
