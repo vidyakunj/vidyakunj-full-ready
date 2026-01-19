@@ -110,6 +110,11 @@ app.post("/attendance", async (req, res) => {
       const student = await Student.findById(e.studentId);
       if (!student) continue;
 
+      const studentName = student.name;
+      const mobile = student.mobile;
+
+      console.log("SMS DEBUG:", studentName, "late:", e.late);
+
       /* ---------- ABSENT ---------- */
       if (e.present === false) {
         if (locked.includes(e.roll)) continue;
@@ -126,12 +131,11 @@ app.post("/attendance", async (req, res) => {
 
         toLock.push(e.roll);
 
-        // 🔥 OLD WORKING SMS (NO VARIABLES)
         await axios.get(process.env.GUPSHUP_URL, {
           params: {
             method: "SendMessage",
-            send_to: student.mobile,
-            msg: "Dear Parents,Your child, ${student.name} remained absent in school today.,Vidyakunj School",
+            send_to: mobile,
+            msg: `Dear Parents,Your child, ${studentName} remained absent in school today.,Vidyakunj School`,
             msg_type: "TEXT",
             userid: process.env.GUPSHUP_USER,
             password: process.env.GUPSHUP_PASSWORD,
@@ -156,8 +160,8 @@ app.post("/attendance", async (req, res) => {
         await axios.get(process.env.GUPSHUP_URL, {
           params: {
             method: "SendMessage",
-            send_to: student.mobile,
-            msg: "Dear Parents,Your child, ${student.name} remained absent in school today.,Vidyakunj School",
+            send_to: mobile,
+            msg: `Dear Parents,Your child, ${studentName} came late to school today.,Vidyakunj School`,
             msg_type: "TEXT",
             userid: process.env.GUPSHUP_USER,
             password: process.env.GUPSHUP_PASSWORD,
