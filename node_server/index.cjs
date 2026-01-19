@@ -9,6 +9,7 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const axios = require("axios");
+const qs = require("querystring");
 require("dotenv").config();
 
 /* ================= LOGIN USERS ================= */
@@ -126,29 +127,29 @@ app.post("/attendance", async (req, res) => {
 
         toLock.push(e.roll);
 
-       const qs = require("querystring");
+        // ✅ DLT SAFE SMS (ABSENT)
+        await axios.post(
+          process.env.GUPSHUP_URL,
+          qs.stringify({
+            method: "SendMessage",
+            send_to: student.mobile,
+            msg: "Dear Parents,Your child, {{1}} remained absent in school today.,Vidyakunj School",
+            msg_type: "TEXT",
+            userid: process.env.GUPSHUP_USER,
+            password: process.env.GUPSHUP_PASSWORD,
+            auth_scheme: "PLAIN",
+            v: "1.1",
+            var1: student.name,
+          }),
+          {
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+          }
+        );
+      }
 
-await axios.post(
-  process.env.GUPSHUP_URL,
-  qs.stringify({
-    method: "SendMessage",
-    send_to: mobile,
-    msg: "Dear Parents,Your child, {{1}} remained absent in school today.,Vidyakunj School",
-    msg_type: "TEXT",
-    userid: process.env.GUPSHUP_USER,
-    password: process.env.GUPSHUP_PASSWORD,
-    auth_scheme: "PLAIN",
-    v: "1.1",
-    var1: studentName          // ✅ THIS WILL REPLACE {{1}}
-  }),
-  {
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded"
-    }
-  }
-);
-
-      /* ---------- LATE (SAME SMS FOR TESTING) ---------- */
+      /* ---------- LATE ---------- */
       if (e.present === true && e.late === true) {
         toSave.push({
           studentId: e.studentId,
@@ -160,20 +161,26 @@ await axios.post(
           late: true,
         });
 
-        await axios.get(process.env.GUPSHUP_URL, {
-          params: {
+        // ✅ DLT SAFE SMS (LATE – same text for now)
+        await axios.post(
+          process.env.GUPSHUP_URL,
+          qs.stringify({
             method: "SendMessage",
             send_to: student.mobile,
             msg: "Dear Parents,Your child, {{1}} remained absent in school today.,Vidyakunj School",
-            template_id: "1007169234113023297",
             msg_type: "TEXT",
             userid: process.env.GUPSHUP_USER,
             password: process.env.GUPSHUP_PASSWORD,
             auth_scheme: "PLAIN",
             v: "1.1",
             var1: student.name,
-          },
-        });
+          }),
+          {
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+          }
+        );
       }
     }
 
@@ -189,7 +196,7 @@ await axios.post(
 
     res.json({ success: true });
   } catch (err) {
-    console.error("Attendance Error:", err);
+    console.error("Attendance Error:", err?.response?.data || err.message);
     res.status(500).json({ success: false });
   }
 });
