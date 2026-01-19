@@ -126,21 +126,27 @@ app.post("/attendance", async (req, res) => {
 
         toLock.push(e.roll);
 
-        await axios.get(process.env.GUPSHUP_URL, {
-          params: {
-            method: "SendMessage",
-            send_to: student.mobile,
-            msg: "Dear Parents,Your child, {{1}} remained absent in school today.,Vidyakunj School",
-            template_id: "1007169234113023297",
-            msg_type: "TEXT",
-            userid: process.env.GUPSHUP_USER,
-            password: process.env.GUPSHUP_PASSWORD,
-            auth_scheme: "PLAIN",
-            v: "1.1",
-            var1: student.name,
-          },
-        });
-      }
+       const qs = require("querystring");
+
+await axios.post(
+  process.env.GUPSHUP_URL,
+  qs.stringify({
+    method: "SendMessage",
+    send_to: mobile,
+    msg: "Dear Parents,Your child, {{1}} remained absent in school today.,Vidyakunj School",
+    msg_type: "TEXT",
+    userid: process.env.GUPSHUP_USER,
+    password: process.env.GUPSHUP_PASSWORD,
+    auth_scheme: "PLAIN",
+    v: "1.1",
+    var1: studentName          // ✅ THIS WILL REPLACE {{1}}
+  }),
+  {
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded"
+    }
+  }
+);
 
       /* ---------- LATE (SAME SMS FOR TESTING) ---------- */
       if (e.present === true && e.late === true) {
