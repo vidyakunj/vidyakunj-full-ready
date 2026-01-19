@@ -130,7 +130,7 @@ app.post("/attendance", async (req, res) => {
           params: {
             method: "SendMessage",
             send_to: student.mobile,
-            msg: "Dear Parents,Your child, {#var#} remained absent in school today.,Vidyakunj School",
+            msg: "Dear Parents,Your child, {{1}} remained absent in school today.,Vidyakunj School",
             template_id: "1007169234113023297",
             msg_type: "TEXT",
             userid: process.env.GUPSHUP_USER,
@@ -158,7 +158,7 @@ app.post("/attendance", async (req, res) => {
           params: {
             method: "SendMessage",
             send_to: student.mobile,
-            msg: "Dear Parents,Your child, {#var#} remained absent in school today.,Vidyakunj School",
+            msg: "Dear Parents,Your child, {{1}} remained absent in school today.,Vidyakunj School",
             template_id: "1007169234113023297",
             msg_type: "TEXT",
             userid: process.env.GUPSHUP_USER,
