@@ -11,84 +11,58 @@ class AdminDashboard extends StatefulWidget {
 }
 
 class _AdminDashboardState extends State<AdminDashboard> {
-  String? selectedStd;
-  String? selectedDiv;
   DateTime selectedDate = DateTime.now();
 
-  List<String> divisions = [];
-
-  int total = 0;
-  int present = 0;
-  int absent = 0;
-
   bool loading = false;
-  bool hasData = false;
+  String? errorMessage;
 
-  final List<String> stdOptions =
-      List.generate(12, (i) => (i + 1).toString());
-
-  /* ==============================
-     LOAD DIVISIONS
-     ============================== */
-  Future<void> loadDivisions() async {
-    if (selectedStd == null) return;
-
-    final res = await http.get(
-      Uri.parse("$SERVER_URL/divisions?std=$selectedStd"),
-    );
-
-    if (res.statusCode == 200) {
-      final data = jsonDecode(res.body);
-      setState(() {
-        divisions =
-            (data["divisions"] as List).map((e) => e.toString()).toList();
-        selectedDiv = null;
-      });
-    }
-  }
+  List<Map<String, dynamic>> primary = [];
+  List<Map<String, dynamic>> secondary = [];
+  Map<String, dynamic> schoolTotal = {
+    "total": 0,
+    "present": 0,
+    "absent": 0
+  };
 
   /* ==============================
-     LOAD SUMMARY (SINGLE CLASS)
+     LOAD SCHOOL SUMMARY
      ============================== */
   Future<void> loadSummary() async {
-    if (selectedStd == null || selectedDiv == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select STD and DIV")),
-      );
-      return;
-    }
-
     setState(() {
       loading = true;
-      hasData = false;
+      errorMessage = null;
     });
 
     final dateStr =
         "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
 
-    final url =
-        "$SERVER_URL/attendance/summary?date=$dateStr&std=$selectedStd&div=$selectedDiv";
-
-    final res = await http.get(Uri.parse(url));
-
-    if (res.statusCode == 200) {
-      final data = jsonDecode(res.body);
-
-      setState(() {
-        total = data["summary"]["total"] ?? 0;
-        present = data["summary"]["present"] ?? 0;
-        absent = data["summary"]["absent"] ?? 0;
-        hasData = true;
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Failed to load summary")),
+    try {
+      final res = await http.get(
+        Uri.parse("$SERVER_URL/attendance/summary-school?date=$dateStr"),
       );
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+
+        setState(() {
+          primary = List<Map<String, dynamic>>.from(data["primary"] ?? []);
+          secondary = List<Map<String, dynamic>>.from(data["secondary"] ?? []);
+          schoolTotal = data["schoolTotal"] ??
+              {"total": 0, "present": 0, "absent": 0};
+        });
+      } else {
+        errorMessage = "Failed to load summary";
+      }
+    } catch (e) {
+      errorMessage = "Error loading summary";
     }
 
     setState(() => loading = false);
   }
 
+  /* ==============================
+     UI
+     ============================== */
   @override
   Widget build(BuildContext context) {
     const navy = Color(0xFF110E38);
@@ -103,38 +77,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // STD
-            DropdownButtonFormField<String>(
-              decoration: const InputDecoration(labelText: "Select STD"),
-              value: selectedStd,
-              items: stdOptions
-                  .map((s) =>
-                      DropdownMenuItem(value: s, child: Text(s)))
-                  .toList(),
-              onChanged: (v) {
-                setState(() {
-                  selectedStd = v;
-                  divisions.clear();
-                  selectedDiv = null;
-                });
-                loadDivisions();
-              },
-            ),
-            const SizedBox(height: 10),
-
-            // DIV
-            DropdownButtonFormField<String>(
-              decoration: const InputDecoration(labelText: "Select DIV"),
-              value: selectedDiv,
-              items: divisions
-                  .map((d) =>
-                      DropdownMenuItem(value: d, child: Text(d)))
-                  .toList(),
-              onChanged: (v) => setState(() => selectedDiv = v),
-            ),
-            const SizedBox(height: 10),
-
-            // DATE
+            // DATE PICKER
             ElevatedButton(
               onPressed: () async {
                 final picked = await showDatePicker(
@@ -148,7 +91,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 }
               },
               child: Text(
-                "Select Date (${selectedDate.toIso8601String().split("T")[0]})",
+                "Select Date (${selectedDate.toIso8601String().split('T')[0]})",
               ),
             ),
 
@@ -163,24 +106,86 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
             if (loading) const CircularProgressIndicator(),
 
-            if (!loading && hasData)
-              Card(
-                color: Colors.yellow[100],
-                child: ListTile(
-                  title: Text(
-                    "STD $selectedStd | DIV $selectedDiv",
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text(
-                    "Total: $total | Present: $present | Absent: $absent",
-                  ),
-                ),
+            if (errorMessage != null)
+              Text(
+                errorMessage!,
+                style: const TextStyle(color: Colors.red),
               ),
 
-            if (!loading && !hasData)
-              const Text("No data available"),
+            if (!loading && errorMessage == null) ...[
+              _schoolTotalCard(),
+              const SizedBox(height: 10),
+              _sectionTitle("Primary (STD 1–8)"),
+              _summaryTable(primary),
+              const SizedBox(height: 10),
+              _sectionTitle("Secondary (STD 9–12)"),
+              _summaryTable(secondary),
+            ],
           ],
         ),
+      ),
+    );
+  }
+
+  /* ==============================
+     WIDGETS
+     ============================== */
+
+  Widget _schoolTotalCard() {
+    return Card(
+      color: Colors.green[100],
+      child: ListTile(
+        title: const Text(
+          "School Total",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(
+          "Total: ${schoolTotal['total']} | "
+          "Present: ${schoolTotal['present']} | "
+          "Absent: ${schoolTotal['absent']}",
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionTitle(String title) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        title,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget _summaryTable(List<Map<String, dynamic>> data) {
+    if (data.isEmpty) {
+      return const Text("No data available");
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        columns: const [
+          DataColumn(label: Text("STD")),
+          DataColumn(label: Text("DIV")),
+          DataColumn(label: Text("Total")),
+          DataColumn(label: Text("Present")),
+          DataColumn(label: Text("Absent")),
+        ],
+        rows: data
+            .map(
+              (row) => DataRow(
+                cells: [
+                  DataCell(Text(row["std"].toString())),
+                  DataCell(Text(row["div"].toString())),
+                  DataCell(Text(row["total"].toString())),
+                  DataCell(Text(row["present"].toString())),
+                  DataCell(Text(row["absent"].toString())),
+                ],
+              ),
+            )
+            .toList(),
       ),
     );
   }
