@@ -131,8 +131,11 @@ app.post("/attendance", async (req, res) => {
         { upsert: true }
       );
 
-      toLock.push(e.roll);
-    }
+      // 🔒 lock ONLY if ABSENT or LATE
+if (e.present === false || e.late === true) {
+  toLock.push(e.roll);
+  }
+}
 
     if (toLock.length) {
       await AttendanceLock.updateOne(
