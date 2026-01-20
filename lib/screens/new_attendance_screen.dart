@@ -347,12 +347,10 @@ Future<void> _loadTodayAttendance() async {
                             if (!s.isPresent) {
                               s.late = false;
                               lateRollNumbers.remove(s.roll);
-                              if (!absentRollNumbers.contains(s.roll)) {
-                                absentRollNumbers.add(s.roll);
-                              }
                             } else {
                               absentRollNumbers.remove(s.roll);
                             }
+
                           });
                         },
                 ),
