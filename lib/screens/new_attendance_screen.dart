@@ -398,7 +398,7 @@ class _StudentRow {
     required this.name,
     required this.roll,
     required this.mobile,
-    this.isPresent = true,
+    this.isPresent = false,
     this.late = false,
     this.locked = false,
   });
