@@ -100,8 +100,46 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     }
 
     await _checkAttendanceLock();
+    await _loadTodayAttendance();
     setState(() => isLoadingStudents = false);
   }
+  /* ================= LOAD TODAY ATTENDANCE ================= */
+Future<void> _loadTodayAttendance() async {
+  final today = DateTime.now();
+  final date =
+      "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
+
+  final res = await http.get(
+    Uri.parse(
+        "$SERVER_URL/attendance/by-class?std=$selectedStd&div=$selectedDiv&date=$date"),
+  );
+
+  if (res.statusCode != 200) return;
+
+  final data = jsonDecode(res.body);
+  final records = data['attendance'] ?? [];
+
+  absentRollNumbers.clear();
+  lateRollNumbers.clear();
+
+  for (final r in records) {
+    final roll = r['roll'];
+    final present = r['present'] == true;
+    final late = r['late'] == true;
+
+    final student = students.where((s) => s.roll == roll).isEmpty
+        ? null
+        : students.firstWhere((s) => s.roll == roll);
+
+    if (student == null) continue;
+
+    student.isPresent = present;
+    student.late = late;
+
+    if (!present) absentRollNumbers.add(roll);
+    if (late) lateRollNumbers.add(roll);
+  }
+}
 
   /* ================= LOCK CHECK ================= */
   Future<void> _checkAttendanceLock() async {
