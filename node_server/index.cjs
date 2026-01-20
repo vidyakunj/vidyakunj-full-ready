@@ -108,76 +108,31 @@ app.post("/attendance", async (req, res) => {
     const lockDoc = await AttendanceLock.findOne({ std, div, date: dateStr });
     const locked = lockDoc?.locked || [];
 
-    const toSave = [];
     const toLock = [];
 
     for (const e of attendance) {
-      const student = await Student.findById(e.studentId);
-      if (!student) continue;
+      // 🔒 ONE-TIME LOCK (ABSENT + LATE + PRESENT)
+      if (locked.includes(e.roll)) continue;
 
-      const studentName = student.name;
-      const mobile = student.mobile;
-
-      console.log("SMS DEBUG:", studentName, "late:", e.late);
-
-      /* ---------- ABSENT ---------- */
-      if (e.present === false) {
-        if (locked.includes(e.roll)) continue;
-
-        toSave.push({
+      await Attendance.updateOne(
+        {
           studentId: e.studentId,
           std,
           div,
-          roll: e.roll,
           date: parsedDate,
-          present: false,
-          late: false,
-        });
-
-        toLock.push(e.roll);
-
-        await axios.get(process.env.GUPSHUP_URL, {
-          params: {
-            method: "SendMessage",
-            send_to: mobile,
-            msg: `Dear Parents,Your child, ${studentName} remained absent in school today.,Vidyakunj School`,
-            msg_type: "TEXT",
-            userid: process.env.GUPSHUP_USER,
-            password: process.env.GUPSHUP_PASSWORD,
-            auth_scheme: "PLAIN",
-            v: "1.1",
+        },
+        {
+          $set: {
+            roll: e.roll,
+            present: e.present,
+            late: e.present === true ? !!e.late : false,
           },
-        });
-      }
+        },
+        { upsert: true }
+      );
 
-      /* ---------- LATE ---------- */
-      if (e.present === true && e.late === true) {
-        toSave.push({
-          studentId: e.studentId,
-          std,
-          div,
-          roll: e.roll,
-          date: parsedDate,
-          present: true,
-          late: true,
-        });
-
-        await axios.get(process.env.GUPSHUP_URL, {
-          params: {
-            method: "SendMessage",
-            send_to: mobile,
-            msg: `Dear Parents,Your child, ${studentName} remained absent in school today.,Vidyakunj School`,
-            msg_type: "TEXT",
-            userid: process.env.GUPSHUP_USER,
-            password: process.env.GUPSHUP_PASSWORD,
-            auth_scheme: "PLAIN",
-            v: "1.1",
-          },
-        });
-      }
+      toLock.push(e.roll);
     }
-
-    if (toSave.length) await Attendance.insertMany(toSave);
 
     if (toLock.length) {
       await AttendanceLock.updateOne(
