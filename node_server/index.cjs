@@ -31,6 +31,11 @@ app.use(cors({
 app.use(bodyParser.json());
 app.use(compression());
 
+/* ================= ROOT CHECK ================= */
+app.get("/", (req, res) => {
+  res.send("Vidyakunj SMS Server Running");
+});
+
 /* ================= MONGO ================= */
 mongoose
   .connect(process.env.MONGO_URL || process.env.MONGODB_URI)
@@ -263,6 +268,13 @@ app.get("/attendance/summary-school", async (req, res) => {
   }
 });
 
+/* =======================================================
+   ALIAS ROUTE (FIX FRONTEND 404 ISSUE)
+   ======================================================= */
+app.get("/attendance/summary-range", (req, res) => {
+  req.url = "/attendance/summary-school";
+  app._router.handle(req, res);
+});
 
 /* ================= START ================= */
 app.listen(process.env.PORT || 10000, () =>
