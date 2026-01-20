@@ -302,7 +302,6 @@ app.get("/attendance/summary-range", (req, res) => {
   app._router.handle(req, res);
 });
 
-
 /* ================= START ================= */
 app.listen(process.env.PORT || 10000, () =>
   console.log("🚀 Server running")
