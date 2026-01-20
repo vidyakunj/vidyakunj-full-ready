@@ -11,7 +11,12 @@ class AdminDashboard extends StatefulWidget {
 }
 
 class _AdminDashboardState extends State<AdminDashboard> {
+  // MODE: true = Date Range, false = Single Day
+  bool isRangeMode = false;
+
   DateTime selectedDate = DateTime.now();
+  DateTime fromDate = DateTime.now().subtract(const Duration(days: 7));
+  DateTime toDate = DateTime.now();
 
   bool loading = false;
   String? errorMessage;
@@ -23,11 +28,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
     "total": 0,
     "present": 0,
     "absent": 0,
-    "late": 0
+    "late": 0,
+    "attendancePercent": 0
   };
 
   /* =============================
-     LOAD SCHOOL SUMMARY
+     LOAD SUMMARY (AUTO MODE)
      ============================= */
   Future<void> loadSummary() async {
     setState(() {
@@ -35,13 +41,25 @@ class _AdminDashboardState extends State<AdminDashboard> {
       errorMessage = null;
     });
 
-    final dateStr =
-        "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
-
     try {
-      final res = await http.get(
-        Uri.parse("$SERVER_URL/attendance/summary-school?date=$dateStr"),
-      );
+      late String url;
+
+      if (isRangeMode) {
+        final from =
+            "${fromDate.year}-${fromDate.month.toString().padLeft(2, '0')}-${fromDate.day.toString().padLeft(2, '0')}";
+        final to =
+            "${toDate.year}-${toDate.month.toString().padLeft(2, '0')}-${toDate.day.toString().padLeft(2, '0')}";
+
+        url =
+            "$SERVER_URL/attendance/summary-school-range?from=$from&to=$to";
+      } else {
+        final date =
+            "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
+
+        url = "$SERVER_URL/attendance/summary-school?date=$date";
+      }
+
+      final res = await http.get(Uri.parse(url));
 
       if (res.statusCode != 200) {
         throw "Server error";
@@ -53,7 +71,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
         primary = List<Map<String, dynamic>>.from(data["primary"] ?? []);
         secondary = List<Map<String, dynamic>>.from(data["secondary"] ?? []);
         schoolTotal = data["schoolTotal"] ??
-            {"total": 0, "present": 0, "absent": 0, "late": 0};
+            {
+              "total": 0,
+              "present": 0,
+              "absent": 0,
+              "late": 0,
+              "attendancePercent": 0
+            };
       });
     } catch (e) {
       setState(() {
@@ -82,23 +106,89 @@ class _AdminDashboardState extends State<AdminDashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// DATE PICKER
-            ElevatedButton(
-              onPressed: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: selectedDate,
-                  firstDate: DateTime(2023),
-                  lastDate: DateTime.now(),
-                );
-                if (picked != null) {
-                  setState(() => selectedDate = picked);
-                }
-              },
-              child: Text(
-                "Select Date (${selectedDate.toIso8601String().split('T')[0]})",
-              ),
+            /// MODE BUTTONS
+            Row(
+              children: [
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        isRangeMode ? Colors.grey : navy,
+                  ),
+                  onPressed: () {
+                    setState(() => isRangeMode = false);
+                  },
+                  child: const Text("Single Day"),
+                ),
+                const SizedBox(width: 10),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        isRangeMode ? navy : Colors.grey,
+                  ),
+                  onPressed: () {
+                    setState(() => isRangeMode = true);
+                  },
+                  child: const Text("Date Range"),
+                ),
+              ],
             ),
+
+            const SizedBox(height: 15),
+
+            /// DATE PICKERS
+            if (!isRangeMode)
+              ElevatedButton(
+                onPressed: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: selectedDate,
+                    firstDate: DateTime(2023),
+                    lastDate: DateTime.now(),
+                  );
+                  if (picked != null) {
+                    setState(() => selectedDate = picked);
+                  }
+                },
+                child: Text(
+                  "Select Date (${selectedDate.toIso8601String().split('T')[0]})",
+                ),
+              ),
+
+            if (isRangeMode) ...[
+              ElevatedButton(
+                onPressed: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: fromDate,
+                    firstDate: DateTime(2023),
+                    lastDate: DateTime.now(),
+                  );
+                  if (picked != null) {
+                    setState(() => fromDate = picked);
+                  }
+                },
+                child: Text(
+                  "From (${fromDate.toIso8601String().split('T')[0]})",
+                ),
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: toDate,
+                    firstDate: fromDate,
+                    lastDate: DateTime.now(),
+                  );
+                  if (picked != null) {
+                    setState(() => toDate = picked);
+                  }
+                },
+                child: Text(
+                  "To (${toDate.toIso8601String().split('T')[0]})",
+                ),
+              ),
+            ],
 
             const SizedBox(height: 10),
 
@@ -152,7 +242,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
           "Total: ${schoolTotal["total"]} | "
           "Present: ${schoolTotal["present"]} | "
           "Absent: ${schoolTotal["absent"]} | "
-          "Late: ${schoolTotal["late"]}",
+          "Late: ${schoolTotal["late"]} | "
+          "%: ${schoolTotal["attendancePercent"]}%",
         ),
       ),
     );
@@ -184,7 +275,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         columns: const [
           DataColumn(label: Text("STD")),
           DataColumn(label: Text("DIV")),
-          DataColumn(label: Text("Total")),
+          DataColumn(label: Text("Students")),
           DataColumn(label: Text("Present")),
           DataColumn(label: Text("Absent")),
           DataColumn(label: Text("Late")),
@@ -192,28 +283,23 @@ class _AdminDashboardState extends State<AdminDashboard> {
         ],
         rows: data.map((r) {
           return DataRow(cells: [
-            DataCell(Center(child: Text(r["std"].toString()))),
-            DataCell(Center(child: Text(r["div"].toString()))),
-            DataCell(Center(child: Text(r["total"].toString()))),
-            DataCell(Center(child: Text(r["present"].toString()))),
-            DataCell(Center(child: Text(r["absent"].toString()))),
+            DataCell(Text(r["std"].toString())),
+            DataCell(Text(r["div"].toString())),
+            DataCell(Text(r["totalStudents"]?.toString() ??
+                r["total"].toString())),
+            DataCell(Text(r["present"].toString())),
+            DataCell(Text(r["absent"].toString())),
             DataCell(
-              Center(
-                child: Text(
-                  r["late"].toString(),
-                  style: TextStyle(
-                    color: r["late"] > 0 ? Colors.red : Colors.black,
-                    fontWeight:
-                        r["late"] > 0 ? FontWeight.bold : FontWeight.normal,
-                  ),
+              Text(
+                r["late"].toString(),
+                style: TextStyle(
+                  color: r["late"] > 0 ? Colors.red : Colors.black,
+                  fontWeight:
+                      r["late"] > 0 ? FontWeight.bold : FontWeight.normal,
                 ),
               ),
             ),
-            DataCell(
-              Center(
-                child: Text("${r["attendancePercent"]}%"),
-              ),
-            ),
+            DataCell(Text("${r["attendancePercent"]}%")),
           ]);
         }).toList(),
       ),
