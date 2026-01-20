@@ -143,30 +143,29 @@ Future<void> _loadTodayAttendance() async {
 
   /* ================= LOCK CHECK ================= */
   Future<void> _checkAttendanceLock() async {
-    final today = DateTime.now();
-    final date =
-        "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
+  final today = DateTime.now();
+  final date =
+      "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
 
-    final res = await http.get(
-      Uri.parse(
-          "$SERVER_URL/attendance/check-lock?std=$selectedStd&div=$selectedDiv&date=$date"),
-    );
+  final res = await http.get(
+    Uri.parse(
+        "$SERVER_URL/attendance/check-lock?std=$selectedStd&div=$selectedDiv&date=$date"),
+  );
 
-    if (res.statusCode == 200) {
-      final data = jsonDecode(res.body);
-      final locked = data['locked'] ?? [];
+  if (res.statusCode == 200) {
+    final data = jsonDecode(res.body);
+    final locked = data['locked'] ?? [];
 
-      for (final s in students) {
-        if (locked.contains(s.roll)) {
-          s.locked = true;
-          s.isPresent = false;
-          if (!absentRollNumbers.contains(s.roll)) {
-            absentRollNumbers.add(s.roll);
-          }
-        }
+    for (final s in students) {
+      if (locked.contains(s.roll)) {
+        s.locked = true;
+        // ❗ DO NOT mark absent here
+        // ❗ DO NOT touch absentRollNumbers here
       }
     }
   }
+}
+
 
   /* ================= SAVE ATTENDANCE ================= */
   Future<void> _saveAttendance() async {
