@@ -267,14 +267,86 @@ app.get("/attendance/summary-school", async (req, res) => {
     });
   }
 });
+/* ================= ADMIN SCHOOL SUMMARY – DATE RANGE ================= */
+app.get("/attendance/summary-school-range", async (req, res) => {
+  try {
+    const { from, to } = req.query;
+    if (!from || !to) {
+      return res.json({
+        success: true,
+        primary: [],
+        secondary: [],
+        schoolTotal: { total: 0, present: 0, absent: 0 }
+      });
+    }
+
+    const start = new Date(from);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(to);
+    end.setHours(23, 59, 59, 999);
+
+    const classes = await Student.aggregate([
+      {
+        $group: {
+          _id: { std: "$std", div: "$div" },
+          total: { $sum: 1 }
+        }
+      }
+    ]);
+
+    let primary = [];
+    let secondary = [];
+    let schoolTotal = { total: 0, present: 0, absent: 0 };
+
+    for (const c of classes) {
+      const std = c._id.std;
+      const div = c._id.div;
+      const total = c.total;
+
+      const absent = await Attendance.countDocuments({
+        std,
+        div,
+        present: false,
+        date: { $gte: start, $lte: end }
+      });
+
+      const present = total - absent;
+
+      const row = { std, div, total, present, absent };
+
+      schoolTotal.total += total;
+      schoolTotal.present += present;
+      schoolTotal.absent += absent;
+
+      if (parseInt(std) <= 8) primary.push(row);
+      else secondary.push(row);
+    }
+
+    res.json({ success: true, primary, secondary, schoolTotal });
+  } catch (err) {
+    console.error("RANGE SUMMARY ERROR:", err);
+    res.status(500).json({ success: false });
+  }
+});
 
 /* =======================================================
-   ALIAS ROUTE (FIX FRONTEND 404 ISSUE)
+   ALIAS ROUTES – FIX FRONTEND 404 ISSUE
+   DO NOT MOVE THIS BLOCK
    ======================================================= */
-app.get("/attendance/summary-range", (req, res) => {
+
+// ✅ SINGLE DAY (frontend calls /attendance/summary)
+app.get("/attendance/summary", (req, res) => {
   req.url = "/attendance/summary-school";
   app._router.handle(req, res);
 });
+
+// ✅ DATE RANGE (frontend calls /attendance/summary-range)
+app.get("/attendance/summary-range", (req, res) => {
+  req.url = "/attendance/summary-school-range";
+  app._router.handle(req, res);
+});
+
 
 /* ================= START ================= */
 app.listen(process.env.PORT || 10000, () =>
