@@ -11,48 +11,86 @@ class AdminDashboard extends StatefulWidget {
 }
 
 class _AdminDashboardState extends State<AdminDashboard> {
-  bool isRange = false;
   bool loading = false;
+  bool isRange = false;
 
+  DateTime singleDate = DateTime.now();
   DateTime fromDate = DateTime.now();
   DateTime toDate = DateTime.now();
 
   Map<String, dynamic>? schoolTotal;
-  List<dynamic> primary = [];
-  List<dynamic> secondary = [];
+  List<Map<String, dynamic>> primary = [];
+  List<Map<String, dynamic>> secondary = [];
 
-  /* ================= LOAD SUMMARY ================= */
+  /* ==============================
+     LOAD SUMMARY
+     ============================== */
   Future<void> loadSummary() async {
-    setState(() => loading = true);
+    setState(() {
+      loading = true;
+      primary.clear();
+      secondary.clear();
+      schoolTotal = null;
+    });
 
-    final from =
-        "${fromDate.year}-${fromDate.month.toString().padLeft(2, '0')}-${fromDate.day.toString().padLeft(2, '0')}";
-    final to =
-        "${toDate.year}-${toDate.month.toString().padLeft(2, '0')}-${toDate.day.toString().padLeft(2, '0')}";
-
-    final url = isRange
-        ? "$SERVER_URL/attendance/summary-school-range?from=$from&to=$to"
-        : "$SERVER_URL/attendance/summary-school?date=$from";
+    final String url = isRange
+        ? "$SERVER_URL/attendance/summary-range"
+            "?from=${_fmt(fromDate)}&to=${_fmt(toDate)}"
+        : "$SERVER_URL/attendance/summary"
+            "?date=${_fmt(singleDate)}";
 
     try {
       final res = await http.get(Uri.parse(url));
+
+      if (res.statusCode != 200) {
+        _show("Failed to load summary (${res.statusCode})");
+        return;
+      }
+
       final data = jsonDecode(res.body);
 
       setState(() {
         schoolTotal = data["schoolTotal"];
-        primary = data["primary"] ?? [];
-        secondary = data["secondary"] ?? [];
-      });
-    } catch (_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Failed to load summary")),
-      );
-    }
 
-    setState(() => loading = false);
+        primary = List<Map<String, dynamic>>.from(data["primary"] ?? []);
+        secondary = List<Map<String, dynamic>>.from(data["secondary"] ?? []);
+
+        _sortData(primary);
+        _sortData(secondary);
+      });
+    } catch (e) {
+      _show("Error loading summary");
+    } finally {
+      setState(() => loading = false);
+    }
   }
 
-  /* ================= UI ================= */
+  /* ==============================
+     SORT STD & DIV
+     ============================== */
+  void _sortData(List<Map<String, dynamic>> list) {
+    list.sort((a, b) {
+      final int stdA = int.parse(a["std"].toString());
+      final int stdB = int.parse(b["std"].toString());
+      if (stdA != stdB) return stdA.compareTo(stdB);
+      return a["div"].toString().compareTo(b["div"].toString());
+    });
+  }
+
+  /* ==============================
+     DATE FORMAT
+     ============================== */
+  String _fmt(DateTime d) =>
+      "${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
+
+  void _show(String msg) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  /* ==============================
+     UI
+     ============================== */
   @override
   Widget build(BuildContext context) {
     const navy = Color(0xFF110E38);
@@ -64,25 +102,31 @@ class _AdminDashboardState extends State<AdminDashboard> {
         title: const Text("Admin Attendance Summary"),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _modeSelector(),
+            _modeSwitch(),
             const SizedBox(height: 10),
-            _dateSelector(),
+            _dateSelectors(),
             const SizedBox(height: 10),
             ElevatedButton(onPressed: loadSummary, child: const Text("Load Summary")),
             const SizedBox(height: 20),
 
             if (loading) const Center(child: CircularProgressIndicator()),
 
-            if (!loading && schoolTotal != null) ...[
-              _schoolTotalCard(),
+            if (!loading && schoolTotal != null) _schoolTotal(),
+
+            if (primary.isNotEmpty) ...[
               const SizedBox(height: 20),
-              _section("Primary (STD 1–8)", primary),
+              _sectionTitle("Primary (STD 1–8)"),
+              _summaryTable(primary),
+            ],
+
+            if (secondary.isNotEmpty) ...[
               const SizedBox(height: 20),
-              _section("Secondary (STD 9–12)", secondary),
+              _sectionTitle("Secondary (STD 9–12)"),
+              _summaryTable(secondary),
             ],
           ],
         ),
@@ -90,9 +134,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  /* ================= COMPONENTS ================= */
-
-  Widget _modeSelector() {
+  /* ==============================
+     WIDGETS
+     ============================== */
+  Widget _modeSwitch() {
     return Row(
       children: [
         ChoiceChip(
@@ -110,94 +155,92 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _dateSelector() {
+  Widget _dateSelectors() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ElevatedButton(
-          onPressed: () async {
-            final d = await showDatePicker(
-              context: context,
-              initialDate: fromDate,
-              firstDate: DateTime(2023),
-              lastDate: DateTime.now(),
-            );
-            if (d != null) setState(() => fromDate = d);
-          },
-          child: Text("From: ${fromDate.toIso8601String().split('T')[0]}"),
-        ),
-        if (isRange)
-          ElevatedButton(
-            onPressed: () async {
-              final d = await showDatePicker(
-                context: context,
-                initialDate: toDate,
-                firstDate: fromDate,
-                lastDate: DateTime.now(),
-              );
-              if (d != null) setState(() => toDate = d);
-            },
-            child: Text("To: ${toDate.toIso8601String().split('T')[0]}"),
-          ),
+        if (!isRange)
+          _dateButton("Select Date", singleDate, (d) => singleDate = d),
+        if (isRange) ...[
+          _dateButton("From", fromDate, (d) => fromDate = d),
+          _dateButton("To", toDate, (d) => toDate = d),
+        ],
       ],
     );
   }
 
-  Widget _schoolTotalCard() {
+  Widget _dateButton(String label, DateTime date, Function(DateTime) onPick) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: ElevatedButton(
+        onPressed: () async {
+          final d = await showDatePicker(
+            context: context,
+            initialDate: date,
+            firstDate: DateTime(2023),
+            lastDate: DateTime.now(),
+          );
+          if (d != null) setState(() => onPick(d));
+        },
+        child: Text("$label: ${_fmt(date)}"),
+      ),
+    );
+  }
+
+  Widget _schoolTotal() {
+    final t = schoolTotal!;
+    final percent = t["total"] == 0
+        ? 0
+        : ((t["present"] / t["total"]) * 100).toStringAsFixed(2);
+
     return Card(
       color: Colors.green[100],
-      child: ListTile(
-        title: const Text("School Total",
-            style: TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(
-          "Total: ${schoolTotal!["total"]} | "
-          "Present: ${schoolTotal!["present"]} | "
-          "Absent: ${schoolTotal!["absent"]} | "
-          "Late: ${schoolTotal!["late"]} | "
-          "%: ${schoolTotal!["attendancePercent"] ?? 0}",
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Text(
+          "School Total\n"
+          "Total: ${t["total"]} | Present: ${t["present"]} | "
+          "Absent: ${t["absent"]} | Late: ${t["late"]} | %: $percent",
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
     );
   }
 
-  Widget _section(String title, List data) {
-    if (data.isEmpty) return const Text("No data available");
+  Widget _sectionTitle(String title) {
+    return Text(title,
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold));
+  }
 
-    data.sort((a, b) =>
-        int.parse(a["std"]).compareTo(int.parse(b["std"])));
+  Widget _summaryTable(List<Map<String, dynamic>> data) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        columns: const [
+          DataColumn(label: Text("STD")),
+          DataColumn(label: Text("DIV")),
+          DataColumn(label: Text("Total")),
+          DataColumn(label: Text("Present")),
+          DataColumn(label: Text("Absent")),
+          DataColumn(label: Text("Late")),
+          DataColumn(label: Text("%")),
+        ],
+        rows: data.map((r) {
+          final percent = r["total"] == 0
+              ? "0.00"
+              : ((r["present"] / r["total"]) * 100).toStringAsFixed(2);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: DataTable(
-            columns: const [
-              DataColumn(label: Text("STD")),
-              DataColumn(label: Text("DIV")),
-              DataColumn(label: Text("Total")),
-              DataColumn(label: Text("Present")),
-              DataColumn(label: Text("Absent")),
-              DataColumn(label: Text("Late")),
-              DataColumn(label: Text("%")),
-            ],
-            rows: data.map<DataRow>((r) {
-              return DataRow(cells: [
-                DataCell(Text(r["std"].toString())),
-                DataCell(Text(r["div"].toString())),
-                DataCell(Text(r["totalStudents"]?.toString() ?? r["total"].toString())),
-                DataCell(Text(r["present"].toString())),
-                DataCell(Text(r["absent"].toString())),
-                DataCell(Text(r["late"].toString())),
-                DataCell(Text(r["attendancePercent"].toString())),
-              ]);
-            }).toList(),
-          ),
-        ),
-      ],
+          return DataRow(cells: [
+            DataCell(Text(r["std"].toString())),
+            DataCell(Text(r["div"].toString())),
+            DataCell(Text(r["total"].toString())),
+            DataCell(Text(r["present"].toString())),
+            DataCell(Text(r["absent"].toString())),
+            DataCell(Text(r["late"].toString())),
+            DataCell(Text(percent)),
+          ]);
+        }).toList(),
+      ),
     );
   }
 }
