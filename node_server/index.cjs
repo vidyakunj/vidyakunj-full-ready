@@ -222,6 +222,7 @@ app.get("/attendance/summary-school", async (req, res) => {
     });
   }
 });
+
 /* ================= ADMIN SCHOOL SUMMARY – DATE RANGE ================= */
 app.get("/attendance/summary-school-range", async (req, res) => {
   try {
