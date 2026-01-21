@@ -320,7 +320,7 @@ Future<void> _loadTodayAttendance() async {
         ),
       );
 
-  Widget _studentTile(_StudentRow s) {
+   Widget _studentTile(_StudentRow s) {
     return Container(
       margin: const EdgeInsets.all(6),
       padding: const EdgeInsets.all(12),
@@ -350,14 +350,12 @@ Future<void> _loadTodayAttendance() async {
                             if (!s.isPresent) {
                               s.late = false;
                               lateRollNumbers.remove(s.roll);
-                              // ✅ ADD THIS LINE
                               if (!absentRollNumbers.contains(s.roll)) {
                                 absentRollNumbers.add(s.roll);
-                            }
+                              }
                             } else {
                               absentRollNumbers.remove(s.roll);
                             }
-
                           });
                         },
                 ),
@@ -385,8 +383,8 @@ Future<void> _loadTodayAttendance() async {
       ),
     );
   }
-}
-}
+} // ✅ THIS CLOSES _NewAttendanceScreenState — VERY IMPORTANT
+
 /* ================= MODEL ================= */
 class _StudentRow {
   final String id;
