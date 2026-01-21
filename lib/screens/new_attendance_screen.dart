@@ -99,7 +99,6 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
       _showSnack("Error loading students");
     }
 
-    await _checkAttendanceLock();
     await _loadTodayAttendance();
     setState(() => isLoadingStudents = false);
   }
@@ -123,27 +122,28 @@ Future<void> _loadTodayAttendance() async {
   lateRollNumbers.clear();
 
   for (final r in records) {
-    final roll = r['roll'];
-    final present = r['present'] == true;
-    final late = r['late'] == true;
+  final roll = r['roll'];
+  final present = r['present'] == true;
+  final late = r['late'] == true;
 
-    final student = students.where((s) => s.roll == roll).isEmpty
-        ? null
-        : students.firstWhere((s) => s.roll == roll);
+  final student = students.where((s) => s.roll == roll).isEmpty
+      ? null
+      : students.firstWhere((s) => s.roll == roll);
 
-    if (student == null) continue;
+  if (student == null) continue;
 
-     student.isPresent = present;
-     student.late = late;
+  student.isPresent = present;
+  student.late = late;
 
-  // 🔒 LOCK student if attendance record exists (PRESENT / LATE / ABSENT)
-     student.locked = true;
+  // ✅ LOCK ONLY THIS STUDENT (ABSENT or LATE)
+  if (!present || late) {
+    student.locked = true;
+  }
 
   if (!present) absentRollNumbers.add(roll);
   if (late) lateRollNumbers.add(roll);
-
-  }
 }
+
 
   /* ================= LOCK CHECK ================= */
   Future<void> _checkAttendanceLock() async {
