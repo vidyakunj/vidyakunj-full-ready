@@ -99,77 +99,36 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
       _showSnack("Error loading students");
     }
 
-    await _loadTodayAttendance();
+    await _checkAttendanceLock();
     setState(() => isLoadingStudents = false);
   }
-  /* ================= LOAD TODAY ATTENDANCE ================= */
-Future<void> _loadTodayAttendance() async {
-  final today = DateTime.now();
-  final date =
-      "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
 
-  final res = await http.get(
-    Uri.parse(
-        "$SERVER_URL/attendance/by-class?std=$selectedStd&div=$selectedDiv&date=$date"),
-  );
-
-  if (res.statusCode != 200) return;
-
-  final data = jsonDecode(res.body);
-  final records = data['attendance'] ?? [];
-
-  absentRollNumbers.clear();
-  lateRollNumbers.clear();
-
-  for (final r in records) {
-  final roll = r['roll'];
-  final present = r['present'] == true;
-  final late = r['late'] == true;
-
-  final student = students.where((s) => s.roll == roll).isEmpty
-      ? null
-      : students.firstWhere((s) => s.roll == roll);
-
-  if (student == null) continue;
-
-  student.isPresent = present;
-  student.late = late;
-
-  // ✅ LOCK ONLY THIS STUDENT (ABSENT or LATE)
-  if (!present || late) {
-    student.locked = true;
-  }
-
-  if (!present) absentRollNumbers.add(roll);
-  if (late) lateRollNumbers.add(roll);
-}
-
-} // ✅ ADD THIS LINE — closes _loadTodayAttendance()
   /* ================= LOCK CHECK ================= */
   Future<void> _checkAttendanceLock() async {
-  final today = DateTime.now();
-  final date =
-      "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
+    final today = DateTime.now();
+    final date =
+        "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
 
-  final res = await http.get(
-    Uri.parse(
-        "$SERVER_URL/attendance/check-lock?std=$selectedStd&div=$selectedDiv&date=$date"),
-  );
+    final res = await http.get(
+      Uri.parse(
+          "$SERVER_URL/attendance/check-lock?std=$selectedStd&div=$selectedDiv&date=$date"),
+    );
 
-  if (res.statusCode == 200) {
-    final data = jsonDecode(res.body);
-    final locked = data['locked'] ?? [];
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      final locked = data['locked'] ?? [];
 
-    for (final s in students) {
-      if (locked.contains(s.roll)) {
-        s.locked = true;
-        // ❗ DO NOT mark absent here
-        // ❗ DO NOT touch absentRollNumbers here
+      for (final s in students) {
+        if (locked.contains(s.roll)) {
+          s.locked = true;
+          s.isPresent = false;
+          if (!absentRollNumbers.contains(s.roll)) {
+            absentRollNumbers.add(s.roll);
+          }
+        }
       }
     }
   }
-}
-
 
   /* ================= SAVE ATTENDANCE ================= */
   Future<void> _saveAttendance() async {
@@ -320,7 +279,7 @@ Future<void> _loadTodayAttendance() async {
         ),
       );
 
-   Widget _studentTile(_StudentRow s) {
+  Widget _studentTile(_StudentRow s) {
     return Container(
       margin: const EdgeInsets.all(6),
       padding: const EdgeInsets.all(12),
@@ -383,9 +342,8 @@ Future<void> _loadTodayAttendance() async {
       ),
     );
   }
-} // ✅ THIS CLOSES _NewAttendanceScreenState — VERY IMPORTANT
+}
 
-  
 /* ================= MODEL ================= */
 class _StudentRow {
   final String id;
@@ -401,7 +359,7 @@ class _StudentRow {
     required this.name,
     required this.roll,
     required this.mobile,
-    this.isPresent = false,
+    this.isPresent = true,
     this.late = false,
     this.locked = false,
   });

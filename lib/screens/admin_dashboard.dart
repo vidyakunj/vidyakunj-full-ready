@@ -11,86 +11,84 @@ class AdminDashboard extends StatefulWidget {
 }
 
 class _AdminDashboardState extends State<AdminDashboard> {
+  String? selectedStd;
+  String? selectedDiv;
+  DateTime selectedDate = DateTime.now();
+
+  List<String> divisions = [];
+
+  int total = 0;
+  int present = 0;
+  int absent = 0;
+
   bool loading = false;
-  bool isRange = false;
+  bool hasData = false;
 
-  DateTime singleDate = DateTime.now();
-  DateTime fromDate = DateTime.now();
-  DateTime toDate = DateTime.now();
-
-  Map<String, dynamic>? schoolTotal;
-  List<Map<String, dynamic>> primary = [];
-  List<Map<String, dynamic>> secondary = [];
+  final List<String> stdOptions =
+      List.generate(12, (i) => (i + 1).toString());
 
   /* ==============================
-     LOAD SUMMARY
+     LOAD DIVISIONS
      ============================== */
-  Future<void> loadSummary() async {
-    setState(() {
-      loading = true;
-      primary.clear();
-      secondary.clear();
-      schoolTotal = null;
-    });
+  Future<void> loadDivisions() async {
+    if (selectedStd == null) return;
 
-    final String url = isRange
-        ? "$SERVER_URL/attendance/summary-range"
-            "?from=${_fmt(fromDate)}&to=${_fmt(toDate)}"
-        : "$SERVER_URL/attendance/summary"
-            "?date=${_fmt(singleDate)}";
+    final res = await http.get(
+      Uri.parse("$SERVER_URL/divisions?std=$selectedStd"),
+    );
 
-    try {
-      final res = await http.get(Uri.parse(url));
-
-      if (res.statusCode != 200) {
-        _show("Failed to load summary (${res.statusCode})");
-        return;
-      }
-
+    if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
-
       setState(() {
-        schoolTotal = data["schoolTotal"];
-
-        primary = List<Map<String, dynamic>>.from(data["primary"] ?? []);
-        secondary = List<Map<String, dynamic>>.from(data["secondary"] ?? []);
-
-        _sortData(primary);
-        _sortData(secondary);
+        divisions =
+            (data["divisions"] as List).map((e) => e.toString()).toList();
+        selectedDiv = null;
       });
-    } catch (e) {
-      _show("Error loading summary");
-    } finally {
-      setState(() => loading = false);
     }
   }
 
   /* ==============================
-     SORT STD & DIV
+     LOAD SUMMARY (SINGLE CLASS)
      ============================== */
-  void _sortData(List<Map<String, dynamic>> list) {
-    list.sort((a, b) {
-      final int stdA = int.parse(a["std"].toString());
-      final int stdB = int.parse(b["std"].toString());
-      if (stdA != stdB) return stdA.compareTo(stdB);
-      return a["div"].toString().compareTo(b["div"].toString());
+  Future<void> loadSummary() async {
+    if (selectedStd == null || selectedDiv == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select STD and DIV")),
+      );
+      return;
+    }
+
+    setState(() {
+      loading = true;
+      hasData = false;
     });
+
+    final dateStr =
+        "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
+
+    final url =
+        "$SERVER_URL/attendance/summary?date=$dateStr&std=$selectedStd&div=$selectedDiv";
+
+    final res = await http.get(Uri.parse(url));
+
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+
+      setState(() {
+        total = data["summary"]["total"] ?? 0;
+        present = data["summary"]["present"] ?? 0;
+        absent = data["summary"]["absent"] ?? 0;
+        hasData = true;
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Failed to load summary")),
+      );
+    }
+
+    setState(() => loading = false);
   }
 
-  /* ==============================
-     DATE FORMAT
-     ============================== */
-  String _fmt(DateTime d) =>
-      "${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
-
-  void _show(String msg) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
-  }
-
-  /* ==============================
-     UI
-     ============================== */
   @override
   Widget build(BuildContext context) {
     const navy = Color(0xFF110E38);
@@ -101,145 +99,88 @@ class _AdminDashboardState extends State<AdminDashboard> {
         backgroundColor: navy,
         title: const Text("Admin Attendance Summary"),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _modeSwitch(),
+            // STD
+            DropdownButtonFormField<String>(
+              decoration: const InputDecoration(labelText: "Select STD"),
+              value: selectedStd,
+              items: stdOptions
+                  .map((s) =>
+                      DropdownMenuItem(value: s, child: Text(s)))
+                  .toList(),
+              onChanged: (v) {
+                setState(() {
+                  selectedStd = v;
+                  divisions.clear();
+                  selectedDiv = null;
+                });
+                loadDivisions();
+              },
+            ),
             const SizedBox(height: 10),
-            _dateSelectors(),
+
+            // DIV
+            DropdownButtonFormField<String>(
+              decoration: const InputDecoration(labelText: "Select DIV"),
+              value: selectedDiv,
+              items: divisions
+                  .map((d) =>
+                      DropdownMenuItem(value: d, child: Text(d)))
+                  .toList(),
+              onChanged: (v) => setState(() => selectedDiv = v),
+            ),
             const SizedBox(height: 10),
-            ElevatedButton(onPressed: loadSummary, child: const Text("Load Summary")),
+
+            // DATE
+            ElevatedButton(
+              onPressed: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: selectedDate,
+                  firstDate: DateTime(2023),
+                  lastDate: DateTime.now(),
+                );
+                if (picked != null) {
+                  setState(() => selectedDate = picked);
+                }
+              },
+              child: Text(
+                "Select Date (${selectedDate.toIso8601String().split("T")[0]})",
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            ElevatedButton(
+              onPressed: loadSummary,
+              child: const Text("Load Summary"),
+            ),
+
             const SizedBox(height: 20),
 
-            if (loading) const Center(child: CircularProgressIndicator()),
+            if (loading) const CircularProgressIndicator(),
 
-            if (!loading && schoolTotal != null) _schoolTotal(),
+            if (!loading && hasData)
+              Card(
+                color: Colors.yellow[100],
+                child: ListTile(
+                  title: Text(
+                    "STD $selectedStd | DIV $selectedDiv",
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    "Total: $total | Present: $present | Absent: $absent",
+                  ),
+                ),
+              ),
 
-            if (primary.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              _sectionTitle("Primary (STD 1–8)"),
-              _summaryTable(primary),
-            ],
-
-            if (secondary.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              _sectionTitle("Secondary (STD 9–12)"),
-              _summaryTable(secondary),
-            ],
+            if (!loading && !hasData)
+              const Text("No data available"),
           ],
         ),
-      ),
-    );
-  }
-
-  /* ==============================
-     WIDGETS
-     ============================== */
-  Widget _modeSwitch() {
-    return Row(
-      children: [
-        ChoiceChip(
-          label: const Text("Single Day"),
-          selected: !isRange,
-          onSelected: (_) => setState(() => isRange = false),
-        ),
-        const SizedBox(width: 10),
-        ChoiceChip(
-          label: const Text("Date Range"),
-          selected: isRange,
-          onSelected: (_) => setState(() => isRange = true),
-        ),
-      ],
-    );
-  }
-
-  Widget _dateSelectors() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (!isRange)
-          _dateButton("Select Date", singleDate, (d) => singleDate = d),
-        if (isRange) ...[
-          _dateButton("From", fromDate, (d) => fromDate = d),
-          _dateButton("To", toDate, (d) => toDate = d),
-        ],
-      ],
-    );
-  }
-
-  Widget _dateButton(String label, DateTime date, Function(DateTime) onPick) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: ElevatedButton(
-        onPressed: () async {
-          final d = await showDatePicker(
-            context: context,
-            initialDate: date,
-            firstDate: DateTime(2023),
-            lastDate: DateTime.now(),
-          );
-          if (d != null) setState(() => onPick(d));
-        },
-        child: Text("$label: ${_fmt(date)}"),
-      ),
-    );
-  }
-
-  Widget _schoolTotal() {
-    final t = schoolTotal!;
-    final percent = t["total"] == 0
-        ? 0
-        : ((t["present"] / t["total"]) * 100).toStringAsFixed(2);
-
-    return Card(
-      color: Colors.green[100],
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Text(
-          "School Total\n"
-          "Total: ${t["total"]} | Present: ${t["present"]} | "
-          "Absent: ${t["absent"]} | Late: ${t["late"]} | %: $percent",
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-      ),
-    );
-  }
-
-  Widget _sectionTitle(String title) {
-    return Text(title,
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold));
-  }
-
-  Widget _summaryTable(List<Map<String, dynamic>> data) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        columns: const [
-          DataColumn(label: Text("STD")),
-          DataColumn(label: Text("DIV")),
-          DataColumn(label: Text("Total")),
-          DataColumn(label: Text("Present")),
-          DataColumn(label: Text("Absent")),
-          DataColumn(label: Text("Late")),
-          DataColumn(label: Text("%")),
-        ],
-        rows: data.map((r) {
-          final percent = r["total"] == 0
-              ? "0.00"
-              : ((r["present"] / r["total"]) * 100).toStringAsFixed(2);
-
-          return DataRow(cells: [
-            DataCell(Text(r["std"].toString())),
-            DataCell(Text(r["div"].toString())),
-            DataCell(Text(r["total"].toString())),
-            DataCell(Text(r["present"].toString())),
-            DataCell(Text(r["absent"].toString())),
-            DataCell(Text(r["late"].toString())),
-            DataCell(Text(percent)),
-          ]);
-        }).toList(),
       ),
     );
   }
