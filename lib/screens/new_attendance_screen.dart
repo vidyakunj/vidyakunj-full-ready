@@ -144,7 +144,7 @@ Future<void> _loadTodayAttendance() async {
   if (late) lateRollNumbers.add(roll);
 }
 
-
+} // ✅ ADD THIS LINE — closes _loadTodayAttendance()
   /* ================= LOCK CHECK ================= */
   Future<void> _checkAttendanceLock() async {
   final today = DateTime.now();
@@ -385,6 +385,7 @@ Future<void> _loadTodayAttendance() async {
   }
 } // ✅ THIS CLOSES _NewAttendanceScreenState — VERY IMPORTANT
 
+  
 /* ================= MODEL ================= */
 class _StudentRow {
   final String id;
