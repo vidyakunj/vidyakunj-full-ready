@@ -386,7 +386,7 @@ Future<void> _loadTodayAttendance() async {
     );
   }
 }
-
+}
 /* ================= MODEL ================= */
 class _StudentRow {
   final String id;
