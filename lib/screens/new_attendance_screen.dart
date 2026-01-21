@@ -133,11 +133,15 @@ Future<void> _loadTodayAttendance() async {
 
     if (student == null) continue;
 
-    student.isPresent = present;
-    student.late = late;
+     student.isPresent = present;
+     student.late = late;
 
-    if (!present) absentRollNumbers.add(roll);
-    if (late) lateRollNumbers.add(roll);
+  // 🔒 LOCK student if attendance record exists (PRESENT / LATE / ABSENT)
+     student.locked = true;
+
+  if (!present) absentRollNumbers.add(roll);
+  if (late) lateRollNumbers.add(roll);
+
   }
 }
 
