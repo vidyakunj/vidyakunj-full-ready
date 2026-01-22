@@ -366,7 +366,7 @@ Future<void> _checkAttendanceLock() async {
     ),
   );
 }
-
+} // ✅ closes _NewAttendanceScreenState
 /* ================= MODEL ================= */
 class _StudentRow {
   final String id;
