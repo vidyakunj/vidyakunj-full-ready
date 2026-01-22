@@ -296,79 +296,75 @@ Future<void> _checkAttendanceLock() async {
         ),
       );
 
-  Widget _studentTile(_StudentRow s) {
-    return Container(
-      margin: const EdgeInsets.all(6),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: !s.isPresent
-            ? Colors.red.shade50
-            : s.late
-                ? Colors.amber.shade50
-                : Colors.green.shade50,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Expanded(flex: 5, child: Text(s.name)),
-          Expanded(flex: 2, child: Text("${s.roll}")),
-          Expanded(
-            flex: 4,
-            child: Row(
-              children: [
-                Checkbox(
-                  value: s.isPresent,
-                 onChanged: s.locked
-    ? null
-    : (v) {
-        setState(() {
-          s.isPresent = v ?? true;
+ Widget _studentTile(_StudentRow s) {
+  return Container(
+    margin: const EdgeInsets.all(6),
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: !s.isPresent
+          ? Colors.red.shade50
+          : s.late
+              ? Colors.amber.shade50
+              : Colors.green.shade50,
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Row(
+      children: [
+        Expanded(flex: 5, child: Text(s.name)),
+        Expanded(flex: 2, child: Text("${s.roll}")),
+        Expanded(
+          flex: 4,
+          child: Row(
+            children: [
+              // ✅ PRESENT
+              Checkbox(
+                value: s.isPresent,
+                onChanged: s.locked
+                    ? null
+                    : (v) {
+                        setState(() {
+                          s.isPresent = v ?? true;
 
-          if (!s.isPresent) {
-            // Mark absent ONLY if not late
-            s.late = false;
-            lateRollNumbers.remove(s.roll);
+                          if (!s.isPresent) {
+                            s.late = false;
+                            lateRollNumbers.remove(s.roll);
+                            if (!absentRollNumbers.contains(s.roll)) {
+                              absentRollNumbers.add(s.roll);
+                            }
+                          } else {
+                            absentRollNumbers.remove(s.roll);
+                          }
+                        });
+                      },
+              ),
 
-            if (!absentRollNumbers.contains(s.roll)) {
-              absentRollNumbers.add(s.roll);
-            }
-          } else {
-            // Present → remove from absent
-            absentRollNumbers.remove(s.roll);
-          }
-        });
-      },
-),
-               Checkbox(
-  value: s.late,
-  onChanged: (s.isPresent && !s.locked)
-      ? (v) {
-          setState(() {
-            s.late = v ?? false;
+              // ✅ LATE (NEVER ABSENT)
+              Checkbox(
+                value: s.late,
+                onChanged: (s.isPresent && !s.locked)
+                    ? (v) {
+                        setState(() {
+                          s.late = v ?? false;
 
-            // FORCE consistency
-            if (s.late) {
-              s.isPresent = true;
-              absentRollNumbers.remove(s.roll);
-              if (!lateRollNumbers.contains(s.roll)) {
-                lateRollNumbers.add(s.roll);
-              }
-            } else {
-              lateRollNumbers.remove(s.roll);
-            }
-          });
-        }
-      : null,
-),
-
-                ),
-              ],
-            ),
+                          if (s.late) {
+                            s.isPresent = true;
+                            absentRollNumbers.remove(s.roll);
+                            if (!lateRollNumbers.contains(s.roll)) {
+                              lateRollNumbers.add(s.roll);
+                            }
+                          } else {
+                            lateRollNumbers.remove(s.roll);
+                          }
+                        });
+                      }
+                    : null,
+              ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
 }
 
 /* ================= MODEL ================= */
