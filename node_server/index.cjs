@@ -122,7 +122,7 @@ app.post("/attendance", async (req, res) => {
               password: process.env.GUPSHUP_PASSWORD,
               auth_scheme: "PLAIN",
               v: "1.1",
-              format: "text",
+              
             },
           }
         );
