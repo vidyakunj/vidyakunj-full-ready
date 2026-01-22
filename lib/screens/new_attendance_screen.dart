@@ -103,7 +103,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     setState(() => isLoadingStudents = false);
   }
 
-  /* ================= LOCK CHECK ================= */
+/* ================= LOCK CHECK ================= */
 Future<void> _checkAttendanceLock() async {
   final today = DateTime.now();
   final date =
@@ -125,27 +125,28 @@ Future<void> _checkAttendanceLock() async {
     lateRollNumbers.clear();
 
     for (final s in students) {
-      // ABSENT
+      s.locked = false;
+      s.isPresent = true;
+      s.late = false;
+
+      // ❌ ABSENT
       if (absent.contains(s.roll)) {
         s.locked = true;
         s.isPresent = false;
         s.late = false;
-
         absentRollNumbers.add(s.roll);
       }
 
-      // LATE
+      // ⏰ LATE (NOT ABSENT)
       else if (late.contains(s.roll)) {
         s.locked = true;
         s.isPresent = true;
         s.late = true;
-
         lateRollNumbers.add(s.roll);
       }
     }
   }
 }
-
 
   /* ================= SAVE ATTENDANCE ================= */
   Future<void> _saveAttendance() async {
