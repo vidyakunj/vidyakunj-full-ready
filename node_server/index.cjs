@@ -1,6 +1,6 @@
 /* =======================================================
    VIDYAKUNJ SMS + ATTENDANCE BACKEND
-   FINAL – ABSENT + LATE (OLD WORKING METHOD)
+   FINAL – FULL FILE (ABSENT + LATE FIXED)
    ======================================================= */
 
 const compression = require("compression");
@@ -8,7 +8,6 @@ const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
-const axios = require("axios");
 require("dotenv").config();
 
 /* ================= LOGIN USERS ================= */
@@ -31,9 +30,9 @@ app.use(cors({
 app.use(bodyParser.json());
 app.use(compression());
 
-/* ================= ROOT CHECK ================= */
+/* ================= ROOT ================= */
 app.get("/", (req, res) => {
-  res.send("Vidyakunj SMS Server Running");
+  res.send("Vidyakunj Attendance Server Running");
 });
 
 /* ================= MONGO ================= */
@@ -88,9 +87,54 @@ app.get("/students", async (req, res) => {
   res.json({ students });
 });
 
-app.get("/attendance/check-lock", async (req, res) => {
-  const lock = await AttendanceLock.findOne(req.query);
-  res.json({ locked: lock?.locked || [] });
+/* ================= SAVE ATTENDANCE ================= */
+app.post("/attendance", async (req, res) => {
+  try {
+    const { date, attendance } = req.body;
+    if (!attendance || !attendance.length) {
+      return res.status(400).json({ success: false });
+    }
+
+    const parsedDate = new Date(date);
+    parsedDate.setHours(0, 0, 0, 0);
+    const dateStr = parsedDate.toISOString().split("T")[0];
+
+    const std = attendance[0].std;
+    const div = attendance[0].div;
+
+    await Attendance.deleteMany({ std, div, date: parsedDate });
+    await AttendanceLock.deleteMany({ std, div, date: dateStr });
+
+    const absent = [];
+    const late = [];
+
+    for (const s of attendance) {
+      await Attendance.create({
+        studentId: s.studentId,
+        std,
+        div,
+        roll: s.roll,
+        date: parsedDate,
+        present: s.present,
+        late: s.present === true ? !!s.late : false,
+      });
+
+      if (s.present === false) absent.push(s.roll);
+      else if (s.late === true) late.push(s.roll);
+    }
+
+    await AttendanceLock.create({
+      std,
+      div,
+      date: dateStr,
+      locked: [...absent, ...late],
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Attendance Save Error:", err);
+    res.status(500).json({ success: false });
+  }
 });
 
 /* ================= ATTENDANCE LOCK CHECK ================= */
@@ -98,29 +142,17 @@ app.get("/attendance/check-lock", async (req, res) => {
   try {
     const { std, div, date } = req.query;
 
-    if (!std || !div || !date) {
-      return res.status(400).json({ absent: [], late: [] });
-    }
-
     const parsedDate = new Date(date);
     parsedDate.setHours(0, 0, 0, 0);
 
-    // Fetch all attendance for the day
-    const records = await Attendance.find({
-      std,
-      div,
-      date: parsedDate,
-    });
+    const records = await Attendance.find({ std, div, date: parsedDate });
 
     const absent = [];
     const late = [];
 
     for (const r of records) {
-      if (r.present === false) {
-        absent.push(r.roll);
-      } else if (r.present === true && r.late === true) {
-        late.push(r.roll);
-      }
+      if (r.present === false) absent.push(r.roll);
+      else if (r.late === true) late.push(r.roll);
     }
 
     res.json({ absent, late });
@@ -139,7 +171,7 @@ app.get("/attendance/summary-school", async (req, res) => {
         success: true,
         primary: [],
         secondary: [],
-        schoolTotal: { total: 0, present: 0, absent: 0 }
+        schoolTotal: { total: 0, present: 0, absent: 0 },
       });
     }
 
@@ -150,12 +182,7 @@ app.get("/attendance/summary-school", async (req, res) => {
     nextDay.setDate(parsedDate.getDate() + 1);
 
     const classes = await Student.aggregate([
-      {
-        $group: {
-          _id: { std: "$std", div: "$div" },
-          total: { $sum: 1 }
-        }
-      }
+      { $group: { _id: { std: "$std", div: "$div" }, total: { $sum: 1 } } },
     ]);
 
     let primary = [];
@@ -163,125 +190,36 @@ app.get("/attendance/summary-school", async (req, res) => {
     let schoolTotal = { total: 0, present: 0, absent: 0 };
 
     for (const c of classes) {
-      const std = c._id.std;
-      const div = c._id.div;
+      const { std, div } = c._id;
       const total = c.total;
 
       const absent = await Attendance.countDocuments({
         std,
         div,
         present: false,
-        date: { $gte: parsedDate, $lt: nextDay }
+        date: { $gte: parsedDate, $lt: nextDay },
       });
 
       const present = total - absent;
-
       const row = { std, div, total, present, absent };
 
       schoolTotal.total += total;
       schoolTotal.present += present;
       schoolTotal.absent += absent;
 
-      if (parseInt(std) <= 8) primary.push(row);
-      else secondary.push(row);
+      parseInt(std) <= 8 ? primary.push(row) : secondary.push(row);
     }
 
-    res.json({
-      success: true,
-      primary,
-      secondary,
-      schoolTotal
-    });
-
+    res.json({ success: true, primary, secondary, schoolTotal });
   } catch (err) {
     console.error("SUMMARY ERROR:", err);
     res.json({
       success: true,
       primary: [],
       secondary: [],
-      schoolTotal: { total: 0, present: 0, absent: 0 }
+      schoolTotal: { total: 0, present: 0, absent: 0 },
     });
   }
-});
-
-/* ================= ADMIN SCHOOL SUMMARY – DATE RANGE ================= */
-app.get("/attendance/summary-school-range", async (req, res) => {
-  try {
-    const { from, to } = req.query;
-    if (!from || !to) {
-      return res.json({
-        success: true,
-        primary: [],
-        secondary: [],
-        schoolTotal: { total: 0, present: 0, absent: 0 }
-      });
-    }
-
-    const start = new Date(from);
-    start.setHours(0, 0, 0, 0);
-
-    const end = new Date(to);
-    end.setHours(23, 59, 59, 999);
-
-    const classes = await Student.aggregate([
-      {
-        $group: {
-          _id: { std: "$std", div: "$div" },
-          total: { $sum: 1 }
-        }
-      }
-    ]);
-
-    let primary = [];
-    let secondary = [];
-    let schoolTotal = { total: 0, present: 0, absent: 0 };
-
-    for (const c of classes) {
-      const std = c._id.std;
-      const div = c._id.div;
-      const total = c.total;
-
-      const absent = await Attendance.countDocuments({
-        std,
-        div,
-        present: false,
-        date: { $gte: start, $lte: end }
-      });
-
-      const present = total - absent;
-
-      const row = { std, div, total, present, absent };
-
-      schoolTotal.total += total;
-      schoolTotal.present += present;
-      schoolTotal.absent += absent;
-
-      if (parseInt(std) <= 8) primary.push(row);
-      else secondary.push(row);
-    }
-
-    res.json({ success: true, primary, secondary, schoolTotal });
-  } catch (err) {
-    console.error("RANGE SUMMARY ERROR:", err);
-    res.status(500).json({ success: false });
-  }
-});
-
-/* =======================================================
-   ALIAS ROUTES – FIX FRONTEND 404 ISSUE
-   DO NOT MOVE THIS BLOCK
-   ======================================================= */
-
-// ✅ SINGLE DAY (frontend calls /attendance/summary)
-app.get("/attendance/summary", (req, res) => {
-  req.url = "/attendance/summary-school";
-  app._router.handle(req, res);
-});
-
-// ✅ DATE RANGE (frontend calls /attendance/summary-range)
-app.get("/attendance/summary-range", (req, res) => {
-  req.url = "/attendance/summary-school-range";
-  app._router.handle(req, res);
 });
 
 /* ================= START ================= */
