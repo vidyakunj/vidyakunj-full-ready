@@ -338,18 +338,17 @@ Future<void> _checkAttendanceLock() async {
           }
         });
       },
-
-                ),
-                Checkbox(
+),
+               Checkbox(
   value: s.late,
   onChanged: (s.isPresent && !s.locked)
       ? (v) {
           setState(() {
             s.late = v ?? false;
 
-            // 🔴 CRITICAL FIX
+            // FORCE consistency
             if (s.late) {
-              s.isPresent = true; // force present
+              s.isPresent = true;
               absentRollNumbers.remove(s.roll);
               if (!lateRollNumbers.contains(s.roll)) {
                 lateRollNumbers.add(s.roll);
@@ -361,7 +360,6 @@ Future<void> _checkAttendanceLock() async {
         }
       : null,
 ),
-
 
                 ),
               ],
