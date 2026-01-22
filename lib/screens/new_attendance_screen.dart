@@ -341,25 +341,27 @@ Future<void> _checkAttendanceLock() async {
 
                 ),
                 Checkbox(
-                  value: s.late,
-                  onChanged: (s.isPresent && !s.locked)
-    ? (v) {
-        setState(() {
-          s.late = v ?? false;
+  value: s.late,
+  onChanged: (s.isPresent && !s.locked)
+      ? (v) {
+          setState(() {
+            s.late = v ?? false;
 
-          if (s.late) {
-            // Late student must NOT be absent
-            absentRollNumbers.remove(s.roll);
-
-            if (!lateRollNumbers.contains(s.roll)) {
-              lateRollNumbers.add(s.roll);
+            // 🔴 CRITICAL FIX
+            if (s.late) {
+              s.isPresent = true; // force present
+              absentRollNumbers.remove(s.roll);
+              if (!lateRollNumbers.contains(s.roll)) {
+                lateRollNumbers.add(s.roll);
+              }
+            } else {
+              lateRollNumbers.remove(s.roll);
             }
-          } else {
-            lateRollNumbers.remove(s.roll);
-          }
-        });
-      }
-    : null,
+          });
+        }
+      : null,
+),
+
 
                 ),
               ],
