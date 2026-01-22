@@ -104,31 +104,48 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
   }
 
   /* ================= LOCK CHECK ================= */
-  Future<void> _checkAttendanceLock() async {
-    final today = DateTime.now();
-    final date =
-        "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
+Future<void> _checkAttendanceLock() async {
+  final today = DateTime.now();
+  final date =
+      "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
 
-    final res = await http.get(
-      Uri.parse(
-          "$SERVER_URL/attendance/check-lock?std=$selectedStd&div=$selectedDiv&date=$date"),
-    );
+  final res = await http.get(
+    Uri.parse(
+      "$SERVER_URL/attendance/check-lock?std=$selectedStd&div=$selectedDiv&date=$date",
+    ),
+  );
 
-    if (res.statusCode == 200) {
-      final data = jsonDecode(res.body);
-      final locked = data['locked'] ?? [];
+  if (res.statusCode == 200) {
+    final data = jsonDecode(res.body);
 
-      for (final s in students) {
-        if (locked.contains(s.roll)) {
-          s.locked = true;
-          s.isPresent = false;
-          if (!absentRollNumbers.contains(s.roll)) {
-            absentRollNumbers.add(s.roll);
-          }
-        }
+    final List absent = data['absent'] ?? [];
+    final List late = data['late'] ?? [];
+
+    absentRollNumbers.clear();
+    lateRollNumbers.clear();
+
+    for (final s in students) {
+      // ABSENT
+      if (absent.contains(s.roll)) {
+        s.locked = true;
+        s.isPresent = false;
+        s.late = false;
+
+        absentRollNumbers.add(s.roll);
+      }
+
+      // LATE
+      else if (late.contains(s.roll)) {
+        s.locked = true;
+        s.isPresent = true;
+        s.late = true;
+
+        lateRollNumbers.add(s.roll);
       }
     }
   }
+}
+
 
   /* ================= SAVE ATTENDANCE ================= */
   Future<void> _saveAttendance() async {
