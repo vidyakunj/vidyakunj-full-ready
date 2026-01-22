@@ -116,11 +116,11 @@ app.post("/attendance", async (req, res) => {
             params: {
               method: "SendMessage",
               send_to: e.mobile,
-              msg: `Dear Parent, your ward is absent today.`,
+              msg: `Dear Parents,Your child, ${studentName} remained absent in school today.,Vidyakunj School`,
               msg_type: "TEXT",
               userid: process.env.GUPSHUP_USERID,
               password: process.env.GUPSHUP_PASSWORD,
-              auth_scheme: "plain",
+              auth_scheme: "PLAIN",
               v: "1.1",
               format: "text",
             },
