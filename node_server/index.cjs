@@ -93,62 +93,40 @@ app.get("/attendance/check-lock", async (req, res) => {
   res.json({ locked: lock?.locked || [] });
 });
 
-/* ================= ATTENDANCE ================= */
-app.post("/attendance", async (req, res) => {
+/* ================= ATTENDANCE LOCK CHECK ================= */
+app.get("/attendance/check-lock", async (req, res) => {
   try {
-    const { date, attendance } = req.body;
+    const { std, div, date } = req.query;
+
+    if (!std || !div || !date) {
+      return res.status(400).json({ absent: [], late: [] });
+    }
 
     const parsedDate = new Date(date);
     parsedDate.setHours(0, 0, 0, 0);
-    const dateStr = parsedDate.toISOString().split("T")[0];
 
-    const std = attendance[0].std;
-    const div = attendance[0].div;
+    // Fetch all attendance for the day
+    const records = await Attendance.find({
+      std,
+      div,
+      date: parsedDate,
+    });
 
-    const lockDoc = await AttendanceLock.findOne({ std, div, date: dateStr });
-    const locked = lockDoc?.locked || [];
+    const absent = [];
+    const late = [];
 
-    const toLock = [];
-
-    for (const e of attendance) {
-      // 🔒 ONE-TIME LOCK (ABSENT + LATE + PRESENT)
-      if (locked.includes(e.roll)) continue;
-
-      await Attendance.updateOne(
-        {
-          studentId: e.studentId,
-          std,
-          div,
-          date: parsedDate,
-        },
-        {
-          $set: {
-            roll: e.roll,
-            present: e.present,
-            late: e.present === true ? !!e.late : false,
-          },
-        },
-        { upsert: true }
-      );
-
-      // 🔒 lock ONLY if ABSENT or LATE
-if (e.present === false || e.late === true) {
-  toLock.push(e.roll);
-  }
-}
-
-    if (toLock.length) {
-      await AttendanceLock.updateOne(
-        { std, div, date: dateStr },
-        { $addToSet: { locked: { $each: toLock } } },
-        { upsert: true }
-      );
+    for (const r of records) {
+      if (r.present === false) {
+        absent.push(r.roll);
+      } else if (r.present === true && r.late === true) {
+        late.push(r.roll);
+      }
     }
 
-    res.json({ success: true });
+    res.json({ absent, late });
   } catch (err) {
-    console.error("Attendance Error:", err);
-    res.status(500).json({ success: false });
+    console.error("Check Lock Error:", err);
+    res.status(500).json({ absent: [], late: [] });
   }
 });
 
