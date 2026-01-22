@@ -301,39 +301,49 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
               children: [
                 Checkbox(
                   value: s.isPresent,
-                  onChanged: s.locked
-                      ? null
-                      : (v) {
-                          setState(() {
-                            s.isPresent = v ?? true;
-                            if (!s.isPresent) {
-                              s.late = false;
-                              lateRollNumbers.remove(s.roll);
-                              if (!absentRollNumbers.contains(s.roll)) {
-                                absentRollNumbers.add(s.roll);
-                              }
-                            } else {
-                              absentRollNumbers.remove(s.roll);
-                            }
-                          });
-                        },
+                 onChanged: s.locked
+    ? null
+    : (v) {
+        setState(() {
+          s.isPresent = v ?? true;
+
+          if (!s.isPresent) {
+            // Mark absent ONLY if not late
+            s.late = false;
+            lateRollNumbers.remove(s.roll);
+
+            if (!absentRollNumbers.contains(s.roll)) {
+              absentRollNumbers.add(s.roll);
+            }
+          } else {
+            // Present → remove from absent
+            absentRollNumbers.remove(s.roll);
+          }
+        });
+      },
+
                 ),
                 Checkbox(
                   value: s.late,
                   onChanged: (s.isPresent && !s.locked)
-                      ? (v) {
-                          setState(() {
-                            s.late = v ?? false;
-                            if (s.late) {
-                              if (!lateRollNumbers.contains(s.roll)) {
-                                lateRollNumbers.add(s.roll);
-                              }
-                            } else {
-                              lateRollNumbers.remove(s.roll);
-                            }
-                          });
-                        }
-                      : null,
+    ? (v) {
+        setState(() {
+          s.late = v ?? false;
+
+          if (s.late) {
+            // Late student must NOT be absent
+            absentRollNumbers.remove(s.roll);
+
+            if (!lateRollNumbers.contains(s.roll)) {
+              lateRollNumbers.add(s.roll);
+            }
+          } else {
+            lateRollNumbers.remove(s.roll);
+          }
+        });
+      }
+    : null,
+
                 ),
               ],
             ),
