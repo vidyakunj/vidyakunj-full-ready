@@ -93,7 +93,7 @@ class _LoginScreenState extends State<LoginScreen> {
       // 🏫 School Logo
       Image.asset(
         'assets/logo.png',
-        height: 70,
+        height: 100,
         fit: BoxFit.contain,
       ),
 
@@ -109,7 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
           overflow: TextOverflow.visible,
           style: TextStyle(
             color: Colors.white,
-            fontSize: 18,
+            fontSize: 20,
             fontWeight: FontWeight.bold,
             letterSpacing: 1.2,
           ),
