@@ -20,11 +20,11 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
 
   final Color navy = const Color(0xFF003366);
+  bool isLoading = false;
 
   Future<void> _login() async {
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
-    final role = _isSelected[0] ? 'teacher' : 'admin';
 
     if (username.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -32,6 +32,8 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       return;
     }
+
+    setState(() => isLoading = true);
 
     try {
       final response = await http.post(
@@ -43,31 +45,38 @@ class _LoginScreenState extends State<LoginScreen> {
         }),
       );
 
-    final data = jsonDecode(response.body);
+      final data = jsonDecode(response.body);
 
-if (data['success'] == true) {
-  final prefs = await SharedPreferences.getInstance();
+      if (data['success'] == true) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('loggedIn', true);
+        await prefs.setString('role', data['role']);
+        await prefs.setString('username', username);
 
-  await prefs.setBool('loggedIn', true);
-  await prefs.setString('role', data['role']);
-  await prefs.setString('username', username.trim()); // ✅ FIX
-
-  if (data['role'] == 'admin') {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const AdminDashboard()),
-    );
-  } else {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const TeacherDashboard()),
-    );
+        if (data['role'] == 'admin') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const AdminDashboard()),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const TeacherDashboard()),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Login failed')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    } finally {
+      setState(() => isLoading = false);
+    }
   }
-} else {
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text('Login failed')),
-  );
-}
 
   @override
   Widget build(BuildContext context) {
@@ -78,42 +87,38 @@ if (data['success'] == true) {
       backgroundColor: const Color(0xfff7f1f9),
       body: Column(
         children: [
+          // 🔵 HEADER
           Container(
-  width: double.infinity,
-  color: navy,
-  padding: const EdgeInsets.symmetric(vertical: 18),
-  child: Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      // 🏫 School Logo
-      Image.asset(
-        'assets/logo.png',
-        height: 125,
-        fit: BoxFit.contain,
-      ),
-
-      const SizedBox(height: 10),
-
-      // 🏷 School Name
-      const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16),
-        child: Text(
-          'VIDYAKUNJ SCHOOL NAVSARI',
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.visible,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.2,
+            width: double.infinity,
+            color: navy,
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            child: Column(
+              children: [
+                Image.asset(
+                  'assets/logo.png',
+                  height: 125,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(height: 10),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    'VIDYAKUNJ SCHOOL NAVSARI',
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      ),
-    ],
-  ),
-),
 
+          // 🟢 LOGIN CARD
           Expanded(
             child: Center(
               child: SingleChildScrollView(
@@ -124,11 +129,11 @@ if (data['success'] == true) {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
+                    boxShadow: const [
                       BoxShadow(
                         color: Colors.black12,
                         blurRadius: 8,
-                        offset: const Offset(0, 2),
+                        offset: Offset(0, 2),
                       ),
                     ],
                   ),
@@ -142,7 +147,6 @@ if (data['success'] == true) {
                         fillColor: navy,
                         selectedColor: Colors.white,
                         color: navy,
-                        constraints: const BoxConstraints(minHeight: 40.0, minWidth: 100.0),
                         isSelected: _isSelected,
                         onPressed: (int index) {
                           setState(() {
@@ -152,59 +156,49 @@ if (data['success'] == true) {
                           });
                         },
                         children: const [
-                          Text('Teacher'),
-                          Text('Admin'),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 24),
+                            child: Text('Teacher'),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 24),
+                            child: Text('Admin'),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 24),
-                      TextFormField(
+                      TextField(
                         controller: _usernameController,
-                        decoration: InputDecoration(
-                          hintText: 'Username or Mobile',
-                          prefixIcon: const Icon(Icons.person),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
+                        decoration: const InputDecoration(
+                          hintText: 'Username',
+                          prefixIcon: Icon(Icons.person),
                         ),
                       ),
                       const SizedBox(height: 16),
-                      TextFormField(
+                      TextField(
                         controller: _passwordController,
-                        decoration: InputDecoration(
-                          hintText: 'Password',
-                          prefixIcon: const Icon(Icons.lock),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
                         obscureText: true,
+                        decoration: const InputDecoration(
+                          hintText: 'Password',
+                          prefixIcon: Icon(Icons.lock),
+                        ),
                       ),
                       const SizedBox(height: 24),
                       ElevatedButton(
-                        onPressed: _login,
+                        onPressed: isLoading ? null : _login,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: navy,
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
                         ),
-                        child: const Text(
-                          'LOGIN',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Center(
-                        child: TextButton(
-                          onPressed: () {
-                            // Add forgot password action
-                          },
-                          child: const Text(
-                            'Forgot Password?',
-                            style: TextStyle(color: Colors.blue),
-                          ),
-                        ),
+                        child: isLoading
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : const Text(
+                                'LOGIN',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
                     ],
                   ),
@@ -212,7 +206,8 @@ if (data['success'] == true) {
               ),
             ),
           ),
-          // ✅ Footer bar with Powered By
+
+          // 🔵 FOOTER
           Container(
             width: double.infinity,
             color: navy,
