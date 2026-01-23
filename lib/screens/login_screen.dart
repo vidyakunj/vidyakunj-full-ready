@@ -84,37 +84,41 @@ class _LoginScreenState extends State<LoginScreen> {
       body: Column(
         children: [
           Container(
-  color: navy,
   width: double.infinity,
-  padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-  child: Row(
-    crossAxisAlignment: CrossAxisAlignment.center,
+  color: navy,
+  padding: const EdgeInsets.symmetric(vertical: 18),
+  child: Column(
+    mainAxisSize: MainAxisSize.min,
     children: [
+      // 🏫 School Logo
       Image.asset(
         'assets/logo.png',
-        height: 60,
-        width: 60,
+        height: 70,
+        fit: BoxFit.contain,
       ),
-      const SizedBox(width: 12),
 
-      // ✅ THIS FIXES THE CUTTING ISSUE
-      Expanded(
+      const SizedBox(height: 10),
+
+      // 🏷 School Name
+      const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16),
         child: Text(
           'VIDYAKUNJ SCHOOL NAVSARI',
           textAlign: TextAlign.center,
           maxLines: 2,
           overflow: TextOverflow.visible,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
-            fontSize: 16,
+            fontSize: 18,
             fontWeight: FontWeight.bold,
-            letterSpacing: 1.1,
+            letterSpacing: 1.2,
           ),
         ),
       ),
     ],
   ),
 ),
+
           Expanded(
             child: Center(
               child: SingleChildScrollView(
