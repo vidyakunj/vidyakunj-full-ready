@@ -43,36 +43,31 @@ class _LoginScreenState extends State<LoginScreen> {
         }),
       );
 
-      final data = jsonDecode(response.body);
+    final data = jsonDecode(response.body);
 
-      if (data['success'] == true) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('loggedIn', true);
-        await prefs.setString('role', data['role']);
-        await prefs.setString('username', data['username']);
+if (data['success'] == true) {
+  final prefs = await SharedPreferences.getInstance();
 
-        if (data['role'] == 'admin') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const AdminDashboard()),
-          );
-        } else {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const TeacherDashboard()),
-          );
-        }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(data['message'] ?? 'Login failed')),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
-      );
-    }
+  await prefs.setBool('loggedIn', true);
+  await prefs.setString('role', data['role']);
+  await prefs.setString('username', username.trim()); // ✅ FIX
+
+  if (data['role'] == 'admin') {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const AdminDashboard()),
+    );
+  } else {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const TeacherDashboard()),
+    );
   }
+} else {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('Login failed')),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
