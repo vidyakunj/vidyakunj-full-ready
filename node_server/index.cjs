@@ -1,6 +1,6 @@
 /* =======================================================
    VIDYAKUNJ SMS + ATTENDANCE BACKEND
-   FINAL – STABLE, LATE ≠ ABSENT, DLT SAFE
+   FINAL – STABLE – ABSENT + LATE + DLT SMS
    ======================================================= */
 
 const compression = require("compression");
@@ -61,6 +61,13 @@ const Attendance = mongoose.model("attendance", new mongoose.Schema({
   late: { type: Boolean, default: false },
 }));
 
+const AttendanceLock = mongoose.model("attendance_locks", new mongoose.Schema({
+  std: String,
+  div: String,
+  date: String,
+  locked: [Number],
+}));
+
 /* ================= LOGIN ================= */
 app.post("/login", (req, res) => {
   const user = users.find(
@@ -70,7 +77,7 @@ app.post("/login", (req, res) => {
   res.json({ success: true, role: user.role });
 });
 
-/* ================= BASIC ================= */
+/* ================= BASIC APIs ================= */
 app.get("/divisions", async (req, res) => {
   const divisions = await Student.distinct("div", { std: req.query.std });
   res.json({ divisions });
@@ -81,52 +88,94 @@ app.get("/students", async (req, res) => {
   res.json({ students });
 });
 
-/* ================= ATTENDANCE SAVE ================= */
+/* =======================================================
+   ATTENDANCE SAVE + LOCK + DLT SMS
+   ======================================================= */
 app.post("/attendance", async (req, res) => {
   try {
     const { date, attendance } = req.body;
 
+    if (!attendance || !attendance.length) {
+      return res.status(400).json({ success: false });
+    }
+
     const parsedDate = new Date(date);
     parsedDate.setHours(0, 0, 0, 0);
+    const dateStr = parsedDate.toISOString().split("T")[0];
 
-    for (const e of attendance) {
+    const std = attendance[0].std;
+    const div = attendance[0].div;
+
+    const lockDoc = await AttendanceLock.findOne({ std, div, date: dateStr });
+    const alreadyLocked = lockDoc?.locked || [];
+
+    const newlyLocked = [];
+
+    for (const s of attendance) {
+      // Skip already locked
+      if (alreadyLocked.includes(s.roll)) continue;
+
       await Attendance.updateOne(
         {
-          studentId: e.studentId,
-          std: e.std,
-          div: e.div,
+          studentId: s.studentId,
+          std,
+          div,
           date: parsedDate,
         },
         {
           $set: {
-            roll: e.roll,
-            present: e.present,
-            late: e.present === true ? !!e.late : false,
+            roll: s.roll,
+            present: s.present,
+            late: s.present === true ? !!s.late : false,
           },
         },
         { upsert: true }
       );
 
-      /* ================= DLT SMS (UNCHANGED) ================= */
-      if (e.present === false) {
-        await axios.post(
-          "https://enterprise.smsgupshup.com/GatewayAPI/rest",
-          null,
-          {
-            params: {
-              method: "SendMessage",
-              send_to: e.mobile,
-              msg: `Dear Parents,Your child, ${studentName} remained absent in school today.,Vidyakunj School`,
-              msg_type: "TEXT",
-              userid: process.env.GUPSHUP_USERID,
-              password: process.env.GUPSHUP_PASSWORD,
-              auth_scheme: "PLAIN",
-              v: "1.1",
-              
-            },
+      // 🔒 LOCK ONLY ABSENT OR LATE
+      if (s.present === false || s.late === true) {
+        newlyLocked.push(s.roll);
+
+        // ================= SMS =================
+        if (s.mobile) {
+          let message = "";
+
+          if (s.present === false) {
+            message =
+              "Dear Parent, your ward is ABSENT today. Vidyakunj School.";
+          } else if (s.late === true) {
+            message =
+              "Dear Parent, your ward came LATE today. Vidyakunj School.";
           }
-        );
+
+          if (message) {
+            await axios.post(
+              "https://api.gupshup.io/wa/api/v1/msg",
+              new URLSearchParams({
+                channel: "sms",
+                source: process.env.GUPSHUP_SENDER,
+                destination: s.mobile,
+                message,
+                srcname: process.env.GUPSHUP_SRCNAME,
+              }),
+              {
+                headers: {
+                  "apikey": process.env.GUPSHUP_API_KEY,
+                  "Content-Type": "application/x-www-form-urlencoded",
+                },
+              }
+            );
+          }
+        }
       }
+    }
+
+    if (newlyLocked.length) {
+      await AttendanceLock.updateOne(
+        { std, div, date: dateStr },
+        { $addToSet: { locked: { $each: newlyLocked } } },
+        { upsert: true }
+      );
     }
 
     res.json({ success: true });
@@ -136,15 +185,25 @@ app.post("/attendance", async (req, res) => {
   }
 });
 
-/* ================= ATTENDANCE CHECK (ONLY ONE) ================= */
+/* =======================================================
+   ATTENDANCE CHECK (USED BY FRONTEND)
+   ======================================================= */
 app.get("/attendance/check-lock", async (req, res) => {
   try {
     const { std, div, date } = req.query;
 
+    if (!std || !div || !date) {
+      return res.json({ absent: [], late: [] });
+    }
+
     const parsedDate = new Date(date);
     parsedDate.setHours(0, 0, 0, 0);
 
-    const records = await Attendance.find({ std, div, date: parsedDate });
+    const records = await Attendance.find({
+      std,
+      div,
+      date: parsedDate,
+    });
 
     const absent = [];
     const late = [];
@@ -156,7 +215,7 @@ app.get("/attendance/check-lock", async (req, res) => {
 
     res.json({ absent, late });
   } catch (err) {
-    console.error("Check Error:", err);
+    console.error("Check Lock Error:", err);
     res.json({ absent: [], late: [] });
   }
 });
