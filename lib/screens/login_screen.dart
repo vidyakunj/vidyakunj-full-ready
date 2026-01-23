@@ -91,12 +91,12 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 Image.asset(
                   'assets/logo.png',
-                  height: 40,
-                  width: 40,
+                  height: 50,
+                  width: 50,
                 ),
                 const SizedBox(width: 12),
                 const Text(
-                  'VIDYAKUNJ SCHOOL',
+                  'VIDYAKUNJ SCHOOL NAVSARI',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 24,
