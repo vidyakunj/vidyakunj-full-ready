@@ -158,14 +158,15 @@ Future<void> _checkAttendanceLock() async {
     final dateStr = DateTime.now().toIso8601String();
 
     final payload = students.map((s) => {
-          "studentId": s.id,
-          "std": selectedStd,
-          "div": selectedDiv,
-          "roll": s.roll,
-          "date": dateStr,
-          "present": s.isPresent,
-          "late": s.late,
-        }).toList();
+      "studentId": s.id,
+      "std": selectedStd,
+      "div": selectedDiv,
+      "roll": s.roll,
+      "date": dateStr,
+      "present": s.isPresent,
+      "late": s.late,
+}).toList();
+
 
     try {
       final res = await http.post(
