@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'screens/login_screen.dart';
 import 'splash_check.dart';
+import 'admin/reports/admin_reports_home.dart';
 
 void main() {
   runApp(const MyApp());
@@ -16,6 +17,12 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
 
       home: const SplashCheck(),
+
+      routes: {
+        '/adminReportsHome': (context) => const AdminReportsHome(),
+      },
     );
   }
 }
+
+
