@@ -197,44 +197,45 @@ Future<void> _checkAttendanceLock() async {
         .showSnackBar(SnackBar(content: Text(msg)));
   }
 
- /* ================= UI ================= */
+/* ================= UI ================= */
 @override
 Widget build(BuildContext context) {
   return WillPopScope(
     onWillPop: () async {
       if (!isSaved) {
-       final result = await showDialog<bool>(
-  context: context,
-  barrierDismissible: false, // IMPORTANT
-  builder: (context) => AlertDialog(
-    title: const Text("Attendance not saved"),
-    content: const Text(
-      "Do you want to save attendance before leaving?",
-    ),
-    actions: [
-      TextButton(
-        onPressed: () {
-          Navigator.pop(context, true); // exit without saving
-        },
-        child: const Text("Exit Without Saving"),
-      ),
-      ElevatedButton(
-        onPressed: () async {
-          await _saveAttendance();
-          setState(() {
-            isSaved = true;
-          });
-          Navigator.pop(context, true); // save & exit
-        },
-        child: const Text("Save & Exit"),
-      ),
-    ],
-  ),
-);
+        final result = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Text("Attendance not saved"),
+            content: const Text(
+              "Do you want to save attendance before leaving?",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context, true); // exit without saving
+                },
+                child: const Text("Exit Without Saving"),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  await _saveAttendance();
+                  setState(() {
+                    isSaved = true;
+                  });
+                  Navigator.pop(context, true); // save & exit
+                },
+                child: const Text("Save & Exit"),
+              ),
+            ],
+          ),
+        );
 
-return result ?? false;
-
-    
+        return result ?? false;
+      }
+      return true;
+    },
     child: Scaffold(
       backgroundColor: const Color(0xffeef3ff),
       body: Column(
