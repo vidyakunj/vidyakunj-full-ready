@@ -14,7 +14,9 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
+  // 0 = Teacher, 1 = Admin
   List<bool> _isSelected = [true, false];
 
   final TextEditingController _usernameController = TextEditingController();
@@ -25,26 +27,38 @@ class _LoginScreenState extends State<LoginScreen> {
   final ScrollController _scrollController = ScrollController();
 
   final Color navy = const Color(0xFF003366);
+
   bool isLoading = false;
 
   @override
   void initState() {
     super.initState();
+    _loadLastRole();
 
-    _usernameFocus.addListener(_scrollToField);
-    _passwordFocus.addListener(_scrollToField);
+    _usernameFocus.addListener(_scrollToBottom);
+    _passwordFocus.addListener(_scrollToBottom);
   }
 
-  void _scrollToField() {
-    if (_scrollController.hasClients) {
-      Future.delayed(const Duration(milliseconds: 250), () {
+  /// 🔹 Remember last selected role
+  Future<void> _loadLastRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    final role = prefs.getString('lastRole') ?? 'teacher';
+
+    setState(() {
+      _isSelected = role == 'admin' ? [false, true] : [true, false];
+    });
+  }
+
+  void _scrollToBottom() {
+    Future.delayed(const Duration(milliseconds: 250), () {
+      if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
         );
-      });
-    }
+      }
+    });
   }
 
   @override
@@ -60,6 +74,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _login() async {
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
+    final selectedRole = _isSelected[1] ? 'admin' : 'teacher';
 
     if (username.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -77,6 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
         body: jsonEncode({
           'username': username,
           'password': password,
+          'role': selectedRole,
         }),
       );
 
@@ -87,6 +103,7 @@ class _LoginScreenState extends State<LoginScreen> {
         await prefs.setBool('loggedIn', true);
         await prefs.setString('role', data['role']);
         await prefs.setString('username', username);
+        await prefs.setString('lastRole', data['role']);
 
         if (!mounted) return;
 
@@ -109,9 +126,7 @@ class _LoginScreenState extends State<LoginScreen> {
         SnackBar(content: Text('Error: $e')),
       );
     } finally {
-      if (mounted) {
-        setState(() => isLoading = false);
-      }
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
@@ -136,37 +151,50 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           child: Column(
             children: [
-              // 🔵 HEADER (compact)
-              Container(
+              // 🔵 HEADER (shrinks smoothly when keyboard opens)
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
                 width: double.infinity,
                 color: navy,
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: EdgeInsets.symmetric(
+                  vertical: keyboardOpen ? 8 : 12,
+                ),
                 child: Column(
                   children: [
-                    Image.asset(
-                      'assets/logo.png',
-                      height: 90,
-                      fit: BoxFit.contain,
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      height: keyboardOpen ? 60 : 90,
+                      child: Image.asset(
+                        'assets/logo.png',
+                        fit: BoxFit.contain,
+                      ),
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'VIDYAKUNJ SCHOOL NAVSARI',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.1,
+                    const SizedBox(height: 6),
+                    AnimatedOpacity(
+                      opacity: keyboardOpen ? 0 : 1,
+                      duration: const Duration(milliseconds: 200),
+                      child: const Text(
+                        'VIDYAKUNJ SCHOOL NAVSARI',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.1,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 30),
+              const SizedBox(height: 24),
 
-              // 🟢 LOGIN CARD
-              Container(
+              // 🟢 LOGIN CARD (animated appearance)
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
                 width: formWidth,
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
@@ -193,9 +221,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       isSelected: _isSelected,
                       onPressed: (int index) {
                         setState(() {
-                          for (int i = 0; i < _isSelected.length; i++) {
-                            _isSelected[i] = i == index;
-                          }
+                          _isSelected = [index == 0, index == 1];
                         });
                       },
                       children: const [
