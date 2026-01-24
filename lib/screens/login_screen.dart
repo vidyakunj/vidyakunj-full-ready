@@ -171,12 +171,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: double.infinity,
                 color: navy,
                 padding:
-                    EdgeInsets.symmetric(vertical: keyboardOpen ? 8 : 12),
+                    EdgeInsets.symmetric(vertical: keyboardOpen ? 4 : 8),
                 child: Column(
                   children: [
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
-                      height: keyboardOpen ? 60 : 90,
+                      height: keyboardOpen ? 40 : 60,
                       child: Image.asset(
                         'assets/logo.png',
                         fit: BoxFit.contain,
@@ -191,7 +191,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 18,
+                          fontSize: 15,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 1.1,
                         ),
