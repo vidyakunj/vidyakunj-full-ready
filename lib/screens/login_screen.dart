@@ -15,12 +15,53 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  // Toggle buttons
   List<bool> _isSelected = [true, false];
+
+  // Controllers & focus nodes
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final FocusNode _usernameFocus = FocusNode();
+  final FocusNode _passwordFocus = FocusNode();
+  final ScrollController _scrollController = ScrollController();
 
+  // Brand color
   final Color navy = const Color(0xFF003366);
+
   bool isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Auto-scroll when field focused
+    _usernameFocus.addListener(_scrollToField);
+    _passwordFocus.addListener(_scrollToField);
+  }
+
+  void _scrollToField() {
+    if (_usernameFocus.hasFocus || _passwordFocus.hasFocus) {
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    _usernameFocus.dispose();
+    _passwordFocus.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   Future<void> _login() async {
     final username = _usernameController.text.trim();
@@ -55,17 +96,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
         if (!mounted) return;
 
-        if (data['role'] == 'admin') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const AdminDashboard()),
-          );
-        } else {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const TeacherDashboard()),
-          );
-        }
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                data['role'] == 'admin'
+                    ? const AdminDashboard()
+                    : const TeacherDashboard(),
+          ),
+        );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Login failed')),
@@ -84,20 +123,25 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+
     final double screenWidth = MediaQuery.of(context).size.width;
-    final double formWidth = screenWidth * 0.9 > 400 ? 400 : screenWidth * 0.9;
+    final double formWidth =
+        screenWidth * 0.9 > 400 ? 400 : screenWidth * 0.9;
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      backgroundColor: const Color(0xfff7f1f9),
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xfff7f1f9),
       body: SafeArea(
         child: SingleChildScrollView(
+          controller: _scrollController,
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom,
           ),
           child: Column(
             children: [
-              // 🔵 HEADER
+              // 🔵 HEADER (brand color stays same)
               Container(
                 width: double.infinity,
                 color: navy,
@@ -106,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     Image.asset(
                       'assets/logo.png',
-                      height: 100,
+                      height: 125,
                       fit: BoxFit.contain,
                     ),
                     const SizedBox(height: 10),
@@ -136,13 +180,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: formWidth,
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    boxShadow: const [
+                    boxShadow: [
                       BoxShadow(
-                        color: Colors.black12,
+                        color: isDark ? Colors.black54 : Colors.black12,
                         blurRadius: 8,
-                        offset: Offset(0, 2),
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
@@ -178,6 +222,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 24),
                       TextField(
                         controller: _usernameController,
+                        focusNode: _usernameFocus,
                         decoration: const InputDecoration(
                           hintText: 'Username',
                           prefixIcon: Icon(Icons.person),
@@ -186,6 +231,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 16),
                       TextField(
                         controller: _passwordController,
+                        focusNode: _passwordFocus,
                         obscureText: true,
                         decoration: const InputDecoration(
                           hintText: 'Password',
@@ -218,22 +264,23 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 40),
 
-              // 🔵 FOOTER (keyboard-safe)
-              Container(
-                width: double.infinity,
-                color: navy,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: const Center(
-                  child: Text(
-                    'Powered By: Vidyakunj School',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+              // 🔵 FOOTER (hidden when keyboard open)
+              if (!keyboardOpen)
+                Container(
+                  width: double.infinity,
+                  color: navy,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: const Center(
+                    child: Text(
+                      'Powered By: Vidyakunj School',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
