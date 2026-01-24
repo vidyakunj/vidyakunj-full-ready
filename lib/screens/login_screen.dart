@@ -53,6 +53,8 @@ class _LoginScreenState extends State<LoginScreen> {
         await prefs.setString('role', data['role']);
         await prefs.setString('username', username);
 
+        if (!mounted) return;
+
         if (data['role'] == 'admin') {
           Navigator.pushReplacement(
             context,
@@ -74,7 +76,9 @@ class _LoginScreenState extends State<LoginScreen> {
         SnackBar(content: Text('Error: $e')),
       );
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
   }
 
@@ -84,45 +88,50 @@ class _LoginScreenState extends State<LoginScreen> {
     final double formWidth = screenWidth * 0.9 > 400 ? 400 : screenWidth * 0.9;
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       backgroundColor: const Color(0xfff7f1f9),
-      body: Column(
-        children: [
-          // 🔵 HEADER
-          Container(
-            width: double.infinity,
-            color: navy,
-            padding: const EdgeInsets.symmetric(vertical: 18),
-            child: Column(
-              children: [
-                Image.asset(
-                  'assets/logo.png',
-                  height: 125,
-                  fit: BoxFit.contain,
-                ),
-                const SizedBox(height: 10),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    'VIDYAKUNJ SCHOOL NAVSARI',
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
           ),
+          child: Column(
+            children: [
+              // 🔵 HEADER
+              Container(
+                width: double.infinity,
+                color: navy,
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                child: Column(
+                  children: [
+                    Image.asset(
+                      'assets/logo.png',
+                      height: 125,
+                      fit: BoxFit.contain,
+                    ),
+                    const SizedBox(height: 10),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'VIDYAKUNJ SCHOOL NAVSARI',
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
-          // 🟢 LOGIN CARD
-          Expanded(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+              const SizedBox(height: 30),
+
+              // 🟢 LOGIN CARD
+              Center(
                 child: Container(
                   width: formWidth,
                   padding: const EdgeInsets.all(24),
@@ -191,7 +200,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                         child: isLoading
-                            ? const CircularProgressIndicator(color: Colors.white)
+                            ? const CircularProgressIndicator(
+                                color: Colors.white,
+                              )
                             : const Text(
                                 'LOGIN',
                                 style: TextStyle(
@@ -204,26 +215,28 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-            ),
-          ),
 
-          // 🔵 FOOTER
-          Container(
-            width: double.infinity,
-            color: navy,
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: const Center(
-              child: Text(
-                'Powered By: Vidyakunj School',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+              const SizedBox(height: 40),
+
+              // 🔵 FOOTER (keyboard-safe)
+              Container(
+                width: double.infinity,
+                color: navy,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: const Center(
+                  child: Text(
+                    'Powered By: Vidyakunj School',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
