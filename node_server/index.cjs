@@ -201,6 +201,45 @@ app.post("/attendance", async (req, res) => {
     res.status(500).json({ success: false });
   }
 });
+/* ================= ATTENDANCE LIST (READ ONLY – ADMIN REPORT) ================= */
+app.get("/attendance/list", async (req, res) => {
+  try {
+    const { std, div, date } = req.query;
+
+    const parsedDate = new Date(date);
+    parsedDate.setHours(0, 0, 0, 0);
+
+    const students = await Student.find({ std, div }).sort({ roll: 1 });
+    const attendance = await Attendance.find({ std, div, date: parsedDate });
+
+    const map = {};
+    attendance.forEach(a => {
+      map[a.studentId.toString()] = a;
+    });
+
+    const result = students.map(s => {
+      const a = map[s._id.toString()];
+
+      let status = "absent";
+      if (a) {
+        if (a.present === true && a.late === true) status = "late";
+        else if (a.present === true) status = "present";
+        else status = "absent";
+      }
+
+      return {
+        rollNo: s.roll,
+        name: s.name,
+        status,
+      };
+    });
+
+    res.json({ students: result });
+  } catch (err) {
+    console.error("ATTENDANCE LIST ERROR:", err);
+    res.status(500).json({ students: [] });
+  }
+});
 
 /* ================= START ================= */
 app.listen(process.env.PORT || 10000, () =>
