@@ -14,9 +14,8 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen>
-    with SingleTickerProviderStateMixin {
-  // 0 = Teacher, 1 = Admin
+class _LoginScreenState extends State<LoginScreen> {
+  // Role toggle: 0 = Teacher, 1 = Admin
   List<bool> _isSelected = [true, false];
 
   final TextEditingController _usernameController = TextEditingController();
@@ -24,6 +23,10 @@ class _LoginScreenState extends State<LoginScreen>
 
   final FocusNode _usernameFocus = FocusNode();
   final FocusNode _passwordFocus = FocusNode();
+
+  final GlobalKey _usernameKey = GlobalKey();
+  final GlobalKey _passwordKey = GlobalKey();
+
   final ScrollController _scrollController = ScrollController();
 
   final Color navy = const Color(0xFF003366);
@@ -35,11 +38,19 @@ class _LoginScreenState extends State<LoginScreen>
     super.initState();
     _loadLastRole();
 
-    _usernameFocus.addListener(_scrollToBottom);
-    _passwordFocus.addListener(_scrollToBottom);
+    _usernameFocus.addListener(() {
+      if (_usernameFocus.hasFocus) {
+        _scrollToField(_usernameKey);
+      }
+    });
+
+    _passwordFocus.addListener(() {
+      if (_passwordFocus.hasFocus) {
+        _scrollToField(_passwordKey);
+      }
+    });
   }
 
-  /// 🔹 Remember last selected role
   Future<void> _loadLastRole() async {
     final prefs = await SharedPreferences.getInstance();
     final role = prefs.getString('lastRole') ?? 'teacher';
@@ -49,13 +60,15 @@ class _LoginScreenState extends State<LoginScreen>
     });
   }
 
-  void _scrollToBottom() {
-    Future.delayed(const Duration(milliseconds: 250), () {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+  void _scrollToField(GlobalKey key) {
+    Future.delayed(const Duration(milliseconds: 200), () {
+      final ctx = key.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
+          alignment: 0.3,
         );
       }
     });
@@ -151,15 +164,14 @@ class _LoginScreenState extends State<LoginScreen>
           ),
           child: Column(
             children: [
-              // 🔵 HEADER (shrinks smoothly when keyboard opens)
+              // 🔵 HEADER (shrinks smoothly)
               AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeInOut,
                 width: double.infinity,
                 color: navy,
-                padding: EdgeInsets.symmetric(
-                  vertical: keyboardOpen ? 8 : 12,
-                ),
+                padding:
+                    EdgeInsets.symmetric(vertical: keyboardOpen ? 8 : 12),
                 child: Column(
                   children: [
                     AnimatedContainer(
@@ -191,10 +203,8 @@ class _LoginScreenState extends State<LoginScreen>
 
               const SizedBox(height: 24),
 
-              // 🟢 LOGIN CARD (animated appearance)
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
+              // 🟢 LOGIN CARD
+              Container(
                 width: formWidth,
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
@@ -237,6 +247,7 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                     const SizedBox(height: 24),
                     TextField(
+                      key: _usernameKey,
                       controller: _usernameController,
                       focusNode: _usernameFocus,
                       decoration: const InputDecoration(
@@ -246,6 +257,7 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                     const SizedBox(height: 16),
                     TextField(
+                      key: _passwordKey,
                       controller: _passwordController,
                       focusNode: _passwordFocus,
                       obscureText: true,
@@ -262,7 +274,8 @@ class _LoginScreenState extends State<LoginScreen>
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       child: isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
+                          ? const CircularProgressIndicator(
+                              color: Colors.white)
                           : const Text(
                               'LOGIN',
                               style: TextStyle(
@@ -277,7 +290,7 @@ class _LoginScreenState extends State<LoginScreen>
 
               const SizedBox(height: 40),
 
-              // 🔵 FOOTER (hidden when keyboard opens)
+              // 🔵 FOOTER
               Visibility(
                 visible: !keyboardOpen,
                 child: Container(
