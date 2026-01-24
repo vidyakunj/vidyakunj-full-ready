@@ -176,7 +176,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
-                      height: keyboardOpen ? 40 : 60,
+                      height: keyboardOpen ? 30 : 50,
                       child: Image.asset(
                         'assets/logo.png',
                         fit: BoxFit.contain,
