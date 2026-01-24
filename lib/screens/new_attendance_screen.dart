@@ -13,6 +13,9 @@ class NewAttendanceScreen extends StatefulWidget {
 }
 
 class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
+  // 🔔 REQUIRED for warning popup
+  bool isSaved = false;
+
   String? selectedStd;
   String? selectedDiv;
 
@@ -26,6 +29,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
 
   final List<String> stdOptions =
       List<String>.generate(12, (i) => '${i + 1}');
+
 
   /* ================= LOGOUT ================= */
   Future<void> _logout() async {
@@ -193,21 +197,48 @@ Future<void> _checkAttendanceLock() async {
         .showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  /* ================= UI ================= */
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
+ /* ================= UI ================= */
+@override
+Widget build(BuildContext context) {
+  return WillPopScope(
+    onWillPop: () async {
+      if (!isSaved) {
+        return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text("Attendance not saved"),
+            content: const Text(
+              "Do you want to save attendance before leaving?",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context, true); // Exit without saving
+                },
+                child: const Text("Exit Without Saving"),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  await _saveAttendance();
+                  setState(() {
+                    isSaved = true;
+                  });
+                  Navigator.pop(context, true); // Save & exit
+                },
+                child: const Text("Save & Exit"),
+              ),
+            ],
+          ),
+        );
+      }
+      return true;
+    },
+    child: Scaffold(
       backgroundColor: const Color(0xffeef3ff),
-      appBar: AppBar(
-        backgroundColor: const Color(0xff003366),
-        title: const Text("Vidyakunj School"),
-        actions: [
-          IconButton(icon: const Icon(Icons.logout), onPressed: _logout),
-        ],
-      ),
       body: Column(
         children: [
           const SizedBox(height: 12),
+
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
@@ -246,11 +277,15 @@ Future<void> _checkAttendanceLock() async {
               ],
             ),
           ),
+
           Expanded(
             child: isLoadingStudents
                 ? const Center(child: CircularProgressIndicator())
-                : ListView(children: students.map(_studentTile).toList()),
+                : ListView(
+                    children: students.map(_studentTile).toList(),
+                  ),
           ),
+
           Padding(
             padding: const EdgeInsets.all(12),
             child: Row(
@@ -264,16 +299,18 @@ Future<void> _checkAttendanceLock() async {
                             ? "Absent: None"
                             : "Absent (${absentRollNumbers.length}): ${absentRollNumbers.join(', ')}",
                         style: const TextStyle(
-                            color: Colors.red,
-                            fontWeight: FontWeight.bold),
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       Text(
                         lateRollNumbers.isEmpty
                             ? "Late: None"
                             : "Late (${lateRollNumbers.length}): ${lateRollNumbers.join(', ')}",
                         style: const TextStyle(
-                            color: Colors.orange,
-                            fontWeight: FontWeight.bold),
+                          color: Colors.orange,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
@@ -287,8 +324,9 @@ Future<void> _checkAttendanceLock() async {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   /* ================= HELPERS ================= */
   InputDecoration _inputDeco(String label) => InputDecoration(
