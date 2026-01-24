@@ -142,16 +142,18 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             children: [
               // 🔵 HEADER (brand color stays same)
-              Container(
+             Container(
                 width: double.infinity,
                 color: navy,
-                padding: const EdgeInsets.symmetric(vertical: 18),
+                padding: const EdgeInsets.symmetric(vertical: 10), // 🔽 reduced
                 child: Column(
                   children: [
                     Image.asset(
                       'assets/logo.png',
-                      height: 125,
+                      height: 80, // 🔽 reduced from 125
                       fit: BoxFit.contain,
+                    ),
+
                     ),
                     const SizedBox(height: 10),
                     const Padding(
