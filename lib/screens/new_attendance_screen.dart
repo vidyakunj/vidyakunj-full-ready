@@ -203,36 +203,38 @@ Widget build(BuildContext context) {
   return WillPopScope(
     onWillPop: () async {
       if (!isSaved) {
-        return await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text("Attendance not saved"),
-            content: const Text(
-              "Do you want to save attendance before leaving?",
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context, true); // Exit without saving
-                },
-                child: const Text("Exit Without Saving"),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  await _saveAttendance();
-                  setState(() {
-                    isSaved = true;
-                  });
-                  Navigator.pop(context, true); // Save & exit
-                },
-                child: const Text("Save & Exit"),
-              ),
-            ],
-          ),
-        );
-      }
-      return true;
-    },
+       final result = await showDialog<bool>(
+  context: context,
+  barrierDismissible: false, // IMPORTANT
+  builder: (context) => AlertDialog(
+    title: const Text("Attendance not saved"),
+    content: const Text(
+      "Do you want to save attendance before leaving?",
+    ),
+    actions: [
+      TextButton(
+        onPressed: () {
+          Navigator.pop(context, true); // exit without saving
+        },
+        child: const Text("Exit Without Saving"),
+      ),
+      ElevatedButton(
+        onPressed: () async {
+          await _saveAttendance();
+          setState(() {
+            isSaved = true;
+          });
+          Navigator.pop(context, true); // save & exit
+        },
+        child: const Text("Save & Exit"),
+      ),
+    ],
+  ),
+);
+
+return result ?? false;
+
+    
     child: Scaffold(
       backgroundColor: const Color(0xffeef3ff),
       body: Column(
