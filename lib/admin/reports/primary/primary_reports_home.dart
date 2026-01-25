@@ -108,25 +108,41 @@ List<dynamic> getSortedClasses() {
                     context, '/primaryAttendanceSummaryReport');
               },
             ),
-                  const SizedBox(height: 30),
+             const SizedBox(height: 30),
 
-      Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey),
-        ),
-        child: const Text(
-          "Primary Section Summary will appear here",
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+if (loading)
+  const CircularProgressIndicator(),
+
+if (!loading && hasData)
+  Expanded(
+    child: ListView.builder(
+      itemCount: getSortedClasses().length,
+      itemBuilder: (context, index) {
+        final c = getSortedClasses()[index];
+
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 6),
+          child: ListTile(
+            title: Text(
+              "STD ${c['std']}  DIV ${c['div']}",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text(
+              "Total: ${c['total']} | "
+              "Present: ${c['present']} | "
+              "Absent: ${c['absent']} | "
+              "Late: ${c['late']} | "
+              "Attendance: ${c['percentage']}%",
+            ),
           ),
-          textAlign: TextAlign.center,
-        ),
-      ),
+        );
+      },
+    ),
+  ),
+
+if (!loading && !hasData)
+  const Text("No summary data available"),
+
 
           ],
         ),
