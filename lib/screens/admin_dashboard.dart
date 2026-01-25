@@ -54,24 +54,25 @@ class _AdminDashboardState extends State<AdminDashboard> {
      LOAD SUMMARY (SINGLE CLASS)
      ============================== */
   Future<void> loadSummary() async {
-    if (selectedStd == null || selectedDiv == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select STD and DIV")),
-      );
-      return;
-    }
+  if (selectedStd == null || selectedDiv == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Please select STD and DIV")),
+    );
+    return;
+  }
 
-    setState(() {
-      loading = true;
-      hasData = false;
-    });
+  setState(() {
+    loading = true;
+    hasData = false;
+  });
 
-    final dateStr =
-        "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
+  final dateStr =
+      "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
 
-    final url =
-        "$SERVER_URL/attendance/summary?date=$dateStr&std=$selectedStd&div=$selectedDiv";
+  final url =
+      "$SERVER_URL/attendance/summary?date=$dateStr&std=$selectedStd&div=$selectedDiv";
 
+  try {
     final res = await http.get(Uri.parse(url));
 
     if (res.statusCode == 200) {
@@ -83,17 +84,25 @@ class _AdminDashboardState extends State<AdminDashboard> {
         absent = data["summary"]["absent"] ?? 0;
         hasData = true;
       });
-       _startAutoRefresh(); // ✅ START AUTO REFRESH HERE
-}
+
+      _startAutoRefresh(); // ✅ start timer only after success
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Failed to load summary")),
       );
     }
-
-    setState(() => loading = false);
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Network error")),
+    );
   }
-// ================= AUTO REFRESH =================
+
+  setState(() {
+    loading = false;
+  });
+}
+
+  // ================= AUTO REFRESH =================
   void _startAutoRefresh() {
     _autoRefreshTimer?.cancel();
 
@@ -229,6 +238,5 @@ const SizedBox(height: 20),
     _autoRefreshTimer?.cancel();
     super.dispose();
   }
-}
 
 
