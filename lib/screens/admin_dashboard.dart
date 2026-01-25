@@ -215,18 +215,20 @@ const SizedBox(height: 20),
                 ),
               ),
 
-            if (!loading && !hasData)
-              const Text("No data available"),
+                        if (!loading && !hasData)
+                            const Text("No data available"),
           ],
         ),
       ),
     );
   }
-@override
-void dispose() {
-  _autoRefreshTimer?.cancel();
-  super.dispose();
+
+  // ✅ MUST BE INSIDE THE CLASS
+  @override
+  void dispose() {
+    _autoRefreshTimer?.cancel();
+    super.dispose();
+  }
 }
 
-}
 
