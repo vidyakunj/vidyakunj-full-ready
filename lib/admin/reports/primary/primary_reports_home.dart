@@ -55,7 +55,24 @@ class _PrimaryReportsHomeState extends State<PrimaryReportsHome> {
     super.initState();
     loadPrimarySectionSummary(); // 🔁 auto-load summary
   }
+  
+/* ================= SORT CLASSES (STD 1–8, DIV A–D) ================= */
+List<dynamic> getSortedClasses() {
+  final List<dynamic> sorted = List.from(classes);
 
+  sorted.sort((a, b) {
+    final stdA = int.parse(a["std"]);
+    final stdB = int.parse(b["std"]);
+
+    if (stdA != stdB) {
+      return stdA.compareTo(stdB); // STD 1 → 8
+    }
+
+    return a["div"].compareTo(b["div"]); // DIV A → D
+  });
+
+  return sorted;
+}
 
   @override
   Widget build(BuildContext context) {
