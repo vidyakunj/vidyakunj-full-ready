@@ -186,6 +186,11 @@ Future<void> _checkAttendanceLock() async {
       );
 
       if (res.statusCode == 200) {
+        // ✅ THIS WAS MISSING
+        setState(() {
+        isSaved = true;     // 🔒 disables Save button
+        isEditing = false; // exit edit mode if any
+    });
         _showSnack("Attendance saved & SMS sent successfully");
       } else {
         _showSnack("Attendance save failed");
