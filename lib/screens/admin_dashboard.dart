@@ -135,6 +135,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
+            ElevatedButton.icon(
+  icon: const Icon(Icons.dashboard),
+  label: const Text("Admin Reports Overview"),
+  style: ElevatedButton.styleFrom(
+    backgroundColor: Colors.indigo,
+    foregroundColor: Colors.white,
+    minimumSize: const Size(double.infinity, 48),
+  ),
+  onPressed: () {
+    Navigator.pushNamed(context, '/adminReportsHome');
+  },
+),
+const SizedBox(height: 20),
+
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(labelText: "Select STD"),
               value: selectedStd,
