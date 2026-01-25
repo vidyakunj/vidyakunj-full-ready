@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -23,6 +24,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   bool loading = false;
   bool hasData = false;
+  
+  Timer? _autoRefreshTimer; // ✅ ADD HERE
 
   final List<String> stdOptions =
       List.generate(12, (i) => (i + 1).toString());
@@ -80,6 +83,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
         absent = data["summary"]["absent"] ?? 0;
         hasData = true;
       });
+       _startAutoRefresh(); // ✅ START AUTO REFRESH HERE
+}
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Failed to load summary")),
@@ -87,6 +92,24 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
 
     setState(() => loading = false);
+  }
+// ================= AUTO REFRESH =================
+  void _startAutoRefresh() {
+    _autoRefreshTimer?.cancel();
+
+    _autoRefreshTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (timer) {
+        if (!mounted) return;
+
+        if (selectedStd != null &&
+            selectedDiv != null &&
+            hasData &&
+            !loading) {
+          loadSummary();
+        }
+      },
+    );
   }
 
   @override
@@ -199,4 +222,11 @@ const SizedBox(height: 20),
       ),
     );
   }
+@override
+void dispose() {
+  _autoRefreshTimer?.cancel();
+  super.dispose();
 }
+
+}
+
