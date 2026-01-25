@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
 
-class PrimaryReportsHome extends StatelessWidget {
+class PrimaryReportsHome extends StatefulWidget {
   const PrimaryReportsHome({super.key});
+
+  @override
+  State<PrimaryReportsHome> createState() => _PrimaryReportsHomeState();
+}
+
+class _PrimaryReportsHomeState extends State<PrimaryReportsHome> {
+
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +44,26 @@ class PrimaryReportsHome extends StatelessWidget {
                     context, '/primaryAttendanceSummaryReport');
               },
             ),
+                  const SizedBox(height: 30),
+
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey),
+        ),
+        child: const Text(
+          "Primary Section Summary will appear here",
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ),
+
           ],
         ),
       ),
