@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../../../services/config.dart';
+
 
 class PrimaryReportsHome extends StatefulWidget {
   const PrimaryReportsHome({super.key});
@@ -8,6 +12,50 @@ class PrimaryReportsHome extends StatefulWidget {
 }
 
 class _PrimaryReportsHomeState extends State<PrimaryReportsHome> {
+
+  bool loading = false;
+  bool hasData = false;
+
+  List<dynamic> classes = [];
+  Map<String, dynamic>? totals;
+
+    Future<void> loadPrimarySectionSummary() async {
+    setState(() {
+      loading = true;
+      hasData = false;
+    });
+
+    try {
+      final today = DateTime.now();
+      final dateStr =
+          "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
+
+      final res = await http.get(
+        Uri.parse(
+          "$SERVER_URL/attendance/primary-section-summary?date=$dateStr",
+        ),
+      );
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+
+        setState(() {
+          classes = data["classes"] ?? [];
+          totals = data["totals"];
+          hasData = true;
+        });
+      }
+    } catch (e) {
+      debugPrint("Primary summary error: $e");
+    }
+
+    setState(() => loading = false);
+  }
+  @override
+  void initState() {
+    super.initState();
+    loadPrimarySectionSummary(); // 🔁 auto-load summary
+  }
 
 
   @override
