@@ -355,10 +355,20 @@ Widget build(BuildContext context) {
                     ],
                   ),
                 ),
-                ElevatedButton(
+               isSaved
+                    ? ElevatedButton.icon(
+                      onPressed: _confirmEditAttendance,
+                      icon: const Icon(Icons.edit),
+                      label: const Text("Edit Attendance"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                    ),
+                )
+              : ElevatedButton(
                   onPressed: _saveAttendance,
                   child: const Text("Save Attendance"),
                 ),
+
               ],
             ),
           ),
