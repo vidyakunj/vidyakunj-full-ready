@@ -4,6 +4,8 @@ import 'splash_check.dart';
 import 'admin/reports/admin_reports_home.dart';
 import 'admin/reports/primary/primary_reports_home.dart';
 import 'admin/reports/primary/primary_student_attendance_report.dart';
+import 'admin/reports/primary/primary_attendance_summary_report.dart';
+
 
 void main() {
   runApp(const MyApp());
@@ -27,3 +29,4 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+
