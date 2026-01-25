@@ -240,6 +240,46 @@ app.get("/attendance/list", async (req, res) => {
     res.status(500).json({ students: [] });
   }
 });
+/* ================= ATTENDANCE SUMMARY (ADMIN REPORT) ================= */
+app.get("/attendance/summary", async (req, res) => {
+  try {
+    const { std, div, date } = req.query;
+
+    if (!std || !div || !date) {
+      return res.status(400).json({ summary: null });
+    }
+
+    const parsedDate = new Date(date);
+    parsedDate.setHours(0, 0, 0, 0);
+
+    const total = await Student.countDocuments({ std, div });
+
+    const records = await Attendance.find({
+      std,
+      div,
+      date: parsedDate,
+    });
+
+    let present = 0;
+    let absent = 0;
+
+    for (const r of records) {
+      if (r.present === true) present++;
+      else absent++;
+    }
+
+    res.json({
+      summary: {
+        total,
+        present,
+        absent,
+      },
+    });
+  } catch (err) {
+    console.error("SUMMARY ERROR:", err);
+    res.status(500).json({ summary: null });
+  }
+});
 
 /* ================= START ================= */
 app.listen(process.env.PORT || 10000, () =>
