@@ -261,19 +261,20 @@ app.get("/attendance/summary", async (req, res) => {
       date: parsedDate,
     });
 
-    let present = 0; // on-time only
+    let present = 0;
     let absent = 0;
     let late = 0;
 
     for (const r of records) {
-      if (r.present === false) {
-        absent++;
-      } else if (r.present === true && r.late === true) {
-        late++;
-      } else if (r.present === true && r.late !== true) {
-        present++;
-      }
+     if (r.present === true && r.late === true) {
+      late++;
+    } else if (r.present === true) {
+      present++;
+    } else {
+      absent++;
     }
+}
+
 
     res.json({
       summary: {
