@@ -24,15 +24,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   bool loading = false;
   bool hasData = false;
-  
-  Timer? _autoRefreshTimer; // ✅ ADD HERE
+
+  Timer? _autoRefreshTimer;
 
   final List<String> stdOptions =
       List.generate(12, (i) => (i + 1).toString());
 
-  /* ==============================
-     LOAD DIVISIONS
-     ============================== */
+  /* ================= LOAD DIVISIONS ================= */
   Future<void> loadDivisions() async {
     if (selectedStd == null) return;
 
@@ -50,59 +48,57 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
-  /* ==============================
-     LOAD SUMMARY (SINGLE CLASS)
-     ============================== */
+  /* ================= LOAD SUMMARY ================= */
   Future<void> loadSummary() async {
-  if (selectedStd == null || selectedDiv == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Please select STD and DIV")),
-    );
-    return;
-  }
-
-  setState(() {
-    loading = true;
-    hasData = false;
-  });
-
-  final dateStr =
-      "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
-
-  final url =
-      "$SERVER_URL/attendance/summary?date=$dateStr&std=$selectedStd&div=$selectedDiv";
-
-  try {
-    final res = await http.get(Uri.parse(url));
-
-    if (res.statusCode == 200) {
-      final data = jsonDecode(res.body);
-
-      setState(() {
-        total = data["summary"]["total"] ?? 0;
-        present = data["summary"]["present"] ?? 0;
-        absent = data["summary"]["absent"] ?? 0;
-        hasData = true;
-      });
-
-      _startAutoRefresh(); // ✅ start timer only after success
-    } else {
+    if (selectedStd == null || selectedDiv == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Failed to load summary")),
+        const SnackBar(content: Text("Please select STD and DIV")),
+      );
+      return;
+    }
+
+    setState(() {
+      loading = true;
+      hasData = false;
+    });
+
+    final dateStr =
+        "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
+
+    final url =
+        "$SERVER_URL/attendance/summary?date=$dateStr&std=$selectedStd&div=$selectedDiv";
+
+    try {
+      final res = await http.get(Uri.parse(url));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+
+        setState(() {
+          total = data["summary"]["total"] ?? 0;
+          present = data["summary"]["present"] ?? 0;
+          absent = data["summary"]["absent"] ?? 0;
+          hasData = true;
+        });
+
+        _startAutoRefresh(); // ✅ start auto refresh
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Failed to load summary")),
+        );
+      }
+    } catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Network error")),
       );
     }
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Network error")),
-    );
+
+    setState(() {
+      loading = false;
+    });
   }
 
-  setState(() {
-    loading = false;
-  });
-}
-
-  // ================= AUTO REFRESH =================
+  /* ================= AUTO REFRESH ================= */
   void _startAutoRefresh() {
     _autoRefreshTimer?.cancel();
 
@@ -110,17 +106,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
       const Duration(seconds: 30),
       (timer) {
         if (!mounted) return;
-
-        if (selectedStd != null &&
-            selectedDiv != null &&
-            hasData &&
-            !loading) {
+        if (hasData && !loading) {
           loadSummary();
         }
       },
     );
   }
 
+  /* ================= CLEANUP ================= */
+  @override
+  void dispose() {
+    _autoRefreshTimer?.cancel();
+    super.dispose();
+  }
+
+  /* ================= UI ================= */
   @override
   Widget build(BuildContext context) {
     const navy = Color(0xFF110E38);
@@ -135,22 +135,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            ElevatedButton.icon(
-  icon: const Icon(Icons.bar_chart),
-  label: const Text("Open Admin Reports"),
-  style: ElevatedButton.styleFrom(
-    backgroundColor: Colors.indigo,
-    foregroundColor: Colors.white,
-    minimumSize: const Size(double.infinity, 48),
-  ),
-  onPressed: () {
-    Navigator.pushNamed(context, '/adminReportsHome');
-  },
-),
-
-const SizedBox(height: 20),
-
-            // STD
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(labelText: "Select STD"),
               value: selectedStd,
@@ -168,8 +152,6 @@ const SizedBox(height: 20),
               },
             ),
             const SizedBox(height: 10),
-
-            // DIV
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(labelText: "Select DIV"),
               value: selectedDiv,
@@ -180,39 +162,14 @@ const SizedBox(height: 20),
               onChanged: (v) => setState(() => selectedDiv = v),
             ),
             const SizedBox(height: 10),
-
-            // DATE
-            ElevatedButton(
-              onPressed: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: selectedDate,
-                  firstDate: DateTime(2023),
-                  lastDate: DateTime.now(),
-                );
-                if (picked != null) {
-                  setState(() => selectedDate = picked);
-                }
-              },
-              child: Text(
-                "Select Date (${selectedDate.toIso8601String().split("T")[0]})",
-              ),
-            ),
-
-            const SizedBox(height: 10),
-
             ElevatedButton(
               onPressed: loadSummary,
               child: const Text("Load Summary"),
             ),
-
             const SizedBox(height: 20),
-
             if (loading) const CircularProgressIndicator(),
-
             if (!loading && hasData)
               Card(
-                color: Colors.yellow[100],
                 child: ListTile(
                   title: Text(
                     "STD $selectedStd | DIV $selectedDiv",
@@ -223,20 +180,11 @@ const SizedBox(height: 20),
                   ),
                 ),
               ),
-
-                        if (!loading && !hasData)
-                            const Text("No data available"),
+            if (!loading && !hasData)
+              const Text("No data available"),
           ],
         ),
       ),
     );
   }
-
-  // ✅ MUST BE INSIDE THE CLASS
-  @override
-  void dispose() {
-    _autoRefreshTimer?.cancel();
-    super.dispose();
-  }
-
-
+}
