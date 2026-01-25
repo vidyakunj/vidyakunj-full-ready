@@ -21,6 +21,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   int total = 0;
   int present = 0;
   int absent = 0;
+  int late = 0; // ✅ ADD THIS LINE
 
   bool loading = false;
   bool hasData = false;
@@ -78,6 +79,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           total = data["summary"]["total"] ?? 0;
           present = data["summary"]["present"] ?? 0;
           absent = data["summary"]["absent"] ?? 0;
+          late = data["summary"]["late"] ?? 0; // ✅ ADD THIS LINE
           hasData = true;
         });
 
@@ -190,7 +192,7 @@ const SizedBox(height: 20),
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(
-                    "Total: $total | Present: $present | Absent: $absent",
+                      "Total: $total | Present: $present | Absent: $absent | Late: $late",
                   ),
                 ),
               ),
