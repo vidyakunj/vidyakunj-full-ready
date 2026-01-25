@@ -15,7 +15,10 @@ class NewAttendanceScreen extends StatefulWidget {
 class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
   // 🔔 REQUIRED for warning popup
   bool isSaved = false;
-
+  
+  // ✏️ REQUIRED for edit attendance (STEP 3A)
+  bool isEditing = false;
+  
   String? selectedStd;
   String? selectedDiv;
 
@@ -196,6 +199,40 @@ Future<void> _checkAttendanceLock() async {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(msg)));
   }
+  /* =====================================================
+   🥉 STEP 3B — ADD THIS METHOD EXACTLY HERE
+   ===================================================== */
+
+Future<void> _confirmEditAttendance() async {
+  final allowEdit = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => AlertDialog(
+      title: const Text("Edit Attendance"),
+      content: const Text(
+        "Attendance is already saved.\n\n"
+        "Editing may change records. Do you want to continue?",
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text("Cancel"),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text("Yes, Edit"),
+        ),
+      ],
+    ),
+  );
+
+  if (allowEdit == true) {
+    setState(() {
+      isEditing = true;
+      isSaved = false; // requires re-save
+    });
+  }
+}
 
 /* ================= UI ================= */
 @override
