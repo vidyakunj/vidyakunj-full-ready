@@ -58,6 +58,7 @@ class _PrimaryReportsHomeState extends State<PrimaryReportsHome> {
   }
   
 /* ================= SORT CLASSES (STD 1–8, DIV A–D) ================= */
+  
 List<dynamic> getSortedClasses() {
   final List<dynamic> sorted = List.from(classes);
 
@@ -140,39 +141,42 @@ ElevatedButton.icon(
 ),
 
 const SizedBox(height: 20),
-
-            
-            // ================= SCHOOL TOTAL SUMMARY =================
 if (!loading && totals != null)
-  Container(
-    width: double.infinity,
-    margin: const EdgeInsets.only(bottom: 16),
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: Colors.green.shade50,
+  Card(
+    color: Colors.green.shade50,
+    shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: Colors.green),
+      side: const BorderSide(color: Colors.green),
     ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "Primary Section – Overall Summary",
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "PRIMARY SECTION TOTAL (Std 1–8)",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.green,
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text("Total Students : ${totals!['total']}"),
-        Text("Present        : ${totals!['present']}"),
-        Text("Absent         : ${totals!['absent']}"),
-        Text("Late           : ${totals!['late']}"),
-        Text("Attendance %   : ${totals!['percentage']}%"),
-      ],
+          const SizedBox(height: 10),
+
+          _totalRow("Total Students", totals!["total"]),
+          _totalRow("Present", totals!["present"]),
+          _totalRow("Absent", totals!["absent"]),
+          _totalRow("Late", totals!["late"]),
+          _totalRow(
+            "Attendance %",
+            "${totals!["percentage"]}%",
+          ),
+        ],
+      ),
     ),
   ),
 
+const SizedBox(height: 20),
 
 if (loading)
   const Padding(
@@ -264,4 +268,23 @@ if (!loading && !hasData)
       ),
     );
   }
+  Widget _totalRow(String label, dynamic value) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+        Text(
+          value.toString(),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ],
+    ),
+  );
+}
+
 }
