@@ -110,8 +110,13 @@ List<dynamic> getSortedClasses() {
             ),
              const SizedBox(height: 30),
 
+const SizedBox(height: 30),
+
 if (loading)
-  const CircularProgressIndicator(),
+  const Padding(
+    padding: EdgeInsets.all(16),
+    child: Center(child: CircularProgressIndicator()),
+  ),
 
 if (!loading && hasData)
   Expanded(
@@ -139,6 +144,7 @@ if (!loading && hasData)
       },
     ),
   ),
+
 
 if (!loading && !hasData)
   const Text("No summary data available"),
