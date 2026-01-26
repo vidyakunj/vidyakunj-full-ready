@@ -77,19 +77,21 @@ List<dynamic> getSortedClasses() {
 }
 
   @override
-  Widget build(BuildContext context) {
-    const green = Color(0xFF2E7D32);
+Widget build(BuildContext context) {
+  const green = Color(0xFF2E7D32);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Primary Reports (Std 1–8)'),
-        backgroundColor: green,
-      ),
-     body: SingleChildScrollView(
+  return Scaffold(
+    appBar: AppBar(
+      title: const Text('Primary Reports (Std 1–8)'),
+      backgroundColor: green,
+    ),
+    body: SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.all(16),
-         child: Column(
+        child: Column(
           children: [
+
+            // ===== REPORT CARDS =====
             _reportCard(
               context: context,
               title: 'Student Attendance Report',
@@ -97,10 +99,14 @@ List<dynamic> getSortedClasses() {
               icon: Icons.people,
               onTap: () {
                 Navigator.pushNamed(
-                    context, '/primaryStudentAttendanceReport');
+                  context,
+                  '/primaryStudentAttendanceReport',
+                );
               },
             ),
+
             const SizedBox(height: 20),
+
             _reportCard(
               context: context,
               title: 'Attendance Summary',
@@ -108,119 +114,126 @@ List<dynamic> getSortedClasses() {
               icon: Icons.bar_chart,
               onTap: () {
                 Navigator.pushNamed(
-                    context, '/primaryAttendanceSummaryReport');
+                  context,
+                  '/primaryAttendanceSummaryReport',
+                );
               },
             ),
 
             const SizedBox(height: 20),
 
-ElevatedButton.icon(
-  icon: const Icon(Icons.calendar_today),
-  label: Text(
-    "Select Date: ${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}",
-  ),
-  style: ElevatedButton.styleFrom(
-    backgroundColor: Colors.green,
-    foregroundColor: Colors.white,
-    minimumSize: const Size(double.infinity, 48),
-  ),
-  onPressed: () async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: selectedDate,
-      firstDate: DateTime(2023),
-      lastDate: DateTime.now(),
-    );
+            // ===== DATE PICKER =====
+            ElevatedButton.icon(
+              icon: const Icon(Icons.calendar_today),
+              label: Text(
+                "Select Date: ${selectedDate.year}-"
+                "${selectedDate.month.toString().padLeft(2, '0')}-"
+                "${selectedDate.day.toString().padLeft(2, '0')}",
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 48),
+              ),
+              onPressed: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: selectedDate,
+                  firstDate: DateTime(2023),
+                  lastDate: DateTime.now(),
+                );
 
-    if (picked != null) {
-      setState(() {
-        selectedDate = picked;
-      });
-      loadPrimarySectionSummary(); // 🔁 reload for new date
-    }
-  },
-),
-
-const SizedBox(height: 20),
-if (!loading && totals != null)
-  Card(
-    color: Colors.green.shade50,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
-      side: const BorderSide(color: Colors.green),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "PRIMARY SECTION TOTAL (Std 1–8)",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.green,
+                if (picked != null) {
+                  setState(() => selectedDate = picked);
+                  loadPrimarySectionSummary();
+                }
+              },
             ),
-          ),
-          const SizedBox(height: 10),
 
-          _totalRow("Total Students", totals!["total"]),
-          _totalRow("Present", totals!["present"]),
-          _totalRow("Absent", totals!["absent"]),
-          _totalRow("Late", totals!["late"]),
-          _totalRow(
-            "Attendance %",
-            "${totals!["percentage"]}%",
-          ),
-        ],
-      ),
-    ),
-  ),
+            const SizedBox(height: 20),
 
-const SizedBox(height: 20),
+            // ===== TOTAL SUMMARY =====
+            if (!loading && totals != null)
+              Card(
+                color: Colors.green.shade50,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: const BorderSide(color: Colors.green),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "PRIMARY SECTION TOTAL (Std 1–8)",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _totalRow("Total Students", totals!["total"]),
+                      _totalRow("Present", totals!["present"]),
+                      _totalRow("Absent", totals!["absent"]),
+                      _totalRow("Late", totals!["late"]),
+                      _totalRow(
+                        "Attendance %",
+                        "${totals!["percentage"]}%",
+                      ),
+                    ],
+                  ),
+                ),
+              ),
 
-if (loading)
-  const Padding(
-    padding: EdgeInsets.all(16),
-    child: Center(child: CircularProgressIndicator()),
-  ),
+            const SizedBox(height: 20),
 
-if (!loading && hasData)
-  ListView.builder(
-    shrinkWrap: true,
-    physics: const NeverScrollableScrollPhysics(),
-    itemCount: getSortedClasses().length,
-    itemBuilder: (context, index) {
-      final c = getSortedClasses()[index];
+            // ===== LOADING =====
+            if (loading)
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: CircularProgressIndicator(),
+              ),
 
-      return Card(
-        margin: const EdgeInsets.symmetric(vertical: 6),
-        child: ListTile(
-          title: Text(
-            "STD ${c['std']}  DIV ${c['div']}",
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          subtitle: Text(
-            "Total: ${c['total']} | "
-            "Present: ${c['present']} | "
-            "Absent: ${c['absent']} | "
-            "Late: ${c['late']} | "
-            "Attendance: ${c['percentage']}%",
-          ),
-        ),
-      );
-    },
-  ),
+            // ===== CLASS-WISE LIST =====
+            if (!loading && hasData)
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: getSortedClasses().length,
+                itemBuilder: (context, index) {
+                  final c = getSortedClasses()[index];
+                  return Card(
+                    margin: const EdgeInsets.symmetric(vertical: 6),
+                    child: ListTile(
+                      title: Text(
+                        "STD ${c['std']}  DIV ${c['div']}",
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      subtitle: Text(
+                        "Total: ${c['total']} | "
+                        "Present: ${c['present']} | "
+                        "Absent: ${c['absent']} | "
+                        "Late: ${c['late']} | "
+                        "Attendance: ${c['percentage']}%",
+                      ),
+                    ),
+                  );
+                },
+              ),
 
-if (!loading && !hasData)
-  const Text("No summary data available"),
-
-
+            if (!loading && !hasData)
+              const Text("No summary data available"),
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   Widget _reportCard({
     required BuildContext context,
