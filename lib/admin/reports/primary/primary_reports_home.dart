@@ -11,6 +11,7 @@ class PrimaryReportsHome extends StatefulWidget {
 }
 
 class _PrimaryReportsHomeState extends State<PrimaryReportsHome> {
+  DateTime selectedDate = DateTime.now(); // 📅 selected date
 
   bool loading = false;
   bool hasData = false;
@@ -25,9 +26,9 @@ class _PrimaryReportsHomeState extends State<PrimaryReportsHome> {
     });
 
     try {
-      final today = DateTime.now();
       final dateStr =
-          "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
+        
+          "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
 
       final res = await http.get(
         Uri.parse(
