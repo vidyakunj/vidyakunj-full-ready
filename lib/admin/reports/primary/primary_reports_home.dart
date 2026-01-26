@@ -109,7 +109,39 @@ List<dynamic> getSortedClasses() {
                     context, '/primaryAttendanceSummaryReport');
               },
             ),
-             const SizedBox(height: 30),
+
+            const SizedBox(height: 20),
+
+ElevatedButton.icon(
+  icon: const Icon(Icons.calendar_today),
+  label: Text(
+    "Select Date: ${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}",
+  ),
+  style: ElevatedButton.styleFrom(
+    backgroundColor: Colors.green,
+    foregroundColor: Colors.white,
+    minimumSize: const Size(double.infinity, 48),
+  ),
+  onPressed: () async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2023),
+      lastDate: DateTime.now(),
+    );
+
+    if (picked != null) {
+      setState(() {
+        selectedDate = picked;
+      });
+      loadPrimarySectionSummary(); // 🔁 reload for new date
+    }
+  },
+),
+
+const SizedBox(height: 20),
+
+            
             // ================= SCHOOL TOTAL SUMMARY =================
 if (!loading && totals != null)
   Container(
