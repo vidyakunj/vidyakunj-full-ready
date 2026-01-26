@@ -109,8 +109,37 @@ List<dynamic> getSortedClasses() {
               },
             ),
              const SizedBox(height: 30),
+            // ================= SCHOOL TOTAL SUMMARY =================
+if (!loading && totals != null)
+  Container(
+    width: double.infinity,
+    margin: const EdgeInsets.only(bottom: 16),
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.green.shade50,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: Colors.green),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Primary Section – Overall Summary",
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text("Total Students : ${totals!['total']}"),
+        Text("Present        : ${totals!['present']}"),
+        Text("Absent         : ${totals!['absent']}"),
+        Text("Late           : ${totals!['late']}"),
+        Text("Attendance %   : ${totals!['percentage']}%"),
+      ],
+    ),
+  ),
 
-const SizedBox(height: 30),
 
 if (loading)
   const Padding(
