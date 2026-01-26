@@ -193,26 +193,24 @@ if (!loading && hasData)
     itemBuilder: (context, index) {
       final c = getSortedClasses()[index];
 
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 6),
-          child: ListTile(
-            title: Text(
-              "STD ${c['std']}  DIV ${c['div']}",
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Text(
-              "Total: ${c['total']} | "
-              "Present: ${c['present']} | "
-              "Absent: ${c['absent']} | "
-              "Late: ${c['late']} | "
-              "Attendance: ${c['percentage']}%",
-            ),
+      return Card(
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        child: ListTile(
+          title: Text(
+            "STD ${c['std']}  DIV ${c['div']}",
+            style: const TextStyle(fontWeight: FontWeight.bold),
           ),
-        );
-      },
-    ),
+          subtitle: Text(
+            "Total: ${c['total']} | "
+            "Present: ${c['present']} | "
+            "Absent: ${c['absent']} | "
+            "Late: ${c['late']} | "
+            "Attendance: ${c['percentage']}%",
+          ),
+        ),
+      );
+    },
   ),
-
 
 if (!loading && !hasData)
   const Text("No summary data available"),
