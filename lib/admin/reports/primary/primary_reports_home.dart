@@ -85,9 +85,10 @@ List<dynamic> getSortedClasses() {
         title: const Text('Primary Reports (Std 1–8)'),
         backgroundColor: green,
       ),
-      body: Padding(
+     body: SingleChildScrollView(
+      child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+         child: Column(
           children: [
             _reportCard(
               context: context,
@@ -185,11 +186,12 @@ if (loading)
   ),
 
 if (!loading && hasData)
-  Expanded(
-    child: ListView.builder(
-      itemCount: getSortedClasses().length,
-      itemBuilder: (context, index) {
-        final c = getSortedClasses()[index];
+  ListView.builder(
+    shrinkWrap: true,
+    physics: const NeverScrollableScrollPhysics(),
+    itemCount: getSortedClasses().length,
+    itemBuilder: (context, index) {
+      final c = getSortedClasses()[index];
 
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 6),
