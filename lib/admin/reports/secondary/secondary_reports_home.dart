@@ -24,7 +24,7 @@ class _SecondaryReportsHomeState
 
     Future<void> loadSecondarySectionSummary() async {
     setState(() {
-      ing = true;
+    loading = true;
       hasData = false;
     });
 
