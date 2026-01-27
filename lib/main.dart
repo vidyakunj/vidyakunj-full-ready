@@ -5,6 +5,8 @@ import 'admin/reports/admin_reports_home.dart';
 import 'admin/reports/primary/primary_reports_home.dart';
 import 'admin/reports/primary/primary_student_attendance_report.dart';
 import 'admin/reports/primary/primary_attendance_summary_report.dart';
+import 'admin/reports/secondary/secondary_reports_home.dart';
+
 
 
 void main() {
@@ -31,5 +33,6 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+
 
 
