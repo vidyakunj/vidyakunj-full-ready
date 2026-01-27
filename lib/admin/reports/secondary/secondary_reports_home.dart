@@ -24,7 +24,7 @@ class _SecondaryReportsHomeState
 
     Future<void> loadSecondarySectionSummary() async {
     setState(() {
-      loading = true;
+      ing = true;
       hasData = false;
     });
 
@@ -148,7 +148,7 @@ Widget build(BuildContext context) {
 
                 if (picked != null) {
                   setState(() => selectedDate = picked);
-                  loadPrimarySectionSummary();
+                  loadSecondarySectionSummary();
                 }
               },
             ),
