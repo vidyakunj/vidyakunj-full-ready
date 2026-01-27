@@ -3,8 +3,8 @@ import '../../../config.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-class PrimaryReportsHome extends StatefulWidget {
-  const PrimaryReportsHome({super.key});
+class SecondaryReportsHome extends StatelessWidget {
+  const SecondaryReportsHome({super.key});
 
   @override
   State<PrimaryReportsHome> createState() => _PrimaryReportsHomeState();
