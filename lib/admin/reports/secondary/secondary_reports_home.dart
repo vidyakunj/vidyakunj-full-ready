@@ -3,14 +3,17 @@ import '../../../config.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-class SecondaryReportsHome extends StatelessWidget {
+class SecondaryReportsHome extends StatefulWidget {
   const SecondaryReportsHome({super.key});
 
   @override
-  State<PrimaryReportsHome> createState() => _PrimaryReportsHomeState();
+  State<SecondaryReportsHome> createState() =>
+      _SecondaryReportsHomeState();
 }
 
-class _PrimaryReportsHomeState extends State<PrimaryReportsHome> {
+class _SecondaryReportsHomeState
+    extends State<SecondaryReportsHome> {
+
   DateTime selectedDate = DateTime.now(); // 📅 selected date
 
   bool loading = false;
