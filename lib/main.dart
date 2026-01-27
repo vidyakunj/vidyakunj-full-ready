@@ -29,10 +29,15 @@ class MyApp extends StatelessWidget {
             const PrimaryStudentAttendanceReport(),
         '/primaryAttendanceSummaryReport': (context) =>
             const PrimaryAttendanceSummaryReport(),
+        
+        // ✅ ADD THIS
+      '/secondaryReportsHome': (context) =>
+          const SecondaryReportsHome(),
       },
     );
   }
 }
+
 
 
 
