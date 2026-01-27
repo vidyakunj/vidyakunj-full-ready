@@ -377,6 +377,91 @@ app.get("/attendance/primary-section-summary", async (req, res) => {
   }
 });
 
+/* ================= SECONDARY SECTION SUMMARY (STD 9–12) ================= */
+app.get("/attendance/secondary-section-summary", async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (!date) return res.status(400).json({ success: false });
+
+    const parsedDate = new Date(date);
+    parsedDate.setHours(0, 0, 0, 0);
+
+    const result = [];
+    let grandTotal = 0;
+    let grandPresent = 0;
+    let grandAbsent = 0;
+    let grandLate = 0;
+
+    // STD 9 → 12
+    for (let std = 9; std <= 12; std++) {
+      const stdStr = std.toString();
+
+      const divisions = await Student
+        .distinct("div", { std: stdStr })
+        .sort();
+
+      for (const div of divisions) {
+        const total = await Student.countDocuments({ std: stdStr, div });
+
+        const records = await Attendance.find({
+          std: stdStr,
+          div,
+          date: parsedDate,
+        });
+
+        let present = 0;
+        let absent = 0;
+        let late = 0;
+
+        for (const r of records) {
+          if (r.present === true) {
+            present++;
+            if (r.late === true) late++;
+          } else {
+            absent++;
+          }
+        }
+
+        const percentage =
+          total > 0 ? ((present / total) * 100).toFixed(2) : "0.00";
+
+        result.push({
+          std: stdStr,
+          div,
+          total,
+          present,
+          absent,
+          late,
+          percentage,
+        });
+
+        grandTotal += total;
+        grandPresent += present;
+        grandAbsent += absent;
+        grandLate += late;
+      }
+    }
+
+    res.json({
+      success: true,
+      classes: result,
+      totals: {
+        total: grandTotal,
+        present: grandPresent,
+        absent: grandAbsent,
+        late: grandLate,
+        percentage:
+          grandTotal > 0
+            ? ((grandPresent / grandTotal) * 100).toFixed(2)
+            : "0.00",
+      },
+    });
+  } catch (err) {
+    console.error("SECONDARY SECTION SUMMARY ERROR:", err);
+    res.status(500).json({ success: false });
+  }
+});
+
 /* ================= START ================= */
 app.listen(process.env.PORT || 10000, () =>
   console.log("🚀 Server running")
