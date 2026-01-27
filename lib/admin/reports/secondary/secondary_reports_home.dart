@@ -60,7 +60,7 @@ class _SecondaryReportsHomeState
     loadPrimarySectionSummary(); // 🔁 auto-load summary
   }
   
-/* ================= SORT CLASSES (STD 1–8, DIV A–D) ================= */
+/* ================= SORT CLASSES (STD 9–12, DIV A–D) ================= */
   
 List<dynamic> getSortedClasses() {
   final List<dynamic> sorted = List.from(classes);
@@ -70,7 +70,7 @@ List<dynamic> getSortedClasses() {
     final stdB = int.parse(b["std"]);
 
     if (stdA != stdB) {
-      return stdA.compareTo(stdB); // STD 1 → 8
+      return stdA.compareTo(stdB); // STD 9 → 12
     }
 
     return a["div"].compareTo(b["div"]); // DIV A → D
@@ -85,7 +85,7 @@ Widget build(BuildContext context) {
 
   return Scaffold(
     appBar: AppBar(
-      title: const Text('Primary Reports (Std 1–8)'),
+      title: const Text('Secondary Reports (Std 9–12)'),
       backgroundColor: green,
     ),
     body: SingleChildScrollView(
@@ -169,7 +169,7 @@ Widget build(BuildContext context) {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        "PRIMARY SECTION TOTAL (Std 1–8)",
+                        "SECONDARY SECTION TOTAL (Std 9–12)",
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
