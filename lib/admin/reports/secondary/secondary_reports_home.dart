@@ -22,7 +22,7 @@ class _SecondaryReportsHomeState
   List<dynamic> classes = [];
   Map<String, dynamic>? totals;
 
-    Future<void> loadPrimarySectionSummary() async {
+    Future<void> loadSecondarySectionSummary() async {
     setState(() {
       loading = true;
       hasData = false;
@@ -35,7 +35,7 @@ class _SecondaryReportsHomeState
 
       final res = await http.get(
         Uri.parse(
-          "$SERVER_URL/attendance/primary-section-summary?date=$dateStr",
+          "$SERVER_URL/attendance/secondary-section-summary?date=$dateStr",
         ),
       );
 
@@ -49,7 +49,7 @@ class _SecondaryReportsHomeState
         });
       }
     } catch (e) {
-      debugPrint("Primary summary error: $e");
+      debugPrint("Secondary summary error: $e");
     }
 
     setState(() => loading = false);
@@ -57,7 +57,7 @@ class _SecondaryReportsHomeState
   @override
   void initState() {
     super.initState();
-    loadPrimarySectionSummary(); // 🔁 auto-load summary
+    loadSecondarySectionSummary(); // 🔁 auto-load summary
   }
   
 /* ================= SORT CLASSES (STD 9–12, DIV A–D) ================= */
@@ -103,7 +103,7 @@ Widget build(BuildContext context) {
               onTap: () {
                 Navigator.pushNamed(
                   context,
-                  '/primaryStudentAttendanceReport',
+                  '/SecondaryStudentAttendanceReport',
                 );
               },
             ),
@@ -118,7 +118,7 @@ Widget build(BuildContext context) {
               onTap: () {
                 Navigator.pushNamed(
                   context,
-                  '/primaryAttendanceSummaryReport',
+                  '/SecondaryAttendanceSummaryReport',
                 );
               },
             ),
