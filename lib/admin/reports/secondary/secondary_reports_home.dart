@@ -57,10 +57,13 @@ class _SecondaryReportsHomeState
     setState(() => loading = false);
   }
   @override
-  void initState() {
-    super.initState();
-    loadSecondarySectionSummary(); // 🔁 auto-load summary
-  }
+void initState() {
+  super.initState();
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    loadSecondarySectionSummary();
+  });
+}
+
   
 /* ================= SORT CLASSES (STD 9–12, DIV A–D) ================= */
   
@@ -103,6 +106,7 @@ Widget build(BuildContext context) {
             subtitle: 'Date-wise attendance (Read Only)',
             icon: Icons.people,
             onTap: () {
+              debugPrint('STUDENT REPORT TAP WORKED');
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -114,8 +118,7 @@ Widget build(BuildContext context) {
 
 const SizedBox(height: 20),
 
-            const SizedBox(height: 20),
-
+            
             _reportCard(
               context: context,
               title: 'Attendance Summary',
