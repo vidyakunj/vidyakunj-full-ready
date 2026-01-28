@@ -1,7 +1,17 @@
 import 'package:flutter/material.dart';
 
-class SecondaryStudentAttendanceReport extends StatelessWidget {
+class SecondaryStudentAttendanceReport extends StatefulWidget {
   const SecondaryStudentAttendanceReport({super.key});
+
+  @override
+  State<SecondaryStudentAttendanceReport> createState() =>
+      _SecondaryStudentAttendanceReportState();
+}
+
+class _SecondaryStudentAttendanceReportState
+    extends State<SecondaryStudentAttendanceReport> {
+
+  DateTime selectedDate = DateTime.now();
 
   static const Color navy = Color(0xFF0D1B2A);
 
@@ -16,107 +26,86 @@ class SecondaryStudentAttendanceReport extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(12),
         children: const [
-          _StdSection(std: '9'),
-          _StdSection(std: '10'),
-          _StdSection(std: '11'),
-          _StdSection(std: '12'),
+          _StdTile(std: '9'),
+          _StdTile(std: '10'),
+          _StdTile(std: '11'),
+          _StdTile(std: '12'),
         ],
       ),
     );
   }
 }
 
-/* ================= STD SECTION ================= */
+/* ================= STD TILE ================= */
 
-class _StdSection extends StatelessWidget {
+class _StdTile extends StatelessWidget {
   final String std;
-  const _StdSection({required this.std});
+  const _StdTile({required this.std});
 
   static const Color navy = Color(0xFF0D1B2A);
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 10),
       child: ExpansionTile(
-        collapsedBackgroundColor: navy.withOpacity(0.06),
-        backgroundColor: navy.withOpacity(0.04),
         title: Text(
           'STD $std',
           style: const TextStyle(
-            fontSize: 16,
             fontWeight: FontWeight.bold,
+            fontSize: 16,
             color: navy,
           ),
         ),
         children: const [
-          _DivisionSection(div: 'A'),
-          _DivisionSection(div: 'B'),
+          _DivisionBlock(div: 'A'),
+          _DivisionBlock(div: 'B'),
         ],
       ),
     );
   }
 }
 
-/* ================= DIV SECTION ================= */
+/* ================= DIVISION BLOCK ================= */
 
-class _DivisionSection extends StatelessWidget {
+class _DivisionBlock extends StatelessWidget {
   final String div;
-  const _DivisionSection({required this.div});
-
-  static const Color navy = Color(0xFF0D1B2A);
+  const _DivisionBlock({required this.div});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // DIV HEADER
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-            decoration: BoxDecoration(
-              color: navy.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              'DIV $div',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: navy,
-              ),
+          Text(
+            'DIV $div',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0D1B2A), // navy
             ),
           ),
-
           const SizedBox(height: 6),
-
-          // STUDENTS
-          const _StudentRow(
-            roll: 1,
-            name: 'Ramesh Patel',
-            icon: Icons.check_circle,
-            color: Colors.green,
-          ),
-          const _StudentRow(
-            roll: 2,
-            name: 'Sita Mehta',
-            icon: Icons.cancel,
-            color: Colors.red,
-          ),
-          const _StudentRow(
-            roll: 3,
-            name: 'Mohan Das',
-            icon: Icons.access_time,
-            color: Colors.orange,
-          ),
+          _studentRow(1, 'Ramesh Patel', Icons.check_circle, Colors.green),
+          _studentRow(2, 'Sita Mehta', Icons.cancel, Colors.red),
+          _studentRow(3, 'Mohan Das', Icons.access_time, Colors.orange),
         ],
       ),
     );
   }
+
+  Widget _studentRow(
+      int roll, String name, IconData icon, Color color) {
+    return ListTile(
+      dense: true,
+      leading: Text(roll.toString()),
+      title: Text(name),
+      trailing: Icon(icon, color: color),
+    );
+  }
 }
+
 
 /* ================= STUDENT ROW ================= */
 
