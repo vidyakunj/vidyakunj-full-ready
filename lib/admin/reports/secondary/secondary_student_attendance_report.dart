@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import '../../../config.dart';
 
 class SecondaryStudentAttendanceReport extends StatefulWidget {
   const SecondaryStudentAttendanceReport({super.key});
@@ -14,6 +17,40 @@ class _SecondaryStudentAttendanceReportState
   DateTime selectedDate = DateTime.now();
   static const Color navy = Color(0xFF0D1B2A);
 
+  // cache: key = "std_div_date"
+  final Map<String, List<dynamic>> _cache = {};
+  final Map<String, bool> _loading = {};
+
+  String get _dateStr =>
+      "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
+
+  Future<void> loadStudents(String std, String div) async {
+    final key = "$std-$div-$_dateStr";
+
+    if (_cache.containsKey(key) || _loading[key] == true) return;
+
+    setState(() => _loading[key] = true);
+
+    try {
+      final res = await http.get(
+        Uri.parse(
+          "$SERVER_URL/attendance/list?std=$std&div=$div&date=$_dateStr",
+        ),
+      );
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        setState(() {
+          _cache[key] = data["students"] ?? [];
+        });
+      }
+    } catch (e) {
+      debugPrint("Attendance load error: $e");
+    }
+
+    setState(() => _loading[key] = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -24,11 +61,11 @@ class _SecondaryStudentAttendanceReportState
       ),
       body: ListView(
         padding: const EdgeInsets.all(12),
-        children: const [
-          _StdTile(std: '9'),
-          _StdTile(std: '10'),
-          _StdTile(std: '11'),
-          _StdTile(std: '12'),
+        children: [
+          _StdTile(std: '9', load: loadStudents, cache: _cache, loading: _loading),
+          _StdTile(std: '10', load: loadStudents, cache: _cache, loading: _loading),
+          _StdTile(std: '11', load: loadStudents, cache: _cache, loading: _loading),
+          _StdTile(std: '12', load: loadStudents, cache: _cache, loading: _loading),
         ],
       ),
     );
@@ -39,7 +76,16 @@ class _SecondaryStudentAttendanceReportState
 
 class _StdTile extends StatelessWidget {
   final String std;
-  const _StdTile({required this.std});
+  final Function(String, String) load;
+  final Map<String, List<dynamic>> cache;
+  final Map<String, bool> loading;
+
+  const _StdTile({
+    required this.std,
+    required this.load,
+    required this.cache,
+    required this.loading,
+  });
 
   static const Color navy = Color(0xFF0D1B2A);
 
@@ -56,9 +102,21 @@ class _StdTile extends StatelessWidget {
             color: navy,
           ),
         ),
-        children: const [
-          _DivisionBlock(div: 'A'),
-          _DivisionBlock(div: 'B'),
+        children: [
+          _DivisionBlock(
+            std: std,
+            div: 'A',
+            load: load,
+            cache: cache,
+            loading: loading,
+          ),
+          _DivisionBlock(
+            std: std,
+            div: 'B',
+            load: load,
+            cache: cache,
+            loading: loading,
+          ),
         ],
       ),
     );
@@ -68,43 +126,61 @@ class _StdTile extends StatelessWidget {
 /* ================= DIVISION BLOCK ================= */
 
 class _DivisionBlock extends StatelessWidget {
+  final String std;
   final String div;
-  const _DivisionBlock({required this.div});
+  final Function(String, String) load;
+  final Map<String, List<dynamic>> cache;
+  final Map<String, bool> loading;
+
+  const _DivisionBlock({
+    required this.std,
+    required this.div,
+    required this.load,
+    required this.cache,
+    required this.loading,
+  });
+
+  String get key => "$std-$div";
 
   @override
   Widget build(BuildContext context) {
+    final date = DateTime.now();
+    final dateStr =
+        "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+    final cacheKey = "$std-$div-$dateStr";
+
+    final students = cache[cacheKey] ?? [];
+    final isLoading = loading[cacheKey] == true;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'DIV $div',
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF0D1B2A),
+          GestureDetector(
+            onTap: () => load(std, div),
+            child: Text(
+              'DIV $div',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0D1B2A),
+              ),
             ),
           ),
           const SizedBox(height: 6),
 
-          const _StudentRow(
-            roll: 1,
-            name: 'Ramesh Patel',
-            icon: Icons.check_circle,
-            color: Colors.green,
-          ),
-          const _StudentRow(
-            roll: 2,
-            name: 'Sita Mehta',
-            icon: Icons.cancel,
-            color: Colors.red,
-          ),
-          const _StudentRow(
-            roll: 3,
-            name: 'Mohan Das',
-            icon: Icons.access_time,
-            color: Colors.orange,
-          ),
+          if (isLoading)
+            const Padding(
+              padding: EdgeInsets.all(8),
+              child: CircularProgressIndicator(),
+            ),
+
+          for (final s in students)
+            _StudentRow(
+              roll: s["rollNo"],
+              name: s["name"],
+              status: s["status"],
+            ),
         ],
       ),
     );
@@ -116,18 +192,33 @@ class _DivisionBlock extends StatelessWidget {
 class _StudentRow extends StatelessWidget {
   final int roll;
   final String name;
-  final IconData icon;
-  final Color color;
+  final String status;
 
   const _StudentRow({
     required this.roll,
     required this.name,
-    required this.icon,
-    required this.color,
+    required this.status,
   });
 
   @override
   Widget build(BuildContext context) {
+    IconData icon;
+    Color color;
+
+    switch (status) {
+      case 'present':
+        icon = Icons.check_circle;
+        color = Colors.green;
+        break;
+      case 'late':
+        icon = Icons.access_time;
+        color = Colors.orange;
+        break;
+      default:
+        icon = Icons.cancel;
+        color = Colors.red;
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
@@ -139,9 +230,7 @@ class _StudentRow extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
-          Expanded(
-            child: Text(name),
-          ),
+          Expanded(child: Text(name)),
           Icon(icon, color: color, size: 18),
         ],
       ),
