@@ -140,8 +140,6 @@ class _DivisionBlock extends StatelessWidget {
     required this.loading,
   });
 
-  String get key => "$std-$div";
-
   @override
   Widget build(BuildContext context) {
     final date = DateTime.now();
@@ -159,12 +157,15 @@ class _DivisionBlock extends StatelessWidget {
         children: [
           GestureDetector(
             onTap: () => load(std, div),
-            child: Text(
-              'DIV $div',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0D1B2A),
-              ),
+            child: const Text(
+              '',
+            ),
+          ),
+          Text(
+            'DIV $div',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0D1B2A),
             ),
           ),
           const SizedBox(height: 6),
@@ -186,6 +187,7 @@ class _DivisionBlock extends StatelessWidget {
     );
   }
 }
+
 
 /* ================= STUDENT ROW ================= */
 
