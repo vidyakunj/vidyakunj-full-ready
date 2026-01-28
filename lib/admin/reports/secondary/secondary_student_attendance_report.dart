@@ -12,7 +12,6 @@ class _SecondaryStudentAttendanceReportState
     extends State<SecondaryStudentAttendanceReport> {
 
   DateTime selectedDate = DateTime.now();
-
   static const Color navy = Color(0xFF0D1B2A);
 
   @override
@@ -83,29 +82,34 @@ class _DivisionBlock extends StatelessWidget {
             'DIV $div',
             style: const TextStyle(
               fontWeight: FontWeight.bold,
-              color: Color(0xFF0D1B2A), // navy
+              color: Color(0xFF0D1B2A),
             ),
           ),
           const SizedBox(height: 6),
-          _studentRow(1, 'Ramesh Patel', Icons.check_circle, Colors.green),
-          _studentRow(2, 'Sita Mehta', Icons.cancel, Colors.red),
-          _studentRow(3, 'Mohan Das', Icons.access_time, Colors.orange),
+
+          const _StudentRow(
+            roll: 1,
+            name: 'Ramesh Patel',
+            icon: Icons.check_circle,
+            color: Colors.green,
+          ),
+          const _StudentRow(
+            roll: 2,
+            name: 'Sita Mehta',
+            icon: Icons.cancel,
+            color: Colors.red,
+          ),
+          const _StudentRow(
+            roll: 3,
+            name: 'Mohan Das',
+            icon: Icons.access_time,
+            color: Colors.orange,
+          ),
         ],
       ),
     );
   }
-
-  Widget _studentRow(
-      int roll, String name, IconData icon, Color color) {
-    return ListTile(
-      dense: true,
-      leading: Text(roll.toString()),
-      title: Text(name),
-      trailing: Icon(icon, color: color),
-    );
-  }
 }
-
 
 /* ================= STUDENT ROW ================= */
 
@@ -124,7 +128,7 @@ class _StudentRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
