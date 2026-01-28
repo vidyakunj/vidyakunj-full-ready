@@ -15,13 +15,17 @@ class _SecondaryStudentAttendanceReportState
     extends State<SecondaryStudentAttendanceReport> {
 
   static const Color navy = Color(0xFF0D1B2A);
+
   DateTime selectedDate = DateTime.now();
 
   final Map<String, List<dynamic>> _cache = {};
   final Set<String> _loading = {};
 
+  /* ================= LOAD STUDENTS ================= */
+
   Future<void> loadStudents(String std, String div) async {
     final key = "$std-$div";
+
     if (_cache.containsKey(key)) return;
 
     setState(() => _loading.add(key));
@@ -49,17 +53,46 @@ class _SecondaryStudentAttendanceReportState
     setState(() => _loading.remove(key));
   }
 
+  /* ================= DATE PICKER ================= */
+
+  Future<void> pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2023),
+      lastDate: DateTime.now(),
+    );
+
+    if (picked != null && picked != selectedDate) {
+      setState(() {
+        selectedDate = picked;
+        _cache.clear();    // 🔁 clear old data
+        _loading.clear();  // 🔁 reset loaders
+      });
+    }
+  }
+
+  /* ================= UI ================= */
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: navy,
         title: const Text('Secondary Student Attendance'),
         centerTitle: true,
-        backgroundColor: navy,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.calendar_today),
+            onPressed: pickDate,
+            tooltip: "Select Date",
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(12),
         children: [
+          _dateBanner(),
           stdTile('9'),
           stdTile('10'),
           stdTile('11'),
@@ -69,7 +102,27 @@ class _SecondaryStudentAttendanceReportState
     );
   }
 
-  /// ================= STD TILE =================
+  /* ================= DATE BANNER ================= */
+
+  Widget _dateBanner() {
+    final dateStr =
+        "${selectedDate.day.toString().padLeft(2, '0')}-"
+        "${selectedDate.month.toString().padLeft(2, '0')}-"
+        "${selectedDate.year}";
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Text(
+        "Date: $dateStr",
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          color: navy,
+        ),
+      ),
+    );
+  }
+
+  /* ================= STD TILE ================= */
 
   Widget stdTile(String std) {
     return Card(
@@ -90,7 +143,7 @@ class _SecondaryStudentAttendanceReportState
     );
   }
 
-  /// ================= DIV BLOCK =================
+  /* ================= DIV BLOCK ================= */
 
   Widget divisionBlock(String std, String div) {
     final key = "$std-$div";
@@ -133,7 +186,7 @@ class _SecondaryStudentAttendanceReportState
   }
 }
 
-/// ================= STUDENT ROW =================
+/* ================= STUDENT ROW ================= */
 
 class StudentRow extends StatelessWidget {
   final int roll;
