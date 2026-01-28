@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../config.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'secondary_student_attendance_report.dart';
+
 
 class SecondaryReportsHome extends StatefulWidget {
   const SecondaryReportsHome({super.key});
@@ -94,19 +96,23 @@ Widget build(BuildContext context) {
         child: Column(
           children: [
 
-            // ===== REPORT CARDS =====
+           // ===== REPORT CARDS =====
             _reportCard(
-              context: context,
-              title: 'Student Attendance Report',
-              subtitle: 'Date-wise attendance (Read Only)',
-              icon: Icons.people,
-              onTap: () {
-                Navigator.pushNamed(
-                  context,
-                  '/SecondaryStudentAttendanceReport',
-                );
-              },
-            ),
+            context: context,
+            title: 'Student Attendance Report',
+            subtitle: 'Date-wise attendance (Read Only)',
+            icon: Icons.people,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const SecondaryStudentAttendanceReport(),
+      ),
+    );
+  },
+),
+
+const SizedBox(height: 20),
 
             const SizedBox(height: 20),
 
