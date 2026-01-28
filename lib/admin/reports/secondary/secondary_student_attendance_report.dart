@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class SecondaryStudentAttendanceReport extends StatelessWidget {
   const SecondaryStudentAttendanceReport({super.key});
 
-  static const Color navyBlue = Color(0xFF0D1B2A);
+  static const Color navy = Color(0xFF0D1B2A);
 
   @override
   Widget build(BuildContext context) {
@@ -11,81 +11,82 @@ class SecondaryStudentAttendanceReport extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Secondary Student Attendance'),
         centerTitle: true,
-        backgroundColor: navyBlue,
+        backgroundColor: navy,
       ),
       body: ListView(
         padding: const EdgeInsets.all(12),
         children: const [
-          _StdTile(std: '9'),
-          _StdTile(std: '10'),
-          _StdTile(std: '11'),
-          _StdTile(std: '12'),
+          _StdSection(std: '9'),
+          _StdSection(std: '10'),
+          _StdSection(std: '11'),
+          _StdSection(std: '12'),
         ],
       ),
     );
   }
 }
 
-/* ================= STD TILE ================= */
+/* ================= STD SECTION ================= */
 
-class _StdTile extends StatelessWidget {
+class _StdSection extends StatelessWidget {
   final String std;
-  const _StdTile({required this.std});
+  const _StdSection({required this.std});
 
-  static const Color navyBlue = Color(0xFF0D1B2A);
+  static const Color navy = Color(0xFF0D1B2A);
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      elevation: 1,
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
       child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+        collapsedBackgroundColor: navy.withOpacity(0.06),
+        backgroundColor: navy.withOpacity(0.04),
         title: Text(
           'STD $std',
           style: const TextStyle(
-            fontWeight: FontWeight.bold,
             fontSize: 16,
-            color: navyBlue,
+            fontWeight: FontWeight.bold,
+            color: navy,
           ),
         ),
         children: const [
-          _DivisionBlock(div: 'A'),
-          _DivisionBlock(div: 'B'),
+          _DivisionSection(div: 'A'),
+          _DivisionSection(div: 'B'),
         ],
       ),
     );
   }
 }
 
-/* ================= DIV BLOCK ================= */
+/* ================= DIV SECTION ================= */
 
-class _DivisionBlock extends StatelessWidget {
+class _DivisionSection extends StatelessWidget {
   final String div;
-  const _DivisionBlock({required this.div});
+  const _DivisionSection({required this.div});
 
-  static const Color navyBlue = Color(0xFF0D1B2A);
+  static const Color navy = Color(0xFF0D1B2A);
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // DIV HEADER
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
             decoration: BoxDecoration(
-              color: navyBlue.withOpacity(0.08),
+              color: navy.withOpacity(0.12),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
               'DIV $div',
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
-                color: navyBlue,
+                color: navy,
               ),
             ),
           ),
@@ -134,14 +135,23 @@ class _StudentRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      dense: true,
-      leading: Text(
-        roll.toString(),
-        style: const TextStyle(fontWeight: FontWeight.w600),
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 30,
+            child: Text(
+              roll.toString(),
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+          Expanded(
+            child: Text(name),
+          ),
+          Icon(icon, color: color, size: 18),
+        ],
       ),
-      title: Text(name),
-      trailing: Icon(icon, color: color, size: 20),
     );
   }
 }
