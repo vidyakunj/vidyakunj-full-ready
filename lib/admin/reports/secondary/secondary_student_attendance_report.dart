@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import '../../../config.dart';
 
 class SecondaryStudentAttendanceReport extends StatefulWidget {
   const SecondaryStudentAttendanceReport({super.key});
@@ -12,6 +15,40 @@ class _SecondaryStudentAttendanceReportState
     extends State<SecondaryStudentAttendanceReport> {
 
   static const Color navy = Color(0xFF0D1B2A);
+  DateTime selectedDate = DateTime.now();
+
+  /// cache key = "9-A"
+  final Map<String, List<dynamic>> _cache = {};
+  final Set<String> _loading = {};
+
+  Future<void> loadStudents(String std, String div) async {
+    final key = "$std-$div";
+    if (_cache.containsKey(key)) return;
+
+    setState(() => _loading.add(key));
+
+    final dateStr =
+        "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
+
+    try {
+      final res = await http.get(
+        Uri.parse(
+          "$SERVER_URL/attendance/list?std=$std&div=$div&date=$dateStr",
+        ),
+      );
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        setState(() {
+          _cache[key] = data["students"] ?? [];
+        });
+      }
+    } catch (e) {
+      debugPrint("Load students error: $e");
+    }
+
+    setState(() => _loading.remove(key));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,18 +69,10 @@ class _SecondaryStudentAttendanceReportState
       ),
     );
   }
-}
 
-/* ================= STD TILE ================= */
+  /// ================= STD TILE =================
 
-class _StdTile extends StatelessWidget {
-  final String std;
-  const _StdTile({required this.std});
-
-  static const Color navy = Color(0xFF0D1B2A);
-
-  @override
-  Widget build(BuildContext context) {
+  Widget stdTile(String std) {
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: ExpansionTile(
@@ -56,76 +85,90 @@ class _StdTile extends StatelessWidget {
           ),
         ),
         children: ['A', 'B', 'C']
-            .map<Widget>((div) => _DivisionBlock(div: div))
+            .map(
+              (div) => divisionBlock(std, div),
+            )
             .toList(),
       ),
     );
   }
-}
 
-/* ================= DIVISION BLOCK ================= */
+  /// ================= DIV BLOCK =================
 
-class _DivisionBlock extends StatelessWidget {
-  final String div;
-  const _DivisionBlock({required this.div});
+  Widget divisionBlock(String std, String div) {
+    final key = "$std-$div";
+    final students = _cache[key];
 
-  static const Color navy = Color(0xFF0D1B2A);
-
-  @override
-  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          Text(
-            'DIV A',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: navy,
+        children: [
+          InkWell(
+            onTap: () => loadStudents(std, div),
+            child: Text(
+              "DIV $div",
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: navy,
+              ),
             ),
           ),
-          _StudentRow(
-            roll: 1,
-            name: 'Ramesh Patel',
-            icon: Icons.check_circle,
-            color: Colors.green,
-          ),
-          _StudentRow(
-            roll: 2,
-            name: 'Sita Mehta',
-            icon: Icons.cancel,
-            color: Colors.red,
-          ),
-          _StudentRow(
-            roll: 3,
-            name: 'Mohan Das',
-            icon: Icons.access_time,
-            color: Colors.orange,
-          ),
+          const SizedBox(height: 6),
+
+          if (_loading.contains(key))
+            const Padding(
+              padding: EdgeInsets.all(8),
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+
+          if (students != null)
+            ...students.map(
+              (s) => StudentRow(
+                roll: s["rollNo"],
+                name: s["name"],
+                status: s["status"],
+              ),
+            ),
         ],
       ),
     );
   }
 }
 
-/* ================= STUDENT ROW ================= */
+/// ================= STUDENT ROW =================
 
-class _StudentRow extends StatelessWidget {
+class StudentRow extends StatelessWidget {
   final int roll;
   final String name;
-  final IconData icon;
-  final Color color;
+  final String status;
 
-  const _StudentRow({
+  const StudentRow({
+    super.key,
     required this.roll,
     required this.name,
-    required this.icon,
-    required this.color,
+    required this.status,
   });
 
   @override
   Widget build(BuildContext context) {
+    IconData icon;
+    Color color;
+
+    switch (status) {
+      case "present":
+        icon = Icons.check_circle;
+        color = Colors.green;
+        break;
+      case "late":
+        icon = Icons.access_time;
+        color = Colors.orange;
+        break;
+      default:
+        icon = Icons.cancel;
+        color = Colors.red;
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
