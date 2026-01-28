@@ -3,70 +3,145 @@ import 'package:flutter/material.dart';
 class SecondaryStudentAttendanceReport extends StatelessWidget {
   const SecondaryStudentAttendanceReport({super.key});
 
+  static const Color navyBlue = Color(0xFF0D1B2A);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Secondary Student Attendance'),
         centerTitle: true,
+        backgroundColor: navyBlue,
       ),
       body: ListView(
         padding: const EdgeInsets.all(12),
-        children: [
-          _stdTile('9'),
-          _stdTile('10'),
-          _stdTile('11'),
-          _stdTile('12'),
+        children: const [
+          _StdTile(std: '9'),
+          _StdTile(std: '10'),
+          _StdTile(std: '11'),
+          _StdTile(std: '12'),
         ],
       ),
     );
   }
+}
 
-  Widget _stdTile(String std) {
+/* ================= STD TILE ================= */
+
+class _StdTile extends StatelessWidget {
+  final String std;
+  const _StdTile({required this.std});
+
+  static const Color navyBlue = Color(0xFF0D1B2A);
+
+  @override
+  Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
+      elevation: 1,
       child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16),
         title: Text(
           'STD $std',
           style: const TextStyle(
             fontWeight: FontWeight.bold,
-            color: Colors.green,
+            fontSize: 16,
+            color: navyBlue,
           ),
         ),
-        children: [
-          _divisionBlock('A'),
-          _divisionBlock('B'),
+        children: const [
+          _DivisionBlock(div: 'A'),
+          _DivisionBlock(div: 'B'),
         ],
       ),
     );
   }
+}
 
-  Widget _divisionBlock(String div) {
+/* ================= DIV BLOCK ================= */
+
+class _DivisionBlock extends StatelessWidget {
+  final String div;
+  const _DivisionBlock({required this.div});
+
+  static const Color navyBlue = Color(0xFF0D1B2A);
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'DIV $div',
-            style: const TextStyle(fontWeight: FontWeight.bold),
+          // DIV HEADER
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+            decoration: BoxDecoration(
+              color: navyBlue.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              'DIV $div',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: navyBlue,
+              ),
+            ),
           ),
+
           const SizedBox(height: 6),
-          _studentRow(1, 'Ramesh Patel', Icons.check_circle, Colors.green),
-          _studentRow(2, 'Sita Mehta', Icons.cancel, Colors.red),
-          _studentRow(3, 'Mohan Das', Icons.access_time, Colors.orange),
+
+          // STUDENTS
+          const _StudentRow(
+            roll: 1,
+            name: 'Ramesh Patel',
+            icon: Icons.check_circle,
+            color: Colors.green,
+          ),
+          const _StudentRow(
+            roll: 2,
+            name: 'Sita Mehta',
+            icon: Icons.cancel,
+            color: Colors.red,
+          ),
+          const _StudentRow(
+            roll: 3,
+            name: 'Mohan Das',
+            icon: Icons.access_time,
+            color: Colors.orange,
+          ),
         ],
       ),
     );
   }
+}
 
-  Widget _studentRow(
-      int roll, String name, IconData icon, Color color) {
+/* ================= STUDENT ROW ================= */
+
+class _StudentRow extends StatelessWidget {
+  final int roll;
+  final String name;
+  final IconData icon;
+  final Color color;
+
+  const _StudentRow({
+    required this.roll,
+    required this.name,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return ListTile(
       dense: true,
-      leading: Text(roll.toString()),
+      leading: Text(
+        roll.toString(),
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
       title: Text(name),
-      trailing: Icon(icon, color: color),
+      trailing: Icon(icon, color: color, size: 20),
     );
   }
 }
