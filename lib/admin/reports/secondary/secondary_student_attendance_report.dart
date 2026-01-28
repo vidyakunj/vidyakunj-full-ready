@@ -76,16 +76,7 @@ class _SecondaryStudentAttendanceReportState
 
 class _StdTile extends StatelessWidget {
   final String std;
-  final Function(String, String) load;
-  final Map<String, List<dynamic>> cache;
-  final Map<String, bool> loading;
-
-  const _StdTile({
-    required this.std,
-    required this.load,
-    required this.cache,
-    required this.loading,
-  });
+  const _StdTile({required this.std});
 
   static const Color navy = Color(0xFF0D1B2A);
 
@@ -102,26 +93,16 @@ class _StdTile extends StatelessWidget {
             color: navy,
           ),
         ),
-        children: [
-          _DivisionBlock(
-            std: std,
-            div: 'A',
-            load: load,
-            cache: cache,
-            loading: loading,
-          ),
-          _DivisionBlock(
-            std: std,
-            div: 'B',
-            load: load,
-            cache: cache,
-            loading: loading,
-          ),
-        ],
+
+        // ✅ DIVISIONS GO HERE (INSIDE ExpansionTile)
+        children: ['A', 'B', 'C'].map((div) {
+          return _DivisionBlock(div: div);
+        }).toList(),
       ),
     );
   }
 }
+
 
 /* ================= DIVISION BLOCK ================= */
 
