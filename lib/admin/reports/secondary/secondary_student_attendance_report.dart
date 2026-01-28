@@ -17,7 +17,6 @@ class _SecondaryStudentAttendanceReportState
   static const Color navy = Color(0xFF0D1B2A);
   DateTime selectedDate = DateTime.now();
 
-  /// cache key = "9-A"
   final Map<String, List<dynamic>> _cache = {};
   final Set<String> _loading = {};
 
@@ -60,11 +59,11 @@ class _SecondaryStudentAttendanceReportState
       ),
       body: ListView(
         padding: const EdgeInsets.all(12),
-        children: const [
-          _StdTile(std: '9'),
-          _StdTile(std: '10'),
-          _StdTile(std: '11'),
-          _StdTile(std: '12'),
+        children: [
+          stdTile('9'),
+          stdTile('10'),
+          stdTile('11'),
+          stdTile('12'),
         ],
       ),
     );
@@ -85,9 +84,7 @@ class _SecondaryStudentAttendanceReportState
           ),
         ),
         children: ['A', 'B', 'C']
-            .map(
-              (div) => divisionBlock(std, div),
-            )
+            .map((div) => divisionBlock(std, div))
             .toList(),
       ),
     );
