@@ -156,7 +156,8 @@ app.post("/attendance", async (req, res) => {
           params: {
             method: "SendMessage",
             send_to: mobile,
-            msg: `Dear Parents,Your child, ${studentName} remained absent in school today.,Vidyakunj School`,
+            msg: `Dear Parents, Your child, ${studentName} remained absent in school today.,Vidyakunj School Navsari`,  
+            //msg: `Dear Parents,Your child, ${studentName} remained absent in school today.,Vidyakunj School`,  //ORIGNAL MASSAGE//
             msg_type: "TEXT",
             userid: process.env.GUPSHUP_USER,
             password: process.env.GUPSHUP_PASSWORD,
