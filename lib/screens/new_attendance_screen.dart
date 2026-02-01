@@ -300,47 +300,42 @@ Widget build(BuildContext context) {
           ),
 
           Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        absentRollNumbers.isEmpty
-                            ? "Absent: None"
-                            : "Absent (${absentRollNumbers.length}): ${absentRollNumbers.join(', ')}",
-                        style: const TextStyle(
-                          color: Colors.red,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        lateRollNumbers.isEmpty
-                            ? "Late: None"
-                            : "Late (${lateRollNumbers.length}): ${lateRollNumbers.join(', ')}",
-                        style: const TextStyle(
-                          color: Colors.orange,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ElevatedButton(
-                onPressed: isSaved ? null : _saveAttendance,
-                child: const Text("Save Attendance"),
+  padding: const EdgeInsets.all(12),
+  child: Row(
+    children: [
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              absentRollNumbers.isEmpty
+                  ? "Absent: None"
+                  : "Absent (${absentRollNumbers.length}): ${absentRollNumbers.join(', ')}",
+              style: const TextStyle(
+                color: Colors.red,
+                fontWeight: FontWeight.bold,
               ),
-
-              ],
             ),
-          ),
-        ],
+            Text(
+              lateRollNumbers.isEmpty
+                  ? "Late: None"
+                  : "Late (${lateRollNumbers.length}): ${lateRollNumbers.join(', ')}",
+              style: const TextStyle(
+                color: Colors.orange,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
+      ElevatedButton(
+        onPressed: isSaved ? null : _saveAttendance,
+        child: const Text("Save Attendance"),
+      ),
+    ],
+  ),
+),
+
 
   /* ================= HELPERS ================= */
   InputDecoration _inputDeco(String label) => InputDecoration(
