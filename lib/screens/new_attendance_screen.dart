@@ -155,51 +155,55 @@ Future<void> _checkAttendanceLock() async {
   }
 }
 
-  /* ================= SAVE ATTENDANCE ================= */
-  Future<void> _saveAttendance() async {
-    if (selectedStd == null || selectedDiv == null) {
-      _showSnack("Select STD & DIV first");
-      return;
-    }
-
-    final dateStr = DateTime.now().toIso8601String();
-
-    final payload = students.map((s) => {
-      "studentId": s.id,
-      "std": selectedStd,
-      "div": selectedDiv,
-      "roll": s.roll,
-      "date": dateStr,
-      "present": s.isPresent,
-      "late": s.late,
-}).toList();
-
-
-    try {
-      final res = await http.post(
-        Uri.parse("$SERVER_URL/attendance"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "date": dateStr,
-          "attendance": payload,
-        }),
-      );
-
-      if (res.statusCode == 200) {
-        // ✅ THIS WAS MISSING
-        setState(() {
-        isSaved = true;     // 🔒 disables Save button
-        isEditing = false; // exit edit mode if any
-    });
-        _showSnack("Attendance saved & SMS sent successfully");
-      } else {
-        _showSnack("Attendance save failed");
-      }
-    } catch (e) {
-      _showSnack("Network error");
-    }
+ /* ================= SAVE ATTENDANCE ================= */
+Future<void> _saveAttendance() async {
+  if (selectedStd == null || selectedDiv == null) {
+    _showSnack("Select STD & DIV first");
+    return;
   }
 
+  final dateStr = DateTime.now().toIso8601String();
+
+  final payload = students.map((s) => {
+        "studentId": s.id,
+        "std": selectedStd,
+        "div": selectedDiv,
+        "roll": s.roll,
+        "date": dateStr,
+        "present": s.isPresent,
+        "late": s.late,
+      }).toList();
+
+  try {
+    final res = await http.post(
+      Uri.parse("$SERVER_URL/attendance"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "date": dateStr,
+        "attendance": payload,
+      }),
+    );
+
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+
+      // 👇 backend should return this
+      final int sentCount = data["sentCount"] ?? 0;
+
+      setState(() {
+        isSaved = true;     // 🔒 disables Save button
+        isEditing = false; // exit edit mode
+      });
+
+      // ✅ CENTER SCREEN MESSAGE (stays until OK)
+      showMessageSentDialog(context, sentCount);
+    } else {
+      _showSnack("Attendance save failed");
+    }
+  } catch (e) {
+    _showSnack("Network error");
+  }
+}
   void _showSnack(String msg) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(msg)));
@@ -461,6 +465,43 @@ Widget build(BuildContext context) {
     ),
   );
 }
+  void showMessageSentDialog(BuildContext context, int sentCount) {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green),
+            SizedBox(width: 8),
+            Text("Messages Sent"),
+          ],
+        ),
+        content: Text(
+          "$sentCount messages sent successfully",
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        actions: [
+          Center(
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("OK"),
+            ),
+          ),
+        ],
+      );
+    },
+  );
+}
+
 } // ✅ closes _NewAttendanceScreenState
 /* ================= MODEL ================= */
 class _StudentRow {
