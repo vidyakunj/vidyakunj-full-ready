@@ -372,43 +372,48 @@ Widget build(BuildContext context) {
             children: [
               // ✅ PRESENT
               Checkbox(
-                value: s.isPresent,
-                onChanged: (s.locked || isSaved)
-    ? null
-    : (v) {
-        setState(() {
-          s.isPresent = v ?? true;
-          if (!s.isPresent) {
-            s.late = false;
-            lateRollNumbers.remove(s.roll);
-            if (!absentRollNumbers.contains(s.roll)) {
-              absentRollNumbers.add(s.roll);
+  value: s.isPresent,
+  onChanged: (s.locked || isSaved)
+      ? null
+      : (v) {
+          setState(() {
+            s.isPresent = v ?? true;
+
+            if (!s.isPresent) {
+              s.late = false;
+              lateRollNumbers.remove(s.roll);
+              if (!absentRollNumbers.contains(s.roll)) {
+                absentRollNumbers.add(s.roll);
+              }
+            } else {
+              absentRollNumbers.remove(s.roll);
             }
-          } else {
-            absentRollNumbers.remove(s.roll);
-          }
-        });
-      },
+          });
+        },
+),
+
 
               // ✅ LATE (NEVER ABSENT)
               Checkbox(
-                value: s.late,
-                onChanged: (s.isPresent && !s.locked && !isSaved)
-    ? (v) {
-        setState(() {
-          s.late = v ?? false;
-          if (s.late) {
-            s.isPresent = true;
-            absentRollNumbers.remove(s.roll);
-            if (!lateRollNumbers.contains(s.roll)) {
-              lateRollNumbers.add(s.roll);
+  value: s.late,
+  onChanged: (s.isPresent && !s.locked && !isSaved)
+      ? (v) {
+          setState(() {
+            s.late = v ?? false;
+
+            if (s.late) {
+              s.isPresent = true;
+              absentRollNumbers.remove(s.roll);
+              if (!lateRollNumbers.contains(s.roll)) {
+                lateRollNumbers.add(s.roll);
+              }
+            } else {
+              lateRollNumbers.remove(s.roll);
             }
-          } else {
-            lateRollNumbers.remove(s.roll);
-          }
-        });
-      }
-    : null,
+          });
+        }
+      : null,
+),
 
               ),
             ],
