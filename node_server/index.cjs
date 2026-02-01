@@ -128,6 +128,7 @@ app.post("/attendance", async (req, res) => {
     const lockDoc = await AttendanceLock.findOne({ std, div, date: dateStr });
     const locked = lockDoc?.locked || [];
     const toLock = [];
+    let sentCount = 0; // ✅ SMS counter
 
     for (const e of attendance) {
       if (locked.includes(e.roll)) continue;
@@ -165,7 +166,8 @@ app.post("/attendance", async (req, res) => {
             v: "1.1",
           },
         });
-
+         
+        sentCount++; // ✅ count absent SMS
         toLock.push(e.roll);
       }
 
@@ -183,7 +185,8 @@ app.post("/attendance", async (req, res) => {
             v: "1.1",
           },
         });
-
+      
+        sentCount++; // ✅ count late SMS
         toLock.push(e.roll);
       }
     }
@@ -196,7 +199,11 @@ app.post("/attendance", async (req, res) => {
       );
     }
 
-    res.json({ success: true });
+    res.json({
+      success: true,
+      sentCount: sentCount, // ✅ SEND TO FRONTEND
+});
+
   } catch (err) {
     console.error("ATTENDANCE ERROR:", err);
     res.status(500).json({ success: false });
