@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../config.dart';
 import '../screens/login_screen.dart';
 
@@ -13,24 +14,22 @@ class NewAttendanceScreen extends StatefulWidget {
 }
 
 class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
-  
- bool isSaved = false; // only for save-warning, NOT editing
+  bool isSaved = false;
 
-  
   String? selectedStd;
   String? selectedDiv;
 
   bool isLoadingDivs = false;
   bool isLoadingStudents = false;
 
-  List<String> divisions = [];
-  List<_StudentRow> students = [];
-  List<int> absentRollNumbers = [];
-  List<int> lateRollNumbers = [];
-
   final List<String> stdOptions =
       List<String>.generate(12, (i) => '${i + 1}');
 
+  List<String> divisions = [];
+  List<_StudentRow> students = [];
+
+  List<int> absentRollNumbers = [];
+  List<int> lateRollNumbers = [];
 
   /* ================= LOGOUT ================= */
   Future<void> _logout() async {
@@ -66,7 +65,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
         divisions =
             (data['divisions'] ?? []).map<String>((e) => e.toString()).toList();
       }
-    } catch (e) {
+    } catch (_) {
       _showSnack("Error loading divisions");
     }
 
@@ -100,7 +99,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
           );
         }).toList();
       }
-    } catch (e) {
+    } catch (_) {
       _showSnack("Error loading students");
     }
 
@@ -108,150 +107,104 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     setState(() => isLoadingStudents = false);
   }
 
-/* ================= LOCK CHECK ================= */
-Future<void> _checkAttendanceLock() async {
-  final today = DateTime.now();
-  final date =
-      "${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}";
+  /* ================= CHECK LOCK ================= */
+  Future<void> _checkAttendanceLock() async {
+    final now = DateTime.now();
+    final date =
+        "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
 
-  final res = await http.get(
-    Uri.parse(
-      "$SERVER_URL/attendance/check-lock?std=$selectedStd&div=$selectedDiv&date=$date",
-    ),
-  );
+    try {
+      final res = await http.get(
+        Uri.parse(
+          "$SERVER_URL/attendance/check-lock?std=$selectedStd&div=$selectedDiv&date=$date",
+        ),
+      );
 
-  if (res.statusCode == 200) {
-    final data = jsonDecode(res.body);
+      if (res.statusCode != 200) return;
 
-    final List absent = data['absent'] ?? [];
-    final List late = data['late'] ?? [];
-
-    absentRollNumbers.clear();
-    lateRollNumbers.clear();
-
-    for (final s in students) {
-      s.locked = false;
-      s.isPresent = true;
-      s.late = false;
-
-      // ❌ ABSENT
-      if (absent.contains(s.roll)) {
-        s.locked = true;
-        s.isPresent = false;
-        s.late = false;
-        absentRollNumbers.add(s.roll);
-      }
-
-      // ⏰ LATE (NOT ABSENT)
-      else if (late.contains(s.roll)) {
-        s.locked = true;
-        s.isPresent = true;
-        s.late = true;
-        lateRollNumbers.add(s.roll);
-      }
-    }
-  }
-}
-
- /* ================= SAVE ATTENDANCE ================= */
-Future<void> _saveAttendance() async {
-  if (selectedStd == null || selectedDiv == null) {
-    _showSnack("Select STD & DIV first");
-    return;
-  }
-
-  final dateStr = DateTime.now().toIso8601String();
-
-  final payload = students.map((s) => {
-        "studentId": s.id,
-        "std": selectedStd,
-        "div": selectedDiv,
-        "roll": s.roll,
-        "date": dateStr,
-        "present": s.isPresent,
-        "late": s.late,
-      }).toList();
-
-  try {
-    final res = await http.post(
-      Uri.parse("$SERVER_URL/attendance"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "date": dateStr,
-        "attendance": payload,
-      }),
-    );
-
-    if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
+      final List absent = data['absent'] ?? [];
+      final List late = data['late'] ?? [];
 
-      // 👇 backend should return this
-      final int sentCount = data["sentCount"] ?? 0;
+      absentRollNumbers.clear();
+      lateRollNumbers.clear();
 
-    setState(() {
-      isSaved = true; // permanently saved
-    });
+      for (final s in students) {
+        s.locked = false;
+        s.isPresent = true;
+        s.late = false;
 
-
-      // ✅ CENTER SCREEN MESSAGE (stays until OK)
-      showMessageSentDialog(context, sentCount);
-    } else {
-      _showSnack("Attendance save failed");
+        if (absent.contains(s.roll)) {
+          s.locked = true;
+          s.isPresent = false;
+          absentRollNumbers.add(s.roll);
+        } else if (late.contains(s.roll)) {
+          s.locked = true;
+          s.late = true;
+          lateRollNumbers.add(s.roll);
+        }
+      }
+    } catch (_) {
+      // silent
     }
-  } catch (e) {
-    _showSnack("Network error");
   }
-}
+
+  /* ================= SAVE ATTENDANCE ================= */
+  Future<void> _saveAttendance() async {
+    if (selectedStd == null || selectedDiv == null) {
+      _showSnack("Select STD & DIV first");
+      return;
+    }
+
+    final dateStr = DateTime.now().toIso8601String();
+
+    final payload = students.map((s) => {
+          "studentId": s.id,
+          "std": selectedStd,
+          "div": selectedDiv,
+          "roll": s.roll,
+          "date": dateStr,
+          "present": s.isPresent,
+          "late": s.late,
+        }).toList();
+
+    try {
+      final res = await http.post(
+        Uri.parse("$SERVER_URL/attendance"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "date": dateStr,
+          "attendance": payload,
+        }),
+      );
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        final int sentCount = data["sentCount"] ?? 0;
+
+        setState(() => isSaved = true);
+        _showMessageSentDialog(sentCount);
+      } else {
+        _showSnack("Attendance save failed");
+      }
+    } catch (_) {
+      _showSnack("Network error");
+    }
+  }
+
   void _showSnack(String msg) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(msg)));
   }
 
-/* ================= UI ================= */
-@override
-Widget build(BuildContext context) {
-  return WillPopScope(
-    onWillPop: () async {
-      if (!isSaved) {
-        final result = await showDialog<bool>(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => AlertDialog(
-            title: const Text("Attendance not saved"),
-            content: const Text(
-              "Do you want to save attendance before leaving?",
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context, true); // exit without saving
-                },
-                child: const Text("Exit Without Saving"),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  await _saveAttendance();
-                  setState(() {
-                    isSaved = true;
-                  });
-                  Navigator.pop(context, true); // save & exit
-                },
-                child: const Text("Save & Exit"),
-              ),
-            ],
-          ),
-        );
-
-        return result ?? false;
-      }
-      return true;
-    },
-    child: Scaffold(
+  /* ================= UI ================= */
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
       backgroundColor: const Color(0xffeef3ff),
       body: Column(
         children: [
           const SizedBox(height: 12),
-
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
@@ -272,25 +225,22 @@ Widget build(BuildContext context) {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: isLoadingDivs
-                      ? const Center(child: CircularProgressIndicator())
-                      : DropdownButtonFormField(
-                          value: selectedDiv,
-                          decoration: _inputDeco("Select DIV"),
-                          items: divisions
-                              .map((e) => DropdownMenuItem(
-                                  value: e, child: Text(e)))
-                              .toList(),
-                          onChanged: (v) {
-                            setState(() => selectedDiv = v);
-                            _loadStudents();
-                          },
-                        ),
+                  child: DropdownButtonFormField(
+                    value: selectedDiv,
+                    decoration: _inputDeco("Select DIV"),
+                    items: divisions
+                        .map((e) =>
+                            DropdownMenuItem(value: e, child: Text(e)))
+                        .toList(),
+                    onChanged: (v) {
+                      setState(() => selectedDiv = v);
+                      _loadStudents();
+                    },
+                  ),
                 ),
               ],
             ),
           ),
-
           Expanded(
             child: isLoadingStudents
                 ? const Center(child: CircularProgressIndicator())
@@ -298,46 +248,18 @@ Widget build(BuildContext context) {
                     children: students.map(_studentTile).toList(),
                   ),
           ),
-
           Padding(
-  padding: const EdgeInsets.all(12),
-  child: Row(
-    children: [
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              absentRollNumbers.isEmpty
-                  ? "Absent: None"
-                  : "Absent (${absentRollNumbers.length}): ${absentRollNumbers.join(', ')}",
-              style: const TextStyle(
-                color: Colors.red,
-                fontWeight: FontWeight.bold,
-              ),
+            padding: const EdgeInsets.all(12),
+            child: ElevatedButton(
+              onPressed: isSaved ? null : _saveAttendance,
+              child: const Text("Save Attendance"),
             ),
-            Text(
-              lateRollNumbers.isEmpty
-                  ? "Late: None"
-                  : "Late (${lateRollNumbers.length}): ${lateRollNumbers.join(', ')}",
-              style: const TextStyle(
-                color: Colors.orange,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
-      ElevatedButton(
-        onPressed: isSaved ? null : _saveAttendance,
-        child: const Text("Save Attendance"),
-      ),
-    ],
-  ),
-),
+    );
+  }
 
-
-  /* ================= HELPERS ================= */
   InputDecoration _inputDeco(String label) => InputDecoration(
         labelText: label,
         border: OutlineInputBorder(
@@ -345,123 +267,70 @@ Widget build(BuildContext context) {
         ),
       );
 
- Widget _studentTile(_StudentRow s) {
-  return Container(
-    margin: const EdgeInsets.all(6),
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: !s.isPresent
-          ? Colors.red.shade50
-          : s.late
-              ? Colors.amber.shade50
-              : Colors.green.shade50,
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Row(
-      children: [
-        Expanded(flex: 5, child: Text(s.name)),
-        Expanded(flex: 2, child: Text("${s.roll}")),
-        Expanded(
-          flex: 4,
-          child: Row(
-            children: [
-              // ✅ PRESENT
-              Checkbox(
-  value: s.isPresent,
-  onChanged: (s.locked || isSaved)
-      ? null
-      : (v) {
-          setState(() {
-            s.isPresent = v ?? true;
-
-            if (!s.isPresent) {
-              s.late = false;
-              lateRollNumbers.remove(s.roll);
-              if (!absentRollNumbers.contains(s.roll)) {
-                absentRollNumbers.add(s.roll);
-              }
-            } else {
-              absentRollNumbers.remove(s.roll);
-            }
-          });
-        },
-),
-
-
-              // ✅ LATE (NEVER ABSENT)
-              Checkbox(
-  value: s.late,
-  onChanged: (s.isPresent && !s.locked && !isSaved)
-      ? (v) {
-          setState(() {
-            s.late = v ?? false;
-
-            if (s.late) {
-              s.isPresent = true;
-              absentRollNumbers.remove(s.roll);
-              if (!lateRollNumbers.contains(s.roll)) {
-                lateRollNumbers.add(s.roll);
-              }
-            } else {
-              lateRollNumbers.remove(s.roll);
-            }
-          });
-        }
-      : null,
-),
-
-              ),
-            ],
-          ),
-        ),
-      ],
-    ),
-  );
-}
-  void showMessageSentDialog(BuildContext context, int sentCount) {
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) {
-      return AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        title: const Row(
+  Widget _studentTile(_StudentRow s) {
+    return Card(
+      margin: const EdgeInsets.all(6),
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Row(
           children: [
-            Icon(Icons.check_circle, color: Colors.green),
-            SizedBox(width: 8),
-            Text("Messages Sent"),
+            Expanded(flex: 4, child: Text("${s.roll}. ${s.name}")),
+            Checkbox(
+              value: s.isPresent,
+              onChanged: (s.locked || isSaved)
+                  ? null
+                  : (v) {
+                      setState(() {
+                        s.isPresent = v ?? true;
+                        if (!s.isPresent) {
+                          s.late = false;
+                        }
+                      });
+                    },
+            ),
+            const Text("P"),
+            Checkbox(
+              value: s.late,
+              onChanged: (s.isPresent && !s.locked && !isSaved)
+                  ? (v) {
+                      setState(() {
+                        s.late = v ?? false;
+                      });
+                    }
+                  : null,
+            ),
+            const Text("L"),
           ],
         ),
-        content: Text(
-          "$sentCount messages sent successfully",
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
+      ),
+    );
+  }
+
+  void _showMessageSentDialog(int count) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text("Messages Sent"),
+        content: Text("$count messages sent successfully"),
         actions: [
-          Center(
-            child: ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("OK"),
-            ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("OK"),
           ),
         ],
-      );
-    },
-  );
+      ),
+    );
+  }
 }
 
-} // ✅ closes _NewAttendanceScreenState
 /* ================= MODEL ================= */
 class _StudentRow {
   final String id;
   final String name;
   final int roll;
   final String mobile;
+
   bool isPresent;
   bool late;
   bool locked;
