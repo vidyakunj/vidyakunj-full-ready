@@ -13,11 +13,9 @@ class NewAttendanceScreen extends StatefulWidget {
 }
 
 class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
-  // 🔔 REQUIRED for warning popup
-  bool isSaved = false;
   
-  // ✏️ REQUIRED for edit attendance (STEP 3A)
-  bool isEditing = false;
+ bool isSaved = false; // only for save-warning, NOT editing
+
   
   String? selectedStd;
   String? selectedDiv;
@@ -190,10 +188,10 @@ Future<void> _saveAttendance() async {
       // 👇 backend should return this
       final int sentCount = data["sentCount"] ?? 0;
 
-      setState(() {
-        isSaved = true;     // 🔒 disables Save button
-        isEditing = false; // exit edit mode
-      });
+    setState(() {
+      isSaved = true; // permanently saved
+    });
+
 
       // ✅ CENTER SCREEN MESSAGE (stays until OK)
       showMessageSentDialog(context, sentCount);
@@ -208,40 +206,6 @@ Future<void> _saveAttendance() async {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(msg)));
   }
-  /* =====================================================
-   🥉 STEP 3B — ADD THIS METHOD EXACTLY HERE
-   ===================================================== */
-
-Future<void> _confirmEditAttendance() async {
-  final allowEdit = await showDialog<bool>(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) => AlertDialog(
-      title: const Text("Edit Attendance"),
-      content: const Text(
-        "Attendance is already saved.\n\n"
-        "Editing may change records. Do you want to continue?",
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text("Cancel"),
-        ),
-        ElevatedButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: const Text("Yes, Edit"),
-        ),
-      ],
-    ),
-  );
-
-  if (allowEdit == true) {
-    setState(() {
-      isEditing = true;
-      isSaved = false; // requires re-save
-    });
-  }
-}
 
 /* ================= UI ================= */
 @override
@@ -364,19 +328,10 @@ Widget build(BuildContext context) {
                     ],
                   ),
                 ),
-               isSaved
-                    ? ElevatedButton.icon(
-                      onPressed: _confirmEditAttendance,
-                      icon: const Icon(Icons.edit),
-                      label: const Text("Edit Attendance"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange,
-                    ),
-                )
-              : ElevatedButton(
-                  onPressed: _saveAttendance,
-                  child: const Text("Save Attendance"),
-                ),
+              ElevatedButton(
+                onPressed: isSaved ? null : _saveAttendance,
+                child: const Text("Save Attendance"),
+              ),
 
               ],
             ),
@@ -418,45 +373,43 @@ Widget build(BuildContext context) {
               // ✅ PRESENT
               Checkbox(
                 value: s.isPresent,
-                onChanged: s.locked
-                    ? null
-                    : (v) {
-                        setState(() {
-                          s.isPresent = v ?? true;
-
-                          if (!s.isPresent) {
-                            s.late = false;
-                            lateRollNumbers.remove(s.roll);
-                            if (!absentRollNumbers.contains(s.roll)) {
-                              absentRollNumbers.add(s.roll);
-                            }
-                          } else {
-                            absentRollNumbers.remove(s.roll);
-                          }
-                        });
-                      },
-              ),
+                onChanged: (s.locked || isSaved)
+    ? null
+    : (v) {
+        setState(() {
+          s.isPresent = v ?? true;
+          if (!s.isPresent) {
+            s.late = false;
+            lateRollNumbers.remove(s.roll);
+            if (!absentRollNumbers.contains(s.roll)) {
+              absentRollNumbers.add(s.roll);
+            }
+          } else {
+            absentRollNumbers.remove(s.roll);
+          }
+        });
+      },
 
               // ✅ LATE (NEVER ABSENT)
               Checkbox(
                 value: s.late,
-                onChanged: (s.isPresent && !s.locked)
-                    ? (v) {
-                        setState(() {
-                          s.late = v ?? false;
+                onChanged: (s.isPresent && !s.locked && !isSaved)
+    ? (v) {
+        setState(() {
+          s.late = v ?? false;
+          if (s.late) {
+            s.isPresent = true;
+            absentRollNumbers.remove(s.roll);
+            if (!lateRollNumbers.contains(s.roll)) {
+              lateRollNumbers.add(s.roll);
+            }
+          } else {
+            lateRollNumbers.remove(s.roll);
+          }
+        });
+      }
+    : null,
 
-                          if (s.late) {
-                            s.isPresent = true;
-                            absentRollNumbers.remove(s.roll);
-                            if (!lateRollNumbers.contains(s.roll)) {
-                              lateRollNumbers.add(s.roll);
-                            }
-                          } else {
-                            lateRollNumbers.remove(s.roll);
-                          }
-                        });
-                      }
-                    : null,
               ),
             ],
           ),
