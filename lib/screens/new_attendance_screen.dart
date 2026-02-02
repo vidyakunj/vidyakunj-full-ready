@@ -248,17 +248,45 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                     children: students.map(_studentTile).toList(),
                   ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: ElevatedButton(
-              onPressed: isSaved ? null : _saveAttendance,
-              child: const Text("Save Attendance"),
-            ),
-          ),
-        ],
+         Padding(
+  padding: const EdgeInsets.all(12),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        absentRollNumbers.isEmpty
+            ? "Absent: None"
+            : "Absent (${absentRollNumbers.length}): ${absentRollNumbers.join(', ')}",
+        style: const TextStyle(
+          color: Colors.red,
+          fontWeight: FontWeight.bold,
+        ),
       ),
-    );
-  }
+      const SizedBox(height: 4),
+      Text(
+        lateRollNumbers.isEmpty
+            ? "Late: None"
+            : "Late (${lateRollNumbers.length}): ${lateRollNumbers.join(', ')}",
+        style: const TextStyle(
+          color: Colors.orange,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      const SizedBox(height: 10),
+Center(
+  child: ElevatedButton(
+    onPressed: isSaved ? null : _saveAttendance,
+    child: const Text("Save Attendance"),
+  ),
+),
+],
+),
+),
+],
+),
+);
+}
+
 
   InputDecoration _inputDeco(String label) => InputDecoration(
         labelText: label,
@@ -268,43 +296,76 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
       );
 
   Widget _studentTile(_StudentRow s) {
-    return Card(
-      margin: const EdgeInsets.all(6),
-      child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: Row(
-          children: [
-            Expanded(flex: 4, child: Text("${s.roll}. ${s.name}")),
-            Checkbox(
-              value: s.isPresent,
-              onChanged: (s.locked || isSaved)
-                  ? null
-                  : (v) {
-                      setState(() {
-                        s.isPresent = v ?? true;
-                        if (!s.isPresent) {
-                          s.late = false;
+  return Card(
+    margin: const EdgeInsets.all(6),
+    child: Padding(
+      padding: const EdgeInsets.all(8),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 4,
+            child: Text("${s.roll}. ${s.name}"),
+          ),
+
+          // ✅ PRESENT / ABSENT
+          Checkbox(
+            value: s.isPresent,
+            onChanged: (s.locked || isSaved)
+                ? null
+                : (v) {
+                    setState(() {
+                      s.isPresent = v ?? true;
+
+                      if (!s.isPresent) {
+                        // Mark ABSENT
+                        s.late = false;
+
+                        if (!absentRollNumbers.contains(s.roll)) {
+                          absentRollNumbers.add(s.roll);
                         }
-                      });
-                    },
-            ),
-            const Text("P"),
-            Checkbox(
-              value: s.late,
-              onChanged: (s.isPresent && !s.locked && !isSaved)
-                  ? (v) {
-                      setState(() {
-                        s.late = v ?? false;
-                      });
-                    }
-                  : null,
-            ),
-            const Text("L"),
-          ],
-        ),
+                        lateRollNumbers.remove(s.roll);
+                      } else {
+                        absentRollNumbers.remove(s.roll);
+                      }
+
+                      // 🔼 Always sort ascending
+                      absentRollNumbers.sort();
+                      lateRollNumbers.sort();
+                    });
+                  },
+          ),
+          const Text("P"),
+
+          // ✅ LATE (only if present)
+          Checkbox(
+            value: s.late,
+            onChanged: (s.isPresent && !s.locked && !isSaved)
+                ? (v) {
+                    setState(() {
+                      s.late = v ?? false;
+
+                      if (s.late) {
+                        if (!lateRollNumbers.contains(s.roll)) {
+                          lateRollNumbers.add(s.roll);
+                        }
+                        absentRollNumbers.remove(s.roll);
+                      } else {
+                        lateRollNumbers.remove(s.roll);
+                      }
+
+                      // 🔼 Always sort ascending
+                      absentRollNumbers.sort();
+                      lateRollNumbers.sort();
+                    });
+                  }
+                : null,
+          ),
+          const Text("L"),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   void _showMessageSentDialog(int count) {
     showDialog(
