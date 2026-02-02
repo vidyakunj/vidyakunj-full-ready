@@ -47,13 +47,13 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
     if (selectedStd == null) return;
 
     setState(() {
-      isLoadingDivs = true;
-      divisions.clear();
-      selectedDiv = null;
-      students.clear();
-      absentRollNumbers.clear();
-      lateRollNumbers.clear();
-    });
+  isLoadingStudents = true;
+  isSaved = false; // 🔥 RESET when switching class/div
+  students.clear();
+  absentRollNumbers.clear();
+  lateRollNumbers.clear();
+});
+
 
     try {
       final res = await http.get(
