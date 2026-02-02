@@ -302,7 +302,15 @@ Center(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       child: Row(
         children: [
-          // 🔢 ROLL NUMBER COLUMN (RED BOX AREA)
+          // 👤 STUDENT NAME (LEFT)
+          Expanded(
+            child: Text(
+              s.name,
+              style: const TextStyle(fontSize: 14),
+            ),
+          ),
+
+          // 🔢 ROLL NUMBER (RIGHT SIDE – RED BOX AREA)
           SizedBox(
             width: 40,
             child: Text(
@@ -310,17 +318,12 @@ Center(
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
+                fontSize: 14,
               ),
             ),
           ),
 
-          // 👤 STUDENT NAME
-          Expanded(
-            child: Text(
-              s.name,
-              style: const TextStyle(fontSize: 14),
-            ),
-          ),
+          const SizedBox(width: 8),
 
           // ✅ PRESENT
           Column(
@@ -352,7 +355,7 @@ Center(
             ],
           ),
 
-          const SizedBox(width: 6),
+          const SizedBox(width: 4),
 
           // ⏰ LATE
           Column(
