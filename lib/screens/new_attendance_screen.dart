@@ -297,70 +297,91 @@ Center(
 
   Widget _studentTile(_StudentRow s) {
   return Card(
-    margin: const EdgeInsets.all(6),
+    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     child: Padding(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       child: Row(
         children: [
+          // 🔢 ROLL NUMBER COLUMN (RED BOX AREA)
+          SizedBox(
+            width: 40,
+            child: Text(
+              s.roll.toString(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+
+          // 👤 STUDENT NAME
           Expanded(
-            flex: 4,
-            child: Text("${s.roll}. ${s.name}"),
+            child: Text(
+              s.name,
+              style: const TextStyle(fontSize: 14),
+            ),
           ),
 
-          // ✅ PRESENT / ABSENT
-          Checkbox(
-            value: s.isPresent,
-            onChanged: (s.locked || isSaved)
-                ? null
-                : (v) {
-                    setState(() {
-                      s.isPresent = v ?? true;
+          // ✅ PRESENT
+          Column(
+            children: [
+              const Text("P", style: TextStyle(fontSize: 12)),
+              Checkbox(
+                value: s.isPresent,
+                onChanged: (s.locked || isSaved)
+                    ? null
+                    : (v) {
+                        setState(() {
+                          s.isPresent = v ?? true;
 
-                      if (!s.isPresent) {
-                        // Mark ABSENT
-                        s.late = false;
+                          if (!s.isPresent) {
+                            s.late = false;
+                            if (!absentRollNumbers.contains(s.roll)) {
+                              absentRollNumbers.add(s.roll);
+                            }
+                            lateRollNumbers.remove(s.roll);
+                          } else {
+                            absentRollNumbers.remove(s.roll);
+                          }
 
-                        if (!absentRollNumbers.contains(s.roll)) {
-                          absentRollNumbers.add(s.roll);
-                        }
-                        lateRollNumbers.remove(s.roll);
-                      } else {
-                        absentRollNumbers.remove(s.roll);
+                          absentRollNumbers.sort();
+                          lateRollNumbers.sort();
+                        });
+                      },
+              ),
+            ],
+          ),
+
+          const SizedBox(width: 6),
+
+          // ⏰ LATE
+          Column(
+            children: [
+              const Text("L", style: TextStyle(fontSize: 12)),
+              Checkbox(
+                value: s.late,
+                onChanged: (s.isPresent && !s.locked && !isSaved)
+                    ? (v) {
+                        setState(() {
+                          s.late = v ?? false;
+
+                          if (s.late) {
+                            if (!lateRollNumbers.contains(s.roll)) {
+                              lateRollNumbers.add(s.roll);
+                            }
+                            absentRollNumbers.remove(s.roll);
+                          } else {
+                            lateRollNumbers.remove(s.roll);
+                          }
+
+                          absentRollNumbers.sort();
+                          lateRollNumbers.sort();
+                        });
                       }
-
-                      // 🔼 Always sort ascending
-                      absentRollNumbers.sort();
-                      lateRollNumbers.sort();
-                    });
-                  },
+                    : null,
+              ),
+            ],
           ),
-          const Text("P"),
-
-          // ✅ LATE (only if present)
-          Checkbox(
-            value: s.late,
-            onChanged: (s.isPresent && !s.locked && !isSaved)
-                ? (v) {
-                    setState(() {
-                      s.late = v ?? false;
-
-                      if (s.late) {
-                        if (!lateRollNumbers.contains(s.roll)) {
-                          lateRollNumbers.add(s.roll);
-                        }
-                        absentRollNumbers.remove(s.roll);
-                      } else {
-                        lateRollNumbers.remove(s.roll);
-                      }
-
-                      // 🔼 Always sort ascending
-                      absentRollNumbers.sort();
-                      lateRollNumbers.sort();
-                    });
-                  }
-                : null,
-          ),
-          const Text("L"),
         ],
       ),
     ),
