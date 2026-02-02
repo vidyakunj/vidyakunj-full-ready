@@ -13,15 +13,17 @@ class SecondaryStudentAttendanceReport extends StatefulWidget {
 
 class _SecondaryStudentAttendanceReportState
     extends State<SecondaryStudentAttendanceReport> {
-
   static const Color navy = Color(0xFF0D1B2A);
 
   DateTime selectedDate = DateTime.now();
+  bool isMonthly = false; // false = Daily, true = Monthly
+  DateTime? fromDate;
+  DateTime? toDate;
 
   final Map<String, List<dynamic>> _cache = {};
   final Set<String> _loading = {};
 
-  /* ================= LOAD STUDENTS ================= */
+  /* ================= LOAD STUDENTS (DAILY ONLY FOR NOW) ================= */
 
   Future<void> loadStudents(String std, String div) async {
     final key = "$std-$div";
@@ -53,7 +55,7 @@ class _SecondaryStudentAttendanceReportState
     setState(() => _loading.remove(key));
   }
 
-  /* ================= DATE PICKER ================= */
+  /* ================= DATE PICKER (DAILY) ================= */
 
   Future<void> pickDate() async {
     final picked = await showDatePicker(
@@ -66,8 +68,8 @@ class _SecondaryStudentAttendanceReportState
     if (picked != null && picked != selectedDate) {
       setState(() {
         selectedDate = picked;
-        _cache.clear();    // 🔁 clear old data
-        _loading.clear();  // 🔁 reset loaders
+        _cache.clear();
+        _loading.clear();
       });
     }
   }
@@ -84,7 +86,7 @@ class _SecondaryStudentAttendanceReportState
         actions: [
           IconButton(
             icon: const Icon(Icons.calendar_today),
-            onPressed: pickDate,
+            onPressed: isMonthly ? null : pickDate,
             tooltip: "Select Date",
           ),
         ],
@@ -92,7 +94,8 @@ class _SecondaryStudentAttendanceReportState
       body: ListView(
         padding: const EdgeInsets.all(12),
         children: [
-          _dateBanner(),
+          _reportTypeToggle(),
+          isMonthly ? _fromToBanner() : _dateBanner(),
           stdTile('9'),
           stdTile('10'),
           stdTile('11'),
@@ -102,7 +105,47 @@ class _SecondaryStudentAttendanceReportState
     );
   }
 
-  /* ================= DATE BANNER ================= */
+  /* ================= DAILY / MONTHLY TOGGLE ================= */
+
+  Widget _reportTypeToggle() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: RadioListTile<bool>(
+              title: const Text("Daily"),
+              value: false,
+              groupValue: isMonthly,
+              onChanged: (v) {
+                setState(() {
+                  isMonthly = false;
+                  _cache.clear();
+                  _loading.clear();
+                });
+              },
+            ),
+          ),
+          Expanded(
+            child: RadioListTile<bool>(
+              title: const Text("Monthly"),
+              value: true,
+              groupValue: isMonthly,
+              onChanged: (v) {
+                setState(() {
+                  isMonthly = true;
+                  _cache.clear();
+                  _loading.clear();
+                });
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /* ================= DAILY DATE BANNER ================= */
 
   Widget _dateBanner() {
     final dateStr =
@@ -118,6 +161,70 @@ class _SecondaryStudentAttendanceReportState
           fontWeight: FontWeight.bold,
           color: navy,
         ),
+      ),
+    );
+  }
+
+  /* ================= MONTHLY FROM–TO BANNER ================= */
+
+  Widget _fromToBanner() {
+    String format(DateTime d) =>
+        "${d.day.toString().padLeft(2, '0')}-"
+        "${d.month.toString().padLeft(2, '0')}-"
+        "${d.year}";
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: ElevatedButton.icon(
+              icon: const Icon(Icons.date_range),
+              label: Text(
+                fromDate == null ? "From Date" : format(fromDate!),
+              ),
+              onPressed: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: fromDate ?? DateTime.now(),
+                  firstDate: DateTime(2023),
+                  lastDate: DateTime.now(),
+                );
+                if (picked != null) {
+                  setState(() {
+                    fromDate = picked;
+                    _cache.clear();
+                    _loading.clear();
+                  });
+                }
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: ElevatedButton.icon(
+              icon: const Icon(Icons.date_range),
+              label: Text(
+                toDate == null ? "To Date" : format(toDate!),
+              ),
+              onPressed: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: toDate ?? DateTime.now(),
+                  firstDate: DateTime(2023),
+                  lastDate: DateTime.now(),
+                );
+                if (picked != null) {
+                  setState(() {
+                    toDate = picked;
+                    _cache.clear();
+                    _loading.clear();
+                  });
+                }
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -165,13 +272,11 @@ class _SecondaryStudentAttendanceReportState
             ),
           ),
           const SizedBox(height: 6),
-
           if (_loading.contains(key))
             const Padding(
               padding: EdgeInsets.all(8),
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
-
           if (students != null)
             ...students.map(
               (s) => StudentRow(
