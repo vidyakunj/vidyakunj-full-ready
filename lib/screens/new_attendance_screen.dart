@@ -46,14 +46,15 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
   Future<void> _loadDivisions() async {
     if (selectedStd == null) return;
 
-    setState(() {
-  isLoadingStudents = true;
-  isSaved = false; // 🔥 RESET when switching class/div
+ setState(() {
+  isLoadingDivs = true;
+  isSaved = false; // ✅ reset save state
+  divisions.clear();
+  selectedDiv = null;
   students.clear();
   absentRollNumbers.clear();
   lateRollNumbers.clear();
 });
-
 
     try {
       final res = await http.get(
@@ -76,12 +77,14 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
   Future<void> _loadStudents() async {
     if (selectedStd == null || selectedDiv == null) return;
 
-    setState(() {
-      isLoadingStudents = true;
-      students.clear();
-      absentRollNumbers.clear();
-      lateRollNumbers.clear();
-    });
+  setState(() {
+  isLoadingStudents = true;
+  isSaved = false; // 🔥 RESET HERE (THIS FIXES 11-B ISSUE)
+  students.clear();
+  absentRollNumbers.clear();
+  lateRollNumbers.clear();
+});
+
 
     try {
       final res = await http.get(
@@ -197,14 +200,20 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
         .showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  /* ================= UI ================= */
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
+ /* ================= UI ================= */
+@override
+Widget build(BuildContext context) {
+  return WillPopScope(
+    onWillPop: () async {
+      // ✅ allow normal back navigation (NO logout)
+      return true;
+    },
+    child: Scaffold(
       backgroundColor: const Color(0xffeef3ff),
       body: Column(
         children: [
           const SizedBox(height: 12),
+
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
@@ -241,6 +250,7 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
               ],
             ),
           ),
+
           Expanded(
             child: isLoadingStudents
                 ? const Center(child: CircularProgressIndicator())
@@ -248,43 +258,45 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
                     children: students.map(_studentTile).toList(),
                   ),
           ),
-         Padding(
-  padding: const EdgeInsets.all(12),
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        absentRollNumbers.isEmpty
-            ? "Absent: None"
-            : "Absent (${absentRollNumbers.length}): ${absentRollNumbers.join(', ')}",
-        style: const TextStyle(
-          color: Colors.red,
-          fontWeight: FontWeight.bold,
-        ),
+
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  absentRollNumbers.isEmpty
+                      ? "Absent: None"
+                      : "Absent (${absentRollNumbers.length}): ${absentRollNumbers.join(', ')}",
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  lateRollNumbers.isEmpty
+                      ? "Late: None"
+                      : "Late (${lateRollNumbers.length}): ${lateRollNumbers.join(', ')}",
+                  style: const TextStyle(
+                    color: Colors.orange,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Center(
+                  child: ElevatedButton(
+                    onPressed: isSaved ? null : _saveAttendance,
+                    child: const Text("Save Attendance"),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
-      const SizedBox(height: 4),
-      Text(
-        lateRollNumbers.isEmpty
-            ? "Late: None"
-            : "Late (${lateRollNumbers.length}): ${lateRollNumbers.join(', ')}",
-        style: const TextStyle(
-          color: Colors.orange,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      const SizedBox(height: 10),
-Center(
-  child: ElevatedButton(
-    onPressed: isSaved ? null : _saveAttendance,
-    child: const Text("Save Attendance"),
-  ),
-),
-],
-),
-),
-],
-),
-);
+    ),
+  );
 }
 
 
