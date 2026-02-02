@@ -208,8 +208,51 @@ Widget build(BuildContext context) {
       // ✅ allow normal back navigation (NO logout)
       return true;
     },
-    child: Scaffold(
-      backgroundColor: const Color(0xffeef3ff),
+   child: Scaffold(
+  backgroundColor: const Color(0xffeef3ff),
+
+  appBar: AppBar(
+    backgroundColor: const Color(0xFF0A1E3F), // navy dark blue
+    title: const Text(
+      "Attendance",
+      style: TextStyle(color: Colors.white),
+    ),
+    iconTheme: const IconThemeData(color: Colors.white),
+    actions: [
+      IconButton(
+        icon: const Icon(Icons.logout),
+        onPressed: () async {
+          final confirm = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => AlertDialog(
+              title: const Text("Logout"),
+              content: const Text(
+                "Are you sure you want to logout?",
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text("Logout"),
+                ),
+              ],
+            ),
+          );
+
+          if (confirm == true) {
+            _logout();
+          }
+        },
+      ),
+    ],
+  ),
+
+  body: Column(
+
       body: Column(
         children: [
           const SizedBox(height: 12),
