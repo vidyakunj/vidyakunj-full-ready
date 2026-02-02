@@ -200,58 +200,54 @@ class _NewAttendanceScreenState extends State<NewAttendanceScreen> {
         .showSnackBar(SnackBar(content: Text(msg)));
   }
 
- /* ================= UI ================= */
+/* ================= UI ================= */
 @override
 Widget build(BuildContext context) {
   return WillPopScope(
     onWillPop: () async {
-      // ✅ allow normal back navigation (NO logout)
+      // allow normal back navigation (no logout)
       return true;
     },
-   child: Scaffold(
-  backgroundColor: const Color(0xffeef3ff),
+    child: Scaffold(
+      backgroundColor: const Color(0xffeef3ff),
 
-  appBar: AppBar(
-    backgroundColor: const Color(0xFF0A1E3F), // navy dark blue
-    title: const Text(
-      "Attendance",
-      style: TextStyle(color: Colors.white),
-    ),
-    iconTheme: const IconThemeData(color: Colors.white),
-    actions: [
-      IconButton(
-        icon: const Icon(Icons.logout),
-        onPressed: () async {
-          final confirm = await showDialog<bool>(
-            context: context,
-            barrierDismissible: false,
-            builder: (_) => AlertDialog(
-              title: const Text("Logout"),
-              content: const Text(
-                "Are you sure you want to logout?",
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text("Cancel"),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF0A1E3F), // navy dark blue
+        title: const Text(
+          "Attendance",
+          style: TextStyle(color: Colors.white),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                barrierDismissible: false,
+                builder: (_) => AlertDialog(
+                  title: const Text("Logout"),
+                  content: const Text("Are you sure you want to logout?"),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text("Cancel"),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text("Logout"),
+                    ),
+                  ],
                 ),
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text("Logout"),
-                ),
-              ],
-            ),
-          );
+              );
 
-          if (confirm == true) {
-            _logout();
-          }
-        },
+              if (confirm == true) {
+                _logout();
+              }
+            },
+          ),
+        ],
       ),
-    ],
-  ),
-
-  body: Column(
 
       body: Column(
         children: [
@@ -266,8 +262,12 @@ Widget build(BuildContext context) {
                     value: selectedStd,
                     decoration: _inputDeco("Select STD"),
                     items: stdOptions
-                        .map((e) =>
-                            DropdownMenuItem(value: e, child: Text(e)))
+                        .map(
+                          (e) => DropdownMenuItem(
+                            value: e,
+                            child: Text(e),
+                          ),
+                        )
                         .toList(),
                     onChanged: (v) {
                       setState(() => selectedStd = v);
@@ -281,8 +281,12 @@ Widget build(BuildContext context) {
                     value: selectedDiv,
                     decoration: _inputDeco("Select DIV"),
                     items: divisions
-                        .map((e) =>
-                            DropdownMenuItem(value: e, child: Text(e)))
+                        .map(
+                          (e) => DropdownMenuItem(
+                            value: e,
+                            child: Text(e),
+                          ),
+                        )
                         .toList(),
                     onChanged: (v) {
                       setState(() => selectedDiv = v);
