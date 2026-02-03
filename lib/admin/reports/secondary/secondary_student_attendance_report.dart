@@ -23,9 +23,14 @@ class _SecondaryStudentAttendanceReportState
   final Map<String, List<dynamic>> _cache = {};
   final Set<String> _loading = {};
 
-  /* ================= LOAD STUDENTS (DAILY ONLY FOR NOW) ================= */
+ /* ================= LOAD STUDENTS (DAILY + MONTHLY) ================= */
 
-  Future<void> loadStudents(String std, String div) async {
+Future<void> loadStudents(String std, String div) async {
+  // ✅ STEP 1: block monthly until dates selected
+  if (isMonthly && (fromDate == null || toDate == null)) {
+    return;
+  }
+
   final key = "$std-$div";
 
   if (_cache.containsKey(key)) return;
@@ -36,22 +41,17 @@ class _SecondaryStudentAttendanceReportState
     late Uri url;
 
     if (isMonthly) {
-      // MONTHLY REPORT
-      if (fromDate == null || toDate == null) {
-        setState(() => _loading.remove(key));
-        return;
-      }
-
+      // 🔵 MONTHLY REPORT (date range)
       final from =
           "${fromDate!.year}-${fromDate!.month.toString().padLeft(2, '0')}-${fromDate!.day.toString().padLeft(2, '0')}";
       final to =
           "${toDate!.year}-${toDate!.month.toString().padLeft(2, '0')}-${toDate!.day.toString().padLeft(2, '0')}";
 
       url = Uri.parse(
-        "$SERVER_URL/attendance/summary?std=$std&div=$div&from=$from&to=$to",
+        "$SERVER_URL/attendance/list?std=$std&div=$div&from=$from&to=$to",
       );
     } else {
-      // DAILY REPORT
+      // 🟢 DAILY REPORT
       final dateStr =
           "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
 
