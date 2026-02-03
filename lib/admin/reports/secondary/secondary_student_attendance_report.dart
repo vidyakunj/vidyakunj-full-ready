@@ -375,40 +375,44 @@ class StudentRow extends StatelessWidget {
     final bool isMonthlyView = presentDays != null;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Column(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 🔹 Roll + Name
-          Row(
-            children: [
-              SizedBox(
-                width: 30,
-                child: Text(
-                  roll.toString(),
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ),
-              Expanded(child: Text(name)),
-
-              // 🔹 DAILY icon only
-              if (!isMonthlyView && status != null)
-                _statusIcon(status!),
-            ],
+          // Roll No
+          SizedBox(
+            width: 32,
+            child: Text(
+              roll.toString(),
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
           ),
 
-          // 🔹 MONTHLY summary line
-          if (isMonthlyView)
-            Padding(
-              padding: const EdgeInsets.only(left: 30, top: 2),
-              child: Text(
-                "Present: $presentDays | Absent: $absentDays | Late: $lateDays | %: $percentage",
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Colors.black54,
-                ),
-              ),
+          // Name + Monthly Summary
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name),
+
+                if (isMonthlyView)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      "Present: $presentDays  |  Absent: $absentDays  |  Late: $lateDays  |  %: $percentage",
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ),
+              ],
             ),
+          ),
+
+          // DAILY status icon only
+          if (!isMonthlyView && status != null)
+            _statusIcon(status!),
         ],
       ),
     );
