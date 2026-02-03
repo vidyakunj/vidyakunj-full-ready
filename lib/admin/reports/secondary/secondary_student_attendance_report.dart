@@ -22,6 +22,7 @@ class _SecondaryStudentAttendanceReportState
 
   final Map<String, List<dynamic>> _cache = {};
   final Set<String> _loading = {};
+ 
 
 /* ================= LOAD STUDENTS (DAILY + MONTHLY) ================= */
 
@@ -342,31 +343,31 @@ Widget divisionBlock(String std, String div) {
     ),
   );
 }
-
+}
 /* ================= STUDENT ROW ================= */
 
 class StudentRow extends StatelessWidget {
   final int roll;
   final String name;
 
-  // 🔹 Monthly fields (optional for daily)
+  // DAILY
+  final String? status;
+
+  // MONTHLY
   final int? presentDays;
   final int? absentDays;
   final int? lateDays;
   final String? percentage;
 
-  // 🔹 Daily status (optional for monthly)
-  final String? status;
-
   const StudentRow({
     super.key,
     required this.roll,
     required this.name,
+    this.status,
     this.presentDays,
     this.absentDays,
     this.lateDays,
     this.percentage,
-    this.status,
   });
 
   @override
@@ -374,48 +375,32 @@ class StudentRow extends StatelessWidget {
     final bool isMonthlyView = presentDays != null;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Roll No
           SizedBox(
-            width: 30,
+            width: 32,
             child: Text(
               roll.toString(),
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
 
-          const SizedBox(width: 8),
-
-          // Name + Details
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  name,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
+                Text(name),
 
-                // ✅ MONTHLY DETAILS
                 if (isMonthlyView)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      "Present: $presentDays | Absent: $absentDays | Late: $lateDays | %: $percentage",
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.black54,
-                      ),
-                    ),
+                  Text(
+                    "Present: $presentDays | Absent: $absentDays | Late: $lateDays | %: $percentage",
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
               ],
             ),
           ),
 
-          // ✅ DAILY ICON ONLY
           if (!isMonthlyView && status != null)
             _statusIcon(status!),
         ],
