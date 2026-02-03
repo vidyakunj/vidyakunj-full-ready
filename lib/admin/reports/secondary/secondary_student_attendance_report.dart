@@ -376,33 +376,39 @@ class StudentRow extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 32,
-            child: Text(
-              roll.toString(),
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
+          // 🔹 Roll + Name
+          Row(
+            children: [
+              SizedBox(
+                width: 30,
+                child: Text(
+                  roll.toString(),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+              Expanded(child: Text(name)),
+
+              // 🔹 DAILY icon only
+              if (!isMonthlyView && status != null)
+                _statusIcon(status!),
+            ],
           ),
 
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name),
-
-                if (isMonthlyView)
-                  Text(
-                    "Present: $presentDays | Absent: $absentDays | Late: $lateDays | %: $percentage",
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-              ],
+          // 🔹 MONTHLY summary line
+          if (isMonthlyView)
+            Padding(
+              padding: const EdgeInsets.only(left: 30, top: 2),
+              child: Text(
+                "Present: $presentDays | Absent: $absentDays | Late: $lateDays | %: $percentage",
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.black54,
+                ),
+              ),
             ),
-          ),
-
-          if (!isMonthlyView && status != null)
-            _statusIcon(status!),
         ],
       ),
     );
