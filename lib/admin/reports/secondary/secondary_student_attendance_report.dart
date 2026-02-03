@@ -292,45 +292,55 @@ Future<void> loadStudents(String std, String div) async {
     );
   }
 
-  /* ================= DIV BLOCK ================= */
+ /* ================= DIV BLOCK ================= */
 
-  Widget divisionBlock(String std, String div) {
-    final key = "$std-$div";
-    final students = _cache[key];
+Widget divisionBlock(String std, String div) {
+  final key = "$std-$div";
+  final students = _cache[key];
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          InkWell(
-            onTap: () => loadStudents(std, div),
-            child: Text(
-              "DIV $div",
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: navy,
-              ),
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: () => loadStudents(std, div),
+          child: Text(
+            "DIV $div",
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: navy,
             ),
           ),
-          const SizedBox(height: 6),
-          if (_loading.contains(key))
-            const Padding(
-              padding: EdgeInsets.all(8),
-              child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+
+        const SizedBox(height: 6),
+
+        if (_loading.contains(key))
+          const Padding(
+            padding: EdgeInsets.all(8),
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+
+        if (students != null)
+          ...students.map(
+            (s) => StudentRow(
+              roll: s["rollNo"],
+              name: s["name"],
+
+              // 🔹 DAILY
+              status: isMonthly ? null : s["status"],
+
+              // 🔹 MONTHLY
+              presentDays: isMonthly ? s["presentDays"] : null,
+              absentDays: isMonthly ? s["absentDays"] : null,
+              lateDays: isMonthly ? s["lateDays"] : null,
+              percentage: isMonthly ? s["percentage"] : null,
             ),
-          if (students != null)
-            ...students.map(
-              (s) => StudentRow(
-                roll: s["rollNo"],
-                name: s["name"],
-                status: s["status"],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
+          ),
+      ],
+    ),
+  );
 }
 
 /* ================= STUDENT ROW ================= */
@@ -338,49 +348,89 @@ Future<void> loadStudents(String std, String div) async {
 class StudentRow extends StatelessWidget {
   final int roll;
   final String name;
-  final String status;
+
+  // 🔹 Monthly fields (optional for daily)
+  final int? presentDays;
+  final int? absentDays;
+  final int? lateDays;
+  final String? percentage;
+
+  // 🔹 Daily status (optional for monthly)
+  final String? status;
 
   const StudentRow({
     super.key,
     required this.roll,
     required this.name,
-    required this.status,
+    this.presentDays,
+    this.absentDays,
+    this.lateDays,
+    this.percentage,
+    this.status,
   });
 
   @override
   Widget build(BuildContext context) {
-    IconData icon;
-    Color color;
-
-    switch (status) {
-      case "present":
-        icon = Icons.check_circle;
-        color = Colors.green;
-        break;
-      case "late":
-        icon = Icons.access_time;
-        color = Colors.orange;
-        break;
-      default:
-        icon = Icons.cancel;
-        color = Colors.red;
-    }
+    final bool isMonthlyView = presentDays != null;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Roll No
           SizedBox(
             width: 30,
             child: Text(
               roll.toString(),
-              style: const TextStyle(fontWeight: FontWeight.w600),
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
-          Expanded(child: Text(name)),
-          Icon(icon, color: color, size: 18),
+
+          const SizedBox(width: 8),
+
+          // Name + Details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+
+                // ✅ MONTHLY DETAILS
+                if (isMonthlyView)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      "Present: $presentDays | Absent: $absentDays | Late: $lateDays | %: $percentage",
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // ✅ DAILY ICON ONLY
+          if (!isMonthlyView && status != null)
+            _statusIcon(status!),
         ],
       ),
     );
+  }
+
+  Widget _statusIcon(String status) {
+    switch (status) {
+      case "present":
+        return const Icon(Icons.check_circle, color: Colors.green, size: 18);
+      case "late":
+        return const Icon(Icons.access_time, color: Colors.orange, size: 18);
+      default:
+        return const Icon(Icons.cancel, color: Colors.red, size: 18);
+    }
   }
 }
