@@ -469,6 +469,67 @@ app.get("/attendance/secondary-section-summary", async (req, res) => {
     res.status(500).json({ success: false });
   }
 });
+/* ================= ATTENDANCE MONTHLY LIST (ADMIN REPORT) ================= */
+app.get("/attendance/monthly-list", async (req, res) => {
+  try {
+    const { std, div, from, to } = req.query;
+
+    if (!std || !div || !from || !to) {
+      return res.status(400).json({ students: [] });
+    }
+
+    const fromDate = new Date(from);
+    const toDate = new Date(to);
+    fromDate.setHours(0, 0, 0, 0);
+    toDate.setHours(23, 59, 59, 999);
+
+    // 1️⃣ Get all students
+    const students = await Student.find({ std, div }).sort({ roll: 1 });
+
+    // 2️⃣ Get attendance records in range
+    const records = await Attendance.find({
+      std,
+      div,
+      date: { $gte: fromDate, $lte: toDate },
+    });
+
+    // 3️⃣ Group by studentId
+    const map = {};
+    for (const r of records) {
+      const id = r.studentId.toString();
+      if (!map[id]) {
+        map[id] = { absent: false, late: false };
+      }
+
+      if (r.present === false) {
+        map[id].absent = true;
+      } else if (r.present === true && r.late === true) {
+        map[id].late = true;
+      }
+    }
+
+    // 4️⃣ Final status per student
+    const result = students.map(s => {
+      const info = map[s._id.toString()];
+
+      let status = "present";
+      if (info?.absent) status = "absent";
+      else if (info?.late) status = "late";
+
+      return {
+        rollNo: s.roll,
+        name: s.name,
+        status,
+      };
+    });
+
+    res.json({ students: result });
+
+  } catch (err) {
+    console.error("MONTHLY LIST ERROR:", err);
+    res.status(500).json({ students: [] });
+  }
+});
 
 /* ================= START ================= */
 app.listen(process.env.PORT || 10000, () =>
