@@ -23,7 +23,7 @@ class _SecondaryStudentAttendanceReportState
   final Map<String, List<dynamic>> _cache = {};
   final Set<String> _loading = {};
 
- /* ================= LOAD STUDENTS (DAILY + MONTHLY) ================= */
+/* ================= LOAD STUDENTS (DAILY + MONTHLY) ================= */
 
 Future<void> loadStudents(String std, String div) async {
   final key = "$std-$div";
@@ -51,7 +51,7 @@ Future<void> loadStudents(String std, String div) async {
         "$SERVER_URL/attendance/monthly-list?std=$std&div=$div&from=$from&to=$to",
       );
     } else {
-      // ✅ DAILY API (unchanged)
+      // ✅ DAILY API
       final dateStr =
           "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
 
@@ -64,8 +64,30 @@ Future<void> loadStudents(String std, String div) async {
 
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
+      final rawStudents = data["students"] ?? [];
+
       setState(() {
-        _cache[key] = data["students"] ?? [];
+        _cache[key] = rawStudents.map((s) {
+          // 🔹 MONTHLY → convert to status
+          if (isMonthly) {
+            String status = "present";
+
+            if ((s["absentDays"] ?? 0) > 0) {
+              status = "absent";
+            } else if ((s["lateDays"] ?? 0) > 0) {
+              status = "late"; // info only
+            }
+
+            return {
+              "rollNo": s["rollNo"],
+              "name": s["name"],
+              "status": status,
+            };
+          }
+
+          // 🔹 DAILY → already correct
+          return s;
+        }).toList();
       });
     }
   } catch (e) {
@@ -74,7 +96,6 @@ Future<void> loadStudents(String std, String div) async {
 
   setState(() => _loading.remove(key));
 }
-
 
   /* ================= DATE PICKER (DAILY) ================= */
 
