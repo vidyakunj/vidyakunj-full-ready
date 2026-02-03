@@ -26,34 +26,54 @@ class _SecondaryStudentAttendanceReportState
   /* ================= LOAD STUDENTS (DAILY ONLY FOR NOW) ================= */
 
   Future<void> loadStudents(String std, String div) async {
-    final key = "$std-$div";
+  final key = "$std-$div";
 
-    if (_cache.containsKey(key)) return;
+  if (_cache.containsKey(key)) return;
 
-    setState(() => _loading.add(key));
+  setState(() => _loading.add(key));
 
-    final dateStr =
-        "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
+  try {
+    late Uri url;
 
-    try {
-      final res = await http.get(
-        Uri.parse(
-          "$SERVER_URL/attendance/list?std=$std&div=$div&date=$dateStr",
-        ),
-      );
-
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        setState(() {
-          _cache[key] = data["students"] ?? [];
-        });
+    if (isMonthly) {
+      // MONTHLY REPORT
+      if (fromDate == null || toDate == null) {
+        setState(() => _loading.remove(key));
+        return;
       }
-    } catch (e) {
-      debugPrint("Load students error: $e");
+
+      final from =
+          "${fromDate!.year}-${fromDate!.month.toString().padLeft(2, '0')}-${fromDate!.day.toString().padLeft(2, '0')}";
+      final to =
+          "${toDate!.year}-${toDate!.month.toString().padLeft(2, '0')}-${toDate!.day.toString().padLeft(2, '0')}";
+
+      url = Uri.parse(
+        "$SERVER_URL/attendance/summary?std=$std&div=$div&from=$from&to=$to",
+      );
+    } else {
+      // DAILY REPORT
+      final dateStr =
+          "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
+
+      url = Uri.parse(
+        "$SERVER_URL/attendance/list?std=$std&div=$div&date=$dateStr",
+      );
     }
 
-    setState(() => _loading.remove(key));
+    final res = await http.get(url);
+
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      setState(() {
+        _cache[key] = data["students"] ?? [];
+      });
+    }
+  } catch (e) {
+    debugPrint("Load students error: $e");
   }
+
+  setState(() => _loading.remove(key));
+}
 
   /* ================= DATE PICKER (DAILY) ================= */
 
