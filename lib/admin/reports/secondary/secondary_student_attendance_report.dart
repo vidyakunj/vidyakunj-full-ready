@@ -26,12 +26,12 @@ class _SecondaryStudentAttendanceReportState
  /* ================= LOAD STUDENTS (DAILY + MONTHLY) ================= */
 
 Future<void> loadStudents(String std, String div) async {
-  // ✅ STEP 1: block monthly until dates selected
+  final key = "$std-$div";
+
+  // ✅ Block monthly until date range selected
   if (isMonthly && (fromDate == null || toDate == null)) {
     return;
   }
-
-  final key = "$std-$div";
 
   if (_cache.containsKey(key)) return;
 
@@ -41,17 +41,17 @@ Future<void> loadStudents(String std, String div) async {
     late Uri url;
 
     if (isMonthly) {
-      // 🔵 MONTHLY REPORT (date range)
+      // ✅ MONTHLY API
       final from =
           "${fromDate!.year}-${fromDate!.month.toString().padLeft(2, '0')}-${fromDate!.day.toString().padLeft(2, '0')}";
       final to =
           "${toDate!.year}-${toDate!.month.toString().padLeft(2, '0')}-${toDate!.day.toString().padLeft(2, '0')}";
 
       url = Uri.parse(
-        "$SERVER_URL/attendance/list?std=$std&div=$div&from=$from&to=$to",
+        "$SERVER_URL/attendance/monthly-list?std=$std&div=$div&from=$from&to=$to",
       );
     } else {
-      // 🟢 DAILY REPORT
+      // ✅ DAILY API (unchanged)
       final dateStr =
           "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
 
@@ -74,6 +74,7 @@ Future<void> loadStudents(String std, String div) async {
 
   setState(() => _loading.remove(key));
 }
+
 
   /* ================= DATE PICKER (DAILY) ================= */
 
