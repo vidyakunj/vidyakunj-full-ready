@@ -483,43 +483,54 @@ app.get("/attendance/monthly-list", async (req, res) => {
     fromDate.setHours(0, 0, 0, 0);
     toDate.setHours(23, 59, 59, 999);
 
-    // 1️⃣ Get all students
+    // 1️⃣ All students
     const students = await Student.find({ std, div }).sort({ roll: 1 });
 
-    // 2️⃣ Get attendance records in range
+    // 2️⃣ All attendance records in date range
     const records = await Attendance.find({
       std,
       div,
       date: { $gte: fromDate, $lte: toDate },
     });
 
-    // 3️⃣ Group by studentId
+    // 3️⃣ Group attendance by studentId
     const map = {};
     for (const r of records) {
       const id = r.studentId.toString();
+
       if (!map[id]) {
-        map[id] = { absent: false, late: false };
+        map[id] = { present: 0, absent: 0, late: 0 };
       }
 
-      if (r.present === false) {
-        map[id].absent = true;
-      } else if (r.present === true && r.late === true) {
-        map[id].late = true;
+      if (r.present === true) {
+        map[id].present++;
+        if (r.late === true) map[id].late++;
+      } else {
+        map[id].absent++;
       }
     }
 
-    // 4️⃣ Final status per student
+    // 4️⃣ Build monthly result
     const result = students.map(s => {
-      const info = map[s._id.toString()];
+      const stat = map[s._id.toString()] || {
+        present: 0,
+        absent: 0,
+        late: 0,
+      };
 
-      let status = "present";
-      if (info?.absent) status = "absent";
-      else if (info?.late) status = "late";
+      const totalDays = stat.present + stat.absent;
+      const percentage =
+        totalDays > 0
+          ? ((stat.present / totalDays) * 100).toFixed(2)
+          : "0.00";
 
       return {
         rollNo: s.roll,
         name: s.name,
-        status,
+        presentDays: stat.present,
+        absentDays: stat.absent,
+        lateDays: stat.late,   // ℹ info only
+        percentage,
       };
     });
 
@@ -530,6 +541,7 @@ app.get("/attendance/monthly-list", async (req, res) => {
     res.status(500).json({ students: [] });
   }
 });
+
 
 /* ================= START ================= */
 app.listen(process.env.PORT || 10000, () =>
