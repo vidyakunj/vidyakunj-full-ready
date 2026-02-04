@@ -284,11 +284,38 @@ Widget divisionBlock(String std, String div) {
   final key = "$std-$div";
   final students = _cache[key];
 
+  // ⭐ MONTHLY SUMMARY CALCULATOR
+  int totalStudents = students?.length ?? 0;
+
+  double avgAttendance = 0;
+  int lowAttendanceCount = 0;
+
+  if (students != null && isMonthly) {
+    double totalPercent = 0;
+
+    for (var s in students) {
+      double percent =
+          double.tryParse(s["percentage"] ?? "0") ?? 0;
+
+      totalPercent += percent;
+
+      if (percent < 75) {
+        lowAttendanceCount++;
+      }
+    }
+
+    if (students.isNotEmpty) {
+      avgAttendance = totalPercent / students.length;
+    }
+  }
+
   return Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+
+        // ✅ DIV HEADER
         InkWell(
           onTap: () => loadStudents(std, div),
           child: Text(
@@ -302,6 +329,29 @@ Widget divisionBlock(String std, String div) {
 
         const SizedBox(height: 6),
 
+        // ⭐ SUMMARY NOW CORRECT LOCATION
+        if (students != null && isMonthly)
+          Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.blue.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Class Monthly Summary",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text("Total Students: $totalStudents"),
+                Text("Avg Attendance: ${avgAttendance.toStringAsFixed(2)}%"),
+                Text("Below 75%: $lowAttendanceCount Students"),
+              ],
+            ),
+          ),
+
         if (_loading.contains(key))
           const Padding(
             padding: EdgeInsets.all(8),
@@ -314,10 +364,8 @@ Widget divisionBlock(String std, String div) {
               roll: s["rollNo"],
               name: s["name"],
 
-              // DAILY
               status: isMonthly ? null : s["status"],
 
-              // MONTHLY
               presentDays: isMonthly ? s["presentDays"] : null,
               absentDays: isMonthly ? s["absentDays"] : null,
               lateDays: isMonthly ? s["lateDays"] : null,
@@ -327,7 +375,6 @@ Widget divisionBlock(String std, String div) {
       ],
     ),
   );
-}
 }
 /* ================= STUDENT ROW ================= */
 
