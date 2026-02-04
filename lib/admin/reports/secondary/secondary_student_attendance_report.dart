@@ -349,8 +349,11 @@ Widget divisionBlock(String std, String div) {
 class StudentRow extends StatelessWidget {
   final int roll;
   final String name;
+
+  // DAILY
   final String? status;
 
+  // MONTHLY
   final int? presentDays;
   final int? absentDays;
   final int? lateDays;
@@ -372,16 +375,18 @@ class StudentRow extends StatelessWidget {
     final bool isMonthlyView = presentDays != null;
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Colors.grey.shade300),
-        ),
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          SizedBox(width: 25, child: Text(roll.toString())),
+          SizedBox(
+            width: 30,
+            child: Text(
+              roll.toString(),
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+
+          const SizedBox(width: 6),
 
           Expanded(
             child: Column(
@@ -389,12 +394,10 @@ class StudentRow extends StatelessWidget {
               children: [
                 Text(name),
 
+                // ✅ MONTHLY DATA DISPLAY
                 if (isMonthlyView)
                   Text(
-                    "Present: $presentDays | "
-                    "Absent: $absentDays | "
-                    "Late: $lateDays | "
-                    "%: $percentage",
+                    "Present: $presentDays | Absent: $absentDays | Late: $lateDays | %: $percentage",
                     style: const TextStyle(
                       fontSize: 12,
                       color: Colors.grey,
@@ -404,6 +407,7 @@ class StudentRow extends StatelessWidget {
             ),
           ),
 
+          // ✅ DAILY ICON
           if (!isMonthlyView && status != null)
             _statusIcon(status!),
         ],
@@ -412,12 +416,15 @@ class StudentRow extends StatelessWidget {
   }
 
   Widget _statusIcon(String status) {
-    if (status == "present") {
-      return const Icon(Icons.check_circle, color: Colors.green);
+    switch (status) {
+      case "present":
+        return const Icon(Icons.check_circle, color: Colors.green);
+      case "absent":
+        return const Icon(Icons.cancel, color: Colors.red);
+      case "late":
+        return const Icon(Icons.access_time, color: Colors.orange);
+      default:
+        return const SizedBox();
     }
-    if (status == "late") {
-      return const Icon(Icons.access_time, color: Colors.orange);
-    }
-    return const Icon(Icons.cancel, color: Colors.red);
   }
 }
