@@ -323,22 +323,26 @@ Widget divisionBlock(String std, String div) {
             child: CircularProgressIndicator(strokeWidth: 2),
           ),
 
-       if (students != null)
-  ...students.map(
-    (s) => StudentRow(
-      roll: s["rollNo"],
-      name: s["name"],
+        if (students != null)
+          ...students.map(
+            (s) => StudentRow(
+              roll: s["rollNo"],
+              name: s["name"],
 
-      // DAILY
-      status: isMonthly ? null : s["status"],
+              // DAILY
+              status: isMonthly ? null : s["status"],
 
-      // MONTHLY
-      presentDays: isMonthly ? s["presentDays"] : null,
-      absentDays: isMonthly ? s["absentDays"] : null,
-      lateDays: isMonthly ? s["lateDays"] : null,
-      percentage: isMonthly ? s["percentage"] : null,
+              // MONTHLY
+              presentDays: isMonthly ? s["presentDays"] : null,
+              absentDays: isMonthly ? s["absentDays"] : null,
+              lateDays: isMonthly ? s["lateDays"] : null,
+              percentage: isMonthly ? s["percentage"] : null,
+            ),
+          ),
+      ],
     ),
-  ),
+  );
+}
 
 /* ================= STUDENT ROW ================= */
 
