@@ -355,34 +355,47 @@ class StudentRow extends StatelessWidget {
     this.percentage,
   });
 
-  @override
-  Widget build(BuildContext context) {
-    final bool isMonthlyView = presentDays != null;
+ @override
+Widget build(BuildContext context) {
+  final bool isMonthlyView = presentDays != null;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 30,
-            child: Text(
-              roll.toString(),
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
+  // ⭐ Attendance check
+  double percentValue =
+      double.tryParse(percentage ?? "0") ?? 0;
+
+  bool isLowAttendance = percentValue < 75;
+
+  return Container(
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    decoration: isLowAttendance
+        ? BoxDecoration(
+            color: Colors.red.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(6),
+          )
+        : null,
+    child: Row(
+      children: [
+        SizedBox(
+          width: 30,
+          child: Text(
+            roll.toString(),
+            style: const TextStyle(fontWeight: FontWeight.w600),
           ),
+        ),
 
-          const SizedBox(width: 6),
+        const SizedBox(width: 6),
 
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(name),
+
 
                 // ✅ MONTHLY DATA DISPLAY
                 if (isMonthlyView)
                   Text(
-                    "Present: $presentDays | Absent: $absentDays | Late: $lateDays | %: $percentage",
+                   "Present: $presentDays   Absent: $absentDays   Late: $lateDays   Attendance: ${percentage ?? "0"}%",
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
