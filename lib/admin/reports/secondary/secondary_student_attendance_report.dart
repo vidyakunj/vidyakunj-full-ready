@@ -375,42 +375,39 @@ class StudentRow extends StatelessWidget {
     final bool isMonthlyView = presentDays != null;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Roll No
+          // 🔢 Roll
           SizedBox(
-            width: 32,
+            width: 35,
             child: Text(
               roll.toString(),
-              style: const TextStyle(fontWeight: FontWeight.w600),
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
 
-          // Name + Monthly Summary
+          // 👤 Name + Summary
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(name),
 
+                // ✅ MONTHLY SUMMARY TEXT
                 if (isMonthlyView)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      "Present: $presentDays  |  Absent: $absentDays  |  Late: $lateDays  |  %: $percentage",
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
+                  Text(
+                    "Present: $presentDays | Absent: $absentDays | Late: $lateDays | %: $percentage",
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.blueGrey,
                     ),
                   ),
               ],
             ),
           ),
 
-          // DAILY status icon only
+          // ✅ DAILY STATUS ICON
           if (!isMonthlyView && status != null)
             _statusIcon(status!),
         ],
@@ -419,13 +416,23 @@ class StudentRow extends StatelessWidget {
   }
 
   Widget _statusIcon(String status) {
+    IconData icon;
+    Color color;
+
     switch (status) {
       case "present":
-        return const Icon(Icons.check_circle, color: Colors.green, size: 18);
+        icon = Icons.check_circle;
+        color = Colors.green;
+        break;
       case "late":
-        return const Icon(Icons.access_time, color: Colors.orange, size: 18);
+        icon = Icons.access_time;
+        color = Colors.orange;
+        break;
       default:
-        return const Icon(Icons.cancel, color: Colors.red, size: 18);
+        icon = Icons.cancel;
+        color = Colors.red;
     }
+
+    return Icon(icon, color: color, size: 18);
   }
 }
