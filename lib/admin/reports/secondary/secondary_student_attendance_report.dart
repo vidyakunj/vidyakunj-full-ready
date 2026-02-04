@@ -29,7 +29,7 @@ class _SecondaryStudentAttendanceReportState
 Future<void> loadStudents(String std, String div) async {
   final key = "$std-$div";
 
-  // ✅ Block monthly until date range selected
+  // Block monthly until date range selected
   if (isMonthly && (fromDate == null || toDate == null)) {
     return;
   }
@@ -45,12 +45,14 @@ Future<void> loadStudents(String std, String div) async {
       // ✅ MONTHLY API
       final from =
           "${fromDate!.year}-${fromDate!.month.toString().padLeft(2, '0')}-${fromDate!.day.toString().padLeft(2, '0')}";
+
       final to =
           "${toDate!.year}-${toDate!.month.toString().padLeft(2, '0')}-${toDate!.day.toString().padLeft(2, '0')}";
 
       url = Uri.parse(
         "$SERVER_URL/attendance/monthly-list?std=$std&div=$div&from=$from&to=$to",
       );
+
     } else {
       // ✅ DAILY API
       final dateStr =
@@ -61,34 +63,17 @@ Future<void> loadStudents(String std, String div) async {
       );
     }
 
+    print("API CALL → $url"); // ⭐ DEBUG (important)
+
     final res = await http.get(url);
 
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
-      final rawStudents = data["students"] ?? [];
+
+      print("API RESPONSE → ${data["students"]?.first}"); // ⭐ DEBUG
 
       setState(() {
-        _cache[key] = rawStudents.map((s) {
-          // 🔹 MONTHLY → convert to status
-          if (isMonthly) {
-            String status = "present";
-
-            if ((s["absentDays"] ?? 0) > 0) {
-              status = "absent";
-            } else if ((s["lateDays"] ?? 0) > 0) {
-              status = "late"; // info only
-            }
-
-            return {
-              "rollNo": s["rollNo"],
-              "name": s["name"],
-              "status": status,
-            };
-          }
-
-          // 🔹 DAILY → already correct
-          return s;
-        }).toList();
+        _cache[key] = data["students"] ?? [];
       });
     }
   } catch (e) {
