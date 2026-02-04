@@ -384,21 +384,23 @@ class StudentRow extends StatelessWidget {
                   Text(
                     "Present: $presentDays | Absent: $absentDays | Late: $lateDays | %: $percentage",
                     style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black87,
                     ),
                   ),
+
+                // ✅ DAILY STATUS ICON
+                if (!isMonthlyView && status != null)
+                  _statusIcon(status!),
               ],
             ),
           ),
-
-          // ✅ DAILY ICON
-          if (!isMonthlyView && status != null)
-            _statusIcon(status!),
         ],
       ),
     );
   }
+
 
   Widget _statusIcon(String status) {
     switch (status) {
