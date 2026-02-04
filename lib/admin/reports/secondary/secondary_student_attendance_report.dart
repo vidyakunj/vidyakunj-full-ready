@@ -349,7 +349,6 @@ Widget divisionBlock(String std, String div) {
 class StudentRow extends StatelessWidget {
   final int roll;
   final String name;
-
   final String? status;
 
   final int? presentDays;
@@ -372,14 +371,17 @@ class StudentRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool isMonthlyView = presentDays != null;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: Colors.grey.shade300),
+        ),
+      ),
       child: Row(
         children: [
-          SizedBox(
-            width: 30,
-            child: Text(roll.toString()),
-          ),
+          SizedBox(width: 25, child: Text(roll.toString())),
 
           Expanded(
             child: Column(
@@ -387,17 +389,21 @@ class StudentRow extends StatelessWidget {
               children: [
                 Text(name),
 
-                // ✅ MONTHLY VIEW
                 if (isMonthlyView)
                   Text(
-                    "Present: $presentDays | Absent: $absentDays | Late: $lateDays | %: $percentage",
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    "Present: $presentDays | "
+                    "Absent: $absentDays | "
+                    "Late: $lateDays | "
+                    "%: $percentage",
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                    ),
                   ),
               ],
             ),
           ),
 
-          // ✅ DAILY VIEW ICON
           if (!isMonthlyView && status != null)
             _statusIcon(status!),
         ],
@@ -406,18 +412,12 @@ class StudentRow extends StatelessWidget {
   }
 
   Widget _statusIcon(String status) {
-    switch (status) {
-      case "Present":
-        return const Icon(Icons.check_circle, color: Colors.green);
-
-      case "Absent":
-        return const Icon(Icons.cancel, color: Colors.red);
-
-      case "Late":
-        return const Icon(Icons.access_time, color: Colors.orange);
-
-      default:
-        return const SizedBox();
+    if (status == "present") {
+      return const Icon(Icons.check_circle, color: Colors.green);
     }
+    if (status == "late") {
+      return const Icon(Icons.access_time, color: Colors.orange);
+    }
+    return const Icon(Icons.cancel, color: Colors.red);
   }
 }
