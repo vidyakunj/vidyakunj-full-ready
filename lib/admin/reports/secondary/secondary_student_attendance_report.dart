@@ -350,10 +350,8 @@ class StudentRow extends StatelessWidget {
   final int roll;
   final String name;
 
-  // DAILY
   final String? status;
 
-  // MONTHLY
   final int? presentDays;
   final int? absentDays;
   final int? lateDays;
@@ -375,15 +373,12 @@ class StudentRow extends StatelessWidget {
     final bool isMonthlyView = presentDays != null;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
           SizedBox(
-            width: 35,
-            child: Text(
-              roll.toString(),
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
+            width: 30,
+            child: Text(roll.toString()),
           ),
 
           Expanded(
@@ -392,20 +387,17 @@ class StudentRow extends StatelessWidget {
               children: [
                 Text(name),
 
-                /// ⭐ MONTHLY VIEW
+                // ✅ MONTHLY VIEW
                 if (isMonthlyView)
                   Text(
                     "Present: $presentDays | Absent: $absentDays | Late: $lateDays | %: $percentage",
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.blueGrey,
-                    ),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
               ],
             ),
           ),
 
-          /// ⭐ DAILY VIEW ICON
+          // ✅ DAILY VIEW ICON
           if (!isMonthlyView && status != null)
             _statusIcon(status!),
         ],
@@ -415,12 +407,17 @@ class StudentRow extends StatelessWidget {
 
   Widget _statusIcon(String status) {
     switch (status) {
-      case "present":
-        return const Icon(Icons.check_circle, color: Colors.green, size: 18);
-      case "late":
-        return const Icon(Icons.access_time, color: Colors.orange, size: 18);
+      case "Present":
+        return const Icon(Icons.check_circle, color: Colors.green);
+
+      case "Absent":
+        return const Icon(Icons.cancel, color: Colors.red);
+
+      case "Late":
+        return const Icon(Icons.access_time, color: Colors.orange);
+
       default:
-        return const Icon(Icons.cancel, color: Colors.red, size: 18);
+        return const SizedBox();
     }
   }
 }
