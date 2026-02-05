@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../../../config.dart';
+import 'package:fl_chart/fl_chart.dart';
+
 
 class SecondaryStudentAttendanceReport extends StatefulWidget {
   const SecondaryStudentAttendanceReport({super.key});
@@ -351,6 +353,45 @@ Widget divisionBlock(String std, String div) {
               ],
             ),
           ),
+        
+        // ⭐ ATTENDANCE PIE CHART
+if (students != null && isMonthly)
+  Container(
+    height: 220,
+    margin: const EdgeInsets.only(bottom: 12),
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(8),
+      boxShadow: const [
+        BoxShadow(color: Colors.black12, blurRadius: 4),
+      ],
+    ),
+    child: PieChart(
+      PieChartData(
+        sections: [
+          PieChartSectionData(
+            value: students.fold(
+              0,
+              (sum, s) => sum +
+                  (double.tryParse(s["percentage"] ?? "0") ?? 0),
+            ),
+            title: "Attendance %",
+          ),
+          PieChartSectionData(
+            value: students.length * 100 -
+                students.fold(
+                  0,
+                  (sum, s) => sum +
+                      (double.tryParse(s["percentage"] ?? "0") ?? 0),
+                ),
+            title: "Remaining %",
+          ),
+        ],
+      ),
+    ),
+  ),
+
 
         if (_loading.contains(key))
           const Padding(
