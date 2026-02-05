@@ -354,42 +354,44 @@ Widget divisionBlock(String std, String div) {
             ),
           ),
         
-        // ⭐ ATTENDANCE PIE CHART
+     // ⭐ ATTENDANCE PIE CHART
 if (students != null && isMonthly)
-  Container(
-    height: 220,
-    margin: const EdgeInsets.only(bottom: 12),
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(8),
-      boxShadow: const [
-        BoxShadow(color: Colors.black12, blurRadius: 4),
-      ],
-    ),
-    child: PieChart(
-      PieChartData(
-        sections: [
-          PieChartSectionData(
-            value: students.fold(
-              0,
-              (sum, s) => sum +
-                  (double.tryParse(s["percentage"] ?? "0") ?? 0),
-            ),
-            title: "Attendance %",
+  Builder(
+    builder: (context) {
+
+      double totalPercent = students.fold<double>(
+        0.0,
+        (sum, s) =>
+            sum + (double.tryParse(s["percentage"] ?? "0") ?? 0),
+      );
+
+      return Container(
+        height: 220,
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: const [
+            BoxShadow(color: Colors.black12, blurRadius: 4),
+          ],
+        ),
+        child: PieChart(
+          PieChartData(
+            sections: [
+              PieChartSectionData(
+                value: totalPercent,
+                title: "Attendance %",
+              ),
+              PieChartSectionData(
+                value: (students.length * 100) - totalPercent,
+                title: "Remaining %",
+              ),
+            ],
           ),
-          PieChartSectionData(
-            value: students.length * 100 -
-                students.fold(
-                  0,
-                  (sum, s) => sum +
-                      (double.tryParse(s["percentage"] ?? "0") ?? 0),
-                ),
-            title: "Remaining %",
-          ),
-        ],
-      ),
-    ),
+        ),
+      );
+    },
   ),
 
 
