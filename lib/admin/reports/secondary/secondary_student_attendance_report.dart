@@ -427,13 +427,18 @@ if (students != null && isMonthly)
       LineChartData(
         lineBarsData: [
           LineChartBarData(
-            spots: [
-              FlSpot(1, 75),
-              FlSpot(2, 80),
-              FlSpot(3, 78),
-              FlSpot(4, 85),
-              FlSpot(5, 82),
-            ],
+            spots: List.generate(
+              students.length,
+              (index) {
+                final percent =
+                    double.tryParse(students[index]["percentage"] ?? "0") ?? 0;
+
+                return FlSpot(
+                  (index + 1).toDouble(),
+                  percent,
+                );
+              },
+            ),
             isCurved: true,
           ),
         ],
