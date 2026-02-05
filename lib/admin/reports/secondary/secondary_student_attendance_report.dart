@@ -354,15 +354,24 @@ Widget divisionBlock(String std, String div) {
             ),
           ),
         
-     // ⭐ ATTENDANCE PIE CHART
+    // ⭐ ATTENDANCE PIE CHART
 if (students != null && isMonthly)
   Builder(
     builder: (context) {
 
-      double totalPercent = students.fold<double>(
-        0.0,
-        (sum, s) =>
-            sum + (double.tryParse(s["percentage"] ?? "0") ?? 0),
+      int totalPresent = students.fold<int>(
+        0,
+        (sum, s) => sum + ((s["presentDays"] ?? 0) as int),
+      );
+
+      int totalAbsent = students.fold<int>(
+        0,
+        (sum, s) => sum + ((s["absentDays"] ?? 0) as int),
+      );
+
+      int totalLate = students.fold<int>(
+        0,
+        (sum, s) => sum + ((s["lateDays"] ?? 0) as int),
       );
 
       return Container(
@@ -380,12 +389,19 @@ if (students != null && isMonthly)
           PieChartData(
             sections: [
               PieChartSectionData(
-                value: totalPercent,
-                title: "Attendance %",
+                value: totalPresent.toDouble(),
+                title: "Present",
+                color: Colors.green,
               ),
               PieChartSectionData(
-                value: (students.length * 100) - totalPercent,
-                title: "Remaining %",
+                value: totalAbsent.toDouble(),
+                title: "Absent",
+                color: Colors.red,
+              ),
+              PieChartSectionData(
+                value: totalLate.toDouble(),
+                title: "Late",
+                color: Colors.orange,
               ),
             ],
           ),
@@ -393,6 +409,7 @@ if (students != null && isMonthly)
       );
     },
   ),
+
 
 
         if (_loading.contains(key))
