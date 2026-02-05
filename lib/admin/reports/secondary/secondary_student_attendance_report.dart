@@ -410,7 +410,36 @@ if (students != null && isMonthly)
     },
   ),
 
-
+// ⭐ ADD TREND GRAPH HERE
+if (students != null && isMonthly)
+  Container(
+    height: 220,
+    margin: const EdgeInsets.only(bottom: 12),
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(8),
+      boxShadow: const [
+        BoxShadow(color: Colors.black12, blurRadius: 4),
+      ],
+    ),
+    child: LineChart(
+      LineChartData(
+        lineBarsData: [
+          LineChartBarData(
+            spots: [
+              FlSpot(1, 75),
+              FlSpot(2, 80),
+              FlSpot(3, 78),
+              FlSpot(4, 85),
+              FlSpot(5, 82),
+            ],
+            isCurved: true,
+          ),
+        ],
+      ),
+    ),
+  ),
 
         if (_loading.contains(key))
           const Padding(
