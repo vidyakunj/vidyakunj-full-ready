@@ -509,6 +509,7 @@ Widget divisionBlock(String std, String div) {
     ),
   );
 }
+}   // ⭐ THIS CLOSES _SecondaryStudentAttendanceReportState
 
 /* ================= STUDENT ROW ================= */
 
