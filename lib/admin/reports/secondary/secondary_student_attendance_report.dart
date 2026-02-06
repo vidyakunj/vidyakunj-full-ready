@@ -509,7 +509,7 @@ Widget divisionBlock(String std, String div) {
     ),
   );
 }
-
+}   // ⭐ ADD THIS LINE EXACTLY HERE
 /* ================= STUDENT ROW ================= */
 
 class StudentRow extends StatelessWidget {
