@@ -354,6 +354,18 @@ Widget divisionBlock(String std, String div) {
             ),
           ),
         
+        List<String> dateLabels = [];
+
+        if (fromDate != null && toDate != null) {
+          DateTime temp = fromDate!;
+
+        while (!temp.isAfter(toDate!)) {
+          dateLabels.add("${temp.day}/${temp.month}");
+          temp = temp.add(const Duration(days: 1));
+  }
+}
+
+        
     // ⭐ ATTENDANCE PIE CHART
 if (students != null && isMonthly)
   Builder(
@@ -425,6 +437,40 @@ if (students != null && isMonthly)
     ),
     child: LineChart(
       LineChartData(
+        titlesData: FlTitlesData(
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              interval: 3,
+              getTitlesWidget: (value, meta) {
+                int index = value.toInt() - 1;
+
+                if (index >= 0 && index < dateLabels.length) {
+                  return Text(
+                    dateLabels[index],
+                    style: const TextStyle(fontSize: 10),
+                  );
+                }
+
+                return const SizedBox();
+              },
+            ),
+          ),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              interval: 20,
+            ),
+          ),
+        ),
+
+        gridData: FlGridData(
+          show: true,
+          horizontalInterval: 20,
+        ),
+
+        borderData: FlBorderData(show: false),
+
         lineBarsData: [
           LineChartBarData(
             spots: List.generate(
@@ -440,37 +486,12 @@ if (students != null && isMonthly)
               },
             ),
             isCurved: true,
+            dotData: FlDotData(show: true),
           ),
         ],
       ),
     ),
   ),
-
-        if (_loading.contains(key))
-          const Padding(
-            padding: EdgeInsets.all(8),
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-
-        if (students != null)
-          ...students.map(
-            (s) => StudentRow(
-              roll: s["rollNo"],
-              name: s["name"],
-
-              status: isMonthly ? null : s["status"],
-
-              presentDays: isMonthly ? s["presentDays"] : null,
-              absentDays: isMonthly ? s["absentDays"] : null,
-              lateDays: isMonthly ? s["lateDays"] : null,
-              percentage: isMonthly ? s["percentage"] : null,
-            ),
-          ),
-      ],
-    ),
-  );
-}
-}   // ⭐ THIS CLOSES STATE CLASS
 
 /* ================= STUDENT ROW ================= */
 
