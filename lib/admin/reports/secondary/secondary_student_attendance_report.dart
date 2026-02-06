@@ -609,3 +609,4 @@ Widget build(BuildContext context) {
     }
   }
 }
+}   // ⭐ ADD THIS LINE (closes _SecondaryStudentAttendanceReportState)
