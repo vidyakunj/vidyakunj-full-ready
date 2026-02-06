@@ -509,7 +509,7 @@ Widget divisionBlock(String std, String div) {
     ),
   );
 }
-}   // ⭐ ADD THIS LINE EXACTLY HERE
+
 /* ================= STUDENT ROW ================= */
 
 class StudentRow extends StatelessWidget {
@@ -609,4 +609,4 @@ Widget build(BuildContext context) {
     }
   }
 }
-}   // ⭐ ADD THIS LINE (closes _SecondaryStudentAttendanceReportState)
+
