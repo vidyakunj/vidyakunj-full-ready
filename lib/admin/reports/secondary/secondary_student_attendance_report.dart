@@ -547,7 +547,7 @@ Widget build(BuildContext context) {
 
   bool isLowAttendance = percentValue < 75;
 
- return InkWell(
+return InkWell(
   onTap: () {
     showDialog(
       context: context,
@@ -562,7 +562,6 @@ Widget build(BuildContext context) {
     );
   },
   child: Container(
-
     padding: const EdgeInsets.symmetric(vertical: 8),
     decoration: isLowAttendance
         ? BoxDecoration(
@@ -579,40 +578,34 @@ Widget build(BuildContext context) {
             style: const TextStyle(fontWeight: FontWeight.w600),
           ),
         ),
-
         const SizedBox(width: 6),
-
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(name),
 
-
-                // ✅ MONTHLY DATA DISPLAY
-                if (isMonthlyView)
-                  Text(
-                   "Present: $presentDays   Absent: $absentDays   Late: $lateDays   Attendance: ${percentage ?? "0"}%",
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black87,
-                    ),
+              if (isMonthlyView)
+                Text(
+                  "Present: $presentDays   Absent: $absentDays   Late: $lateDays   Attendance: ${percentage ?? "0"}%",
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
                   ),
+                ),
 
-                // ✅ DAILY STATUS ICON
-                if (!isMonthlyView && status != null)
-                  _statusIcon(status!),
-              ],
-            ),
+              if (!isMonthlyView && status != null)
+                _statusIcon(status!),
+            ],
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  ),
+);
 
 
-  Widget _statusIcon(String status) {
+    Widget _statusIcon(String status) {
     switch (status) {
       case "present":
         return const Icon(Icons.check_circle, color: Colors.green);
@@ -623,6 +616,85 @@ Widget build(BuildContext context) {
       default:
         return const SizedBox();
     }
+  }
+}   // ⭐ THIS CLOSES StudentRow CLASS
+
+
+  class StudentAttendancePopup extends StatelessWidget {
+  final String name;
+  final int roll;
+  final int presentDays;
+  final int absentDays;
+  final int lateDays;
+  final String percentage;
+
+  const StudentAttendancePopup({
+    super.key,
+    required this.name,
+    required this.roll,
+    required this.presentDays,
+    required this.absentDays,
+    required this.lateDays,
+    required this.percentage,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+
+            Text(
+              name,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            Text("Roll No: $roll"),
+            const SizedBox(height: 15),
+
+            _tile("Present", presentDays, Colors.green),
+            _tile("Absent", absentDays, Colors.red),
+            _tile("Late", lateDays, Colors.orange),
+            _tile("Attendance %", percentage, Colors.blue),
+
+            const SizedBox(height: 12),
+
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Close"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _tile(String label, dynamic value, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label),
+          Text(
+            value.toString(),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
