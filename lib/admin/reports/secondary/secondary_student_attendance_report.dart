@@ -619,8 +619,7 @@ return InkWell(
   }
 }   // ⭐ THIS CLOSES StudentRow CLASS
 
-
-  class StudentAttendancePopup extends StatelessWidget {
+class StudentAttendancePopup extends StatelessWidget {
   final String name;
   final int roll;
   final int presentDays;
