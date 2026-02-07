@@ -604,7 +604,6 @@ return InkWell(
   ),
 );
 
-
     Widget _statusIcon(String status) {
     switch (status) {
       case "present":
@@ -617,7 +616,8 @@ return InkWell(
         return const SizedBox();
     }
   }
-}   // ⭐ THIS CLOSES StudentRow CLASS
+
+}   // ⭐ CLOSE StudentRow class
 
 class StudentAttendancePopup extends StatelessWidget {
   final String name;
