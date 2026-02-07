@@ -547,7 +547,22 @@ Widget build(BuildContext context) {
 
   bool isLowAttendance = percentValue < 75;
 
-  return Container(
+ return InkWell(
+  onTap: () {
+    showDialog(
+      context: context,
+      builder: (_) => StudentAttendancePopup(
+        name: name,
+        roll: roll,
+        presentDays: presentDays ?? 0,
+        absentDays: absentDays ?? 0,
+        lateDays: lateDays ?? 0,
+        percentage: percentage ?? "0",
+      ),
+    );
+  },
+  child: Container(
+
     padding: const EdgeInsets.symmetric(vertical: 8),
     decoration: isLowAttendance
         ? BoxDecoration(
