@@ -536,6 +536,7 @@ class StudentRow extends StatelessWidget {
     this.lateDays,
     this.percentage,
   });
+} 
 
  @override
 Widget build(BuildContext context) {
