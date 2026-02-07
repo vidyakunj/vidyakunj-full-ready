@@ -517,10 +517,7 @@ class StudentRow extends StatelessWidget {
   final int roll;
   final String name;
 
-  // DAILY
   final String? status;
-
-  // MONTHLY
   final int? presentDays;
   final int? absentDays;
   final int? lateDays;
@@ -536,76 +533,73 @@ class StudentRow extends StatelessWidget {
     this.lateDays,
     this.percentage,
   });
-} 
 
- @override
-Widget build(BuildContext context) {
-  final bool isMonthlyView = presentDays != null;
+  @override
+  Widget build(BuildContext context) {
+    final bool isMonthlyView = presentDays != null;
 
-  // ⭐ Attendance check
-  double percentValue =
-      double.tryParse(percentage ?? "0") ?? 0;
+    double percentValue =
+        double.tryParse(percentage ?? "0") ?? 0;
 
-  bool isLowAttendance = percentValue < 75;
+    bool isLowAttendance = percentValue < 75;
 
-return InkWell(
-  onTap: () {
-    showDialog(
-      context: context,
-      builder: (_) => StudentAttendancePopup(
-        name: name,
-        roll: roll,
-        presentDays: presentDays ?? 0,
-        absentDays: absentDays ?? 0,
-        lateDays: lateDays ?? 0,
-        percentage: percentage ?? "0",
+    return InkWell(
+      onTap: () {
+        showDialog(
+          context: context,
+          builder: (_) => StudentAttendancePopup(
+            name: name,
+            roll: roll,
+            presentDays: presentDays ?? 0,
+            absentDays: absentDays ?? 0,
+            lateDays: lateDays ?? 0,
+            percentage: percentage ?? "0",
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: isLowAttendance
+            ? BoxDecoration(
+                color: Colors.red.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(6),
+              )
+            : null,
+        child: Row(
+          children: [
+            SizedBox(
+              width: 30,
+              child: Text(
+                roll.toString(),
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+
+            const SizedBox(width: 6),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name),
+
+                  if (isMonthlyView)
+                    Text(
+                      "Present: $presentDays   Absent: $absentDays   Late: $lateDays   Attendance: ${percentage ?? "0"}%",
+                    ),
+
+                  if (!isMonthlyView && status != null)
+                    _statusIcon(status!),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
-  },
-  child: Container(
-    padding: const EdgeInsets.symmetric(vertical: 8),
-    decoration: isLowAttendance
-        ? BoxDecoration(
-            color: Colors.red.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(6),
-          )
-        : null,
-    child: Row(
-      children: [
-        SizedBox(
-          width: 30,
-          child: Text(
-            roll.toString(),
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-        ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(name),
+  }   // ⭐ CLOSE build()
 
-              if (isMonthlyView)
-                Text(
-                  "Present: $presentDays   Absent: $absentDays   Late: $lateDays   Attendance: ${percentage ?? "0"}%",
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-
-              if (!isMonthlyView && status != null)
-                _statusIcon(status!),
-            ],
-          ),
-        ),
-      ],
-    ),
-  ),
-);
-
-    Widget _statusIcon(String status) {
+  Widget _statusIcon(String status) {
     switch (status) {
       case "present":
         return const Icon(Icons.check_circle, color: Colors.green);
@@ -617,8 +611,11 @@ return InkWell(
         return const SizedBox();
     }
   }
+}   // ⭐ CLOSE StudentRow
 
-}   // ⭐ CLOSE StudentRow class
+
+
+/* ================= POPUP ================= */
 
 class StudentAttendancePopup extends StatelessWidget {
   final String name;
@@ -649,7 +646,6 @@ class StudentAttendancePopup extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-
             Text(
               name,
               style: const TextStyle(
@@ -697,4 +693,3 @@ class StudentAttendancePopup extends StatelessWidget {
     );
   }
 }
-
