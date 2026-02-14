@@ -295,6 +295,30 @@ Widget divisionBlock(String std, String div) {
 
   final key = "$std-$div";
   final students = _cache[key];
+  // ================= SORT FOR DAILY =================
+List<dynamic>? sortedStudents;
+
+if (students != null && !isMonthly) {
+  sortedStudents = List.from(students);
+
+  sortedStudents.sort((a, b) {
+    int order(String status) {
+      switch (status) {
+        case "absent":
+          return 0;
+        case "late":
+          return 1;
+        case "present":
+          return 2;
+        default:
+          return 3;
+      }
+    }
+
+    return order(a["status"])
+        .compareTo(order(b["status"]));
+  });
+}
 
   int totalStudents = students?.length ?? 0;
 
@@ -338,6 +362,58 @@ Widget divisionBlock(String std, String div) {
         ),
 
         const SizedBox(height: 6),
+        // ================= DAILY SUMMARY =================
+if (students != null && !isMonthly)
+  Builder(
+    builder: (_) {
+      int total = students.length;
+
+      int present = students
+          .where((s) => s["status"] == "present")
+          .length;
+
+      int absent = students
+          .where((s) => s["status"] == "absent")
+          .length;
+
+      int late = students
+          .where((s) => s["status"] == "late")
+          .length;
+
+      double percent =
+          total == 0 ? 0 : (present / total) * 100;
+
+      return Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.green.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.green),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Class Daily Summary",
+              style:
+                  TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Text("Total Students: $total"),
+            Text("Present: $present"),
+            Text("Absent: $absent"),
+            Text("Late: $late"),
+            Text(
+              "Attendance %: ${percent.toStringAsFixed(2)}%",
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      );
+    },
+  ),
 
         // ================= MONTHLY SUMMARY =================
         if (students != null && isMonthly)
@@ -529,7 +605,11 @@ Widget divisionBlock(String std, String div) {
 
         // ================= STUDENT LIST =================
         if (students != null)
-          ...students.map(
+          ...(isMonthly
+               ? students
+               : sortedStudents ?? students)
+               .map(
+
             (s) => StudentRow(
               roll: s["rollNo"],
               name: s["name"],
