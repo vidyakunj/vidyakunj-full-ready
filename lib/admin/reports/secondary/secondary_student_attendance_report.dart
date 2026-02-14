@@ -283,12 +283,10 @@ Future<void> loadStudents(String std, String div) async {
 /* ================= DIV BLOCK ================= */
 
 Widget divisionBlock(String std, String div) {
-
   List<String> dateLabels = [];
 
   if (fromDate != null && toDate != null) {
     DateTime temp = fromDate!;
-
     while (!temp.isAfter(toDate!)) {
       dateLabels.add("${temp.day}/${temp.month}");
       temp = temp.add(const Duration(days: 1));
@@ -297,31 +295,6 @@ Widget divisionBlock(String std, String div) {
 
   final key = "$std-$div";
   final students = _cache[key];
-
-  // ================= SORT FOR DAILY =================
-  List<dynamic>? sortedStudents;
-
-  if (students != null && !isMonthly) {
-    sortedStudents = List.from(students);
-
-    sortedStudents.sort((a, b) {
-      int order(String status) {
-        switch (status) {
-          case "absent":
-            return 0;
-          case "late":
-            return 1;
-          case "present":
-            return 2;
-          default:
-            return 3;
-        }
-      }
-
-      return order(a["status"])
-          .compareTo(order(b["status"]));
-    });
-  }
 
   int totalStudents = students?.length ?? 0;
 
@@ -366,60 +339,6 @@ Widget divisionBlock(String std, String div) {
 
         const SizedBox(height: 6),
 
-        // ================= DAILY SUMMARY =================
-        if (students != null && !isMonthly)
-          Builder(
-            builder: (_) {
-
-              int present = students
-                  .where((s) => s["status"] == "present")
-                  .length;
-
-              int absent = students
-                  .where((s) => s["status"] == "absent")
-                  .length;
-
-              int late = students
-                  .where((s) => s["status"] == "late")
-                  .length;
-
-              double percent =
-                  totalStudents == 0
-                      ? 0
-                      : (present / totalStudents) * 100;
-
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "Class Daily Summary",
-                      style:
-                          TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 4),
-                    Text("Total Students: $totalStudents"),
-                    Text("Present: $present"),
-                    Text("Absent: $absent"),
-                    Text("Late: $late"),
-                    Text(
-                      "Attendance %: ${percent.toStringAsFixed(2)}%",
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-
         // ================= MONTHLY SUMMARY =================
         if (students != null && isMonthly)
           Container(
@@ -430,45 +349,198 @@ Widget divisionBlock(String std, String div) {
               borderRadius: BorderRadius.circular(6),
             ),
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
                   "Class Monthly Summary",
-                  style:
-                      TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 Text("Total Students: $totalStudents"),
                 Text(
-                    "Avg Attendance: ${avgAttendance.toStringAsFixed(2)}%"),
-                Text(
-                    "Below 75%: $lowAttendanceCount Students"),
+                  "Avg Attendance: ${avgAttendance.toStringAsFixed(2)}%",
+                ),
+                Text("Below 75%: $lowAttendanceCount Students"),
               ],
+            ),
+          ),
+
+        // ================= PIE CHART =================
+        if (students != null && isMonthly)
+          Builder(
+            builder: (context) {
+              int totalPresent = students.fold<int>(
+                0,
+                (sum, s) =>
+                    sum + ((s["presentDays"] ?? 0) as int),
+              );
+
+              int totalAbsent = students.fold<int>(
+                0,
+                (sum, s) =>
+                    sum + ((s["absentDays"] ?? 0) as int),
+              );
+
+              int totalLate = students.fold<int>(
+                0,
+                (sum, s) =>
+                    sum + ((s["lateDays"] ?? 0) as int),
+              );
+
+              return Container(
+                height: 220,
+                margin:
+                    const EdgeInsets.only(bottom: 12),
+                padding:
+                    const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius:
+                      BorderRadius.circular(8),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 4,
+                    ),
+                  ],
+                ),
+                child: PieChart(
+                  PieChartData(
+                    sections: [
+                      PieChartSectionData(
+                        value:
+                            totalPresent.toDouble(),
+                        title: "Present",
+                        color: Colors.green,
+                      ),
+                      PieChartSectionData(
+                        value:
+                            totalAbsent.toDouble(),
+                        title: "Absent",
+                        color: Colors.red,
+                      ),
+                      PieChartSectionData(
+                        value:
+                            totalLate.toDouble(),
+                        title: "Late",
+                        color: Colors.orange,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+
+        // ================= TREND GRAPH =================
+        if (students != null && isMonthly)
+          Container(
+            height: 220,
+            margin:
+                const EdgeInsets.only(bottom: 12),
+            padding:
+                const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius:
+                  BorderRadius.circular(8),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 4,
+                ),
+              ],
+            ),
+            child: LineChart(
+              LineChartData(
+                titlesData: FlTitlesData(
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      interval: 3,
+                      getTitlesWidget:
+                          (value, meta) {
+                        int index =
+                            value.toInt() - 1;
+
+                        if (index >= 0 &&
+                            index <
+                                dateLabels.length) {
+                          return Text(
+                            dateLabels[index],
+                            style:
+                                const TextStyle(
+                              fontSize: 10,
+                            ),
+                          );
+                        }
+
+                        return const SizedBox();
+                      },
+                    ),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      interval: 20,
+                    ),
+                  ),
+                ),
+                gridData: FlGridData(
+                  show: true,
+                  horizontalInterval: 20,
+                ),
+                borderData:
+                    FlBorderData(show: false),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: List.generate(
+                      students.length,
+                      (index) {
+                        final percent =
+                            double.tryParse(
+                                    students[index][
+                                            "percentage"] ??
+                                        "0") ??
+                                0;
+
+                        return FlSpot(
+                          (index + 1)
+                              .toDouble(),
+                          percent,
+                        );
+                      },
+                    ),
+                    isCurved: true,
+                    dotData:
+                        FlDotData(show: true),
+                  ),
+                ],
+              ),
             ),
           ),
 
         if (_loading.contains(key))
           const Padding(
             padding: EdgeInsets.all(8),
-            child:
-                CircularProgressIndicator(strokeWidth: 2),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+            ),
           ),
 
         // ================= STUDENT LIST =================
         if (students != null)
-          ...(isMonthly
-                  ? students
-                  : sortedStudents ?? students)
-              .map(
+          ...students.map(
             (s) => StudentRow(
               roll: s["rollNo"],
               name: s["name"],
               status:
                   isMonthly ? null : s["status"],
-              presentDays:
-                  isMonthly ? s["presentDays"] : null,
-              absentDays:
-                  isMonthly ? s["absentDays"] : null,
+              presentDays: isMonthly
+                  ? s["presentDays"]
+                  : null,
+              absentDays: isMonthly
+                  ? s["absentDays"]
+                  : null,
               lateDays:
                   isMonthly ? s["lateDays"] : null,
               percentage:
