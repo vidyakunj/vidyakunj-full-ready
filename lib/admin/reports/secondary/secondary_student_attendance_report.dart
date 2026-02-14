@@ -551,7 +551,7 @@ Widget divisionBlock(String std, String div) {
     ),
   );
 }
-
+}   // <---- THIS closes State class
 /* ================= STUDENT ROW ================= */
 
 class StudentRow extends StatelessWidget {
