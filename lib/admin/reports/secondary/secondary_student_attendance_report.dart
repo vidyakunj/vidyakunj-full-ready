@@ -654,50 +654,47 @@ if (students != null && !isMonthly)
     ),
   ],
 ),
+const SizedBox(height: 8),
 
-            const SizedBox(height: 8),
+...absentees.map((s) {
+  final upperName =
+      (s["name"] ?? "").toString().toUpperCase();
 
-            ...absentees.map((s) {
-              final upperName =
-                  (s["name"] ?? "").toString().toUpperCase();
-
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        upperName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                     Icon(Icons.copy_outlined, size: 16)
-                      tooltip: "Copy Name",
-                      onPressed: () {
-                        Clipboard.setData(
-                          ClipboardData(text: upperName),
-                        );
-
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text("$upperName copied"),
-                            duration: const Duration(seconds: 1),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 2),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            upperName,
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
-      );
-    },
-  ),
+        IconButton(
+          icon: const Icon(
+            Icons.copy_outlined,
+            size: 16,
+          ),
+          onPressed: () {
+            Clipboard.setData(
+              ClipboardData(text: upperName),
+            );
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("$upperName copied"),
+                duration: const Duration(seconds: 1),
+              ),
+            );
+          },
+        ),
+      ],
+    ),
+  );
+}).toList(),
+
 
         // ================= STUDENT LIST =================
         if (students != null)
