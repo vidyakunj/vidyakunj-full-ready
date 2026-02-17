@@ -638,12 +638,23 @@ if (students != null && !isMonthly)
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "🔴 SMART Entry – Absent Students",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
+            Row(
+              children: const [
+                Icon(
+                  Icons.assignment_late_outlined,
+                  size: 18,
+                  color: Colors.deepOrange,
               ),
-            ),
+              SizedBox(width: 6),
+              Text(
+                "SMART Entry – Absent Students",
+                 style: TextStyle(
+                  fontWeight: FontWeight.w600,
+      ),
+    ),
+  ],
+),
+
             const SizedBox(height: 8),
 
             ...absentees.map((s) {
@@ -651,7 +662,7 @@ if (students != null && !isMonthly)
                   (s["name"] ?? "").toString().toUpperCase();
 
               return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.symmetric(vertical: 2),
                 child: Row(
                   children: [
                     Expanded(
@@ -663,7 +674,7 @@ if (students != null && !isMonthly)
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.copy, size: 18),
+                     Icon(Icons.copy_outlined, size: 16)
                       tooltip: "Copy Name",
                       onPressed: () {
                         Clipboard.setData(
