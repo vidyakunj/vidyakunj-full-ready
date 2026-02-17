@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../../../config.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/services.dart';
 
 
 class SecondaryStudentAttendanceReport extends StatefulWidget {
@@ -602,6 +603,90 @@ if (students != null && !isMonthly)
               strokeWidth: 2,
             ),
           ),
+        
+        // ================= SMART ENTRY PANEL (DAILY ONLY) =================
+if (students != null && !isMonthly)
+  Builder(
+    builder: (context) {
+      final absentees = students
+          .where((s) => (s["status"] ?? "") == "absent")
+          .toList();
+
+      if (absentees.isEmpty) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.green.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: const Text(
+            "✅ No absentees today",
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+        );
+      }
+
+      return Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.red.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.red.withOpacity(0.4)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "🔴 SMART Entry – Absent Students",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            ...absentees.map((s) {
+              final upperName =
+                  (s["name"] ?? "").toString().toUpperCase();
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        upperName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.copy, size: 18),
+                      tooltip: "Copy Name",
+                      onPressed: () {
+                        Clipboard.setData(
+                          ClipboardData(text: upperName),
+                        );
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text("$upperName copied"),
+                            duration: const Duration(seconds: 1),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      );
+    },
+  ),
 
         // ================= STUDENT LIST =================
         if (students != null)
