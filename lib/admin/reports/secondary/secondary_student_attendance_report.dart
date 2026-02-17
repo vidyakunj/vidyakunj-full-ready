@@ -604,7 +604,7 @@ if (students != null && !isMonthly)
             ),
           ),
         
-        // ================= SMART ENTRY PANEL (DAILY ONLY) =================
+// ================= SMART ENTRY PANEL (DAILY ONLY) =================
 if (students != null && !isMonthly)
   Builder(
     builder: (context) {
@@ -644,58 +644,61 @@ if (students != null && !isMonthly)
                   Icons.assignment_late_outlined,
                   size: 18,
                   color: Colors.deepOrange,
-              ),
-              SizedBox(width: 6),
-              Text(
-                "SMART Entry – Absent Students",
-                 style: TextStyle(
-                  fontWeight: FontWeight.w600,
-      ),
-    ),
-  ],
-),
-const SizedBox(height: 8),
-
-...absentees.map((s) {
-  final upperName =
-      (s["name"] ?? "").toString().toUpperCase();
-
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 2),
-    child: Row(
-      children: [
-        Expanded(
-          child: Text(
-            upperName,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
+                ),
+                SizedBox(width: 6),
+                Text(
+                  "SMART Entry – Absent Students",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
-          ),
+            const SizedBox(height: 8),
+
+            ...absentees.map((s) {
+              final upperName =
+                  (s["name"] ?? "").toString().toUpperCase();
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        upperName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.copy_outlined,
+                        size: 16,
+                      ),
+                      onPressed: () {
+                        Clipboard.setData(
+                          ClipboardData(text: upperName),
+                        );
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text("$upperName copied"),
+                            duration: const Duration(seconds: 1),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ],
         ),
-        IconButton(
-          icon: const Icon(
-            Icons.copy_outlined,
-            size: 16,
-          ),
-          onPressed: () {
-            Clipboard.setData(
-              ClipboardData(text: upperName),
-            );
-
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text("$upperName copied"),
-                duration: const Duration(seconds: 1),
-              ),
-            );
-          },
-        ),
-      ],
-    ),
-  );
-}).toList(),
-
-
+      );
+    },
+  ),
         // ================= STUDENT LIST =================
         if (students != null)
           ...(isMonthly
