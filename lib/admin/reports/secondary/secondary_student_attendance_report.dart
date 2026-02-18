@@ -16,6 +16,7 @@ class SecondaryStudentAttendanceReport extends StatefulWidget {
 
 class _SecondaryStudentAttendanceReportState
     extends State<SecondaryStudentAttendanceReport> {
+
   static const Color navy = Color(0xFF0D1B2A);
 
   DateTime selectedDate = DateTime.now();
@@ -25,9 +26,28 @@ class _SecondaryStudentAttendanceReportState
 
   final Map<String, List<dynamic>> _cache = {};
   final Set<String> _loading = {};
- 
 
-/* ================= LOAD STUDENTS (DAILY + MONTHLY) ================= */
+  // ✅ NAME FORMAT FUNCTION (Correctly Placed)
+  String formatName(String fullName) {
+    List<String> parts = fullName.trim().split(" ");
+
+    if (parts.isEmpty) return "";
+
+    if (parts.length == 1) {
+      return parts[0].toUpperCase();
+    } else if (parts.length == 2) {
+      return "${parts[0]} ${parts[1]}".toUpperCase();
+    } else {
+      String first = parts.first;
+      String middleInitial = parts[1].isNotEmpty ? parts[1][0] : "";
+      String last = parts.last;
+
+      return "$first $middleInitial $last".toUpperCase();
+    }
+  }
+
+  /* ================= LOAD STUDENTS (DAILY + MONTHLY) ================= */
+
 
 Future<void> loadStudents(String std, String div) async {
   final key = "$std-$div";
