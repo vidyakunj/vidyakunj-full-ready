@@ -626,23 +626,6 @@ if (students != null && !isMonthly)
         
 // ================= SMART ENTRY PANEL (DAILY ONLY) =================
 
-// 🔹 Add this function inside your State class (above build method)
-String formatName(String fullName) {
-  List<String> parts = fullName.trim().split(" ");
-
-  if (parts.length == 1) {
-    return parts[0].toUpperCase();
-  } else if (parts.length == 2) {
-    return "${parts[0]} ${parts[1]}".toUpperCase();
-  } else {
-    String first = parts.first;
-    String middleInitial = parts[1][0];
-    String last = parts.last;
-
-    return "$first $middleInitial $last".toUpperCase();
-  }
-}
-
 if (students != null && !isMonthly)
   Builder(
     builder: (context) {
