@@ -268,20 +268,34 @@ app.get("/attendance/summary", async (req, res) => {
       div,
       date: parsedDate,
     });
+     let present = 0;
+let absent = 0;
+let late = 0;
 
-    let present = 0;
-    let absent = 0;
-    let late = 0;
-
-    for (const r of records) {
-     if (r.present === true && r.late === true) {
-      late++;
-    } else if (r.present === true) {
-      present++;
-    } else {
-      absent++;
+for (const r of records) {
+  if (r.present === true) {
+    present++;                 // ✅ late INCLUDED inside present
+    if (r.late === true) {
+      late++;                  // ℹ informational only
     }
+  } else {
+    absent++;
+  }
 }
+
+   // let present = 0;
+   // let absent = 0;
+   // let late = 0;
+
+   // for (const r of records) {
+    // if (r.present === true && r.late === true) {
+     // late++;
+   // } else if (r.present === true) {
+    //  present++;
+   // } else {
+     // absent++;
+   // }
+//}
 
 
     res.json({
