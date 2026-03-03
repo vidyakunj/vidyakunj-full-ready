@@ -79,8 +79,23 @@ app.post("/login", (req, res) => {
 
 /* ================= BASIC APIs ================= */
 app.get("/divisions", async (req, res) => {
-  const divisions = await Student.distinct("div", { std: req.query.std });
-  res.json({ divisions });
+  
+  try {
+    const std = req.query.std;
+
+    // Primary section (Std 1–8) always A,B,C,D
+    if (std && Number(std) >= 1 && Number(std) <= 8) {
+      return res.json({ divisions: ["A", "B", "C", "D"] });
+    }
+
+    // Secondary section (Std 9–12) dynamic
+    const divisions = await Student.distinct("div", { std });
+    res.json({ divisions });
+
+  } catch (err) {
+    console.error("DIVISION ERROR:", err);
+    res.json({ divisions: [] });
+  }
 });
 
 app.get("/students", async (req, res) => {
