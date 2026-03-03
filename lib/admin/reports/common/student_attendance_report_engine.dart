@@ -433,59 +433,47 @@ int totalLate = students.fold<int>(
     );
   }
 
-  /* ================= STUDENT ROW ================= */
+ /* ================= STUDENT ROW ================= */
 
-  Widget _studentRow(Map s) {
-    final percent =
-        double.tryParse(s["percentage"]
-                ?.toString() ??
-            "0") ??
-            0;
-    final low =
-        isMonthly && percent < 75;
+Widget _studentRow(Map s) {
+  final percent =
+      double.tryParse(s["percentage"]?.toString() ?? "0") ?? 0;
 
-    return Container(
-      margin:
-          const EdgeInsets.symmetric(vertical: 4),
-      padding: const EdgeInsets.all(8),
-      decoration: low
-          ? BoxDecoration(
-              color: Colors.red
-                  .withOpacity(0.08),
-              borderRadius:
-                  BorderRadius.circular(6))
-          : null,
-      child: Row(
-        children: [
-          SizedBox(
-              width: 30,
-              child:
-                  Text(s["rollNo"].toString())),
-          Expanded(child: Text(s["name"])),
-          if (!isMonthly)
-            _statusIcon(s["status"]),
-          if (isMonthly)
-            Text("${percent.toStringAsFixed(1)}%"),
-        ],
-      ),
-    );
-  }
+  Color? bgColor;
 
-  Widget _statusIcon(String status) {
-    switch (status) {
-      case "present":
-        return const Icon(
-            Icons.check_circle,
-            color: Colors.green);
-      case "absent":
-        return const Icon(Icons.cancel,
-            color: Colors.red);
-      case "late":
-        return const Icon(
-            Icons.access_time,
-            color: Colors.orange);
-      default:
-        return const SizedBox();
+  if (isMonthly) {
+    if (percent < 50) {
+      bgColor = Colors.red.withOpacity(0.25);
+    } else if (percent < 60) {
+      bgColor = Colors.red.withOpacity(0.18);
+    } else if (percent < 75) {
+      bgColor = Colors.red.withOpacity(0.10);
     }
   }
+
+  return Container(
+    margin: const EdgeInsets.symmetric(vertical: 4),
+    padding: const EdgeInsets.all(8),
+    decoration: bgColor != null
+        ? BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(6),
+          )
+        : null,
+    child: Row(
+      children: [
+        SizedBox(
+          width: 30,
+          child: Text(s["rollNo"].toString()),
+        ),
+        Expanded(child: Text(s["name"])),
+
+        if (!isMonthly)
+          _statusIcon(s["status"]),
+
+        if (isMonthly)
+          Text("${percent.toStringAsFixed(1)}%"),
+      ],
+    ),
+  );
 }
