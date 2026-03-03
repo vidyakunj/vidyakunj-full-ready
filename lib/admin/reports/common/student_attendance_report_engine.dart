@@ -186,7 +186,7 @@ class _StudentAttendanceReportEngineState
         title: Text("STD $std",
             style:
                 const TextStyle(fontWeight: FontWeight.bold, color: navy)),
-        children: ["A", "B", "C"]
+        children: ["A", "B", "C","D"]
             .map((div) => _divisionBlock(std, div))
             .toList(),
       ),
