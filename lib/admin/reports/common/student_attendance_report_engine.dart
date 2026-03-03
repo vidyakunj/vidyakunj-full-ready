@@ -433,7 +433,7 @@ int totalLate = students.fold<int>(
     );
   }
 
- /* ================= STUDENT ROW ================= */
+/* ================= STUDENT ROW ================= */
 
 Widget _studentRow(Map s) {
   final percent =
@@ -477,3 +477,18 @@ Widget _studentRow(Map s) {
     ),
   );
 }
+
+Widget _statusIcon(String status) {
+  switch (status) {
+    case "present":
+      return const Icon(Icons.check_circle, color: Colors.green);
+    case "absent":
+      return const Icon(Icons.cancel, color: Colors.red);
+    case "late":
+      return const Icon(Icons.access_time, color: Colors.orange);
+    default:
+     return const SizedBox();
+  }
+}
+
+}  // <-- ADD THIS LINE
