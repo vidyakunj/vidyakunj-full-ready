@@ -32,13 +32,7 @@ class _StudentAttendanceReportEngineState
   final Map<String, List<dynamic>> _cache = {};
   final Set<String> _loading = {};
 
-  String formatName(String fullName) {
-    List<String> parts = fullName.trim().split(" ");
-    if (parts.isEmpty) return "";
-    if (parts.length == 1) return parts[0].toUpperCase();
-    if (parts.length == 2) return "${parts[0]} ${parts[1]}".toUpperCase();
-    return "${parts.first} ${parts[1][0]} ${parts.last}".toUpperCase();
-  }
+  /* ================= API ================= */
 
   Future<void> loadStudents(String std, String div) async {
     final key = "$std-$div";
@@ -53,7 +47,6 @@ class _StudentAttendanceReportEngineState
       if (isMonthly) {
         final from =
             "${fromDate!.year}-${fromDate!.month.toString().padLeft(2, '0')}-${fromDate!.day.toString().padLeft(2, '0')}";
-
         final to =
             "${toDate!.year}-${toDate!.month.toString().padLeft(2, '0')}-${toDate!.day.toString().padLeft(2, '0')}";
 
@@ -80,6 +73,8 @@ class _StudentAttendanceReportEngineState
     setState(() => _loading.remove(key));
   }
 
+  /* ================= UI ================= */
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -91,7 +86,7 @@ class _StudentAttendanceReportEngineState
       body: ListView(
         padding: const EdgeInsets.all(12),
         children: [
-          _reportToggle(),
+          _toggle(),
           isMonthly ? _fromToBanner() : _dateBanner(),
           ...widget.stdList.map((std) => _stdTile(std)),
         ],
@@ -99,7 +94,7 @@ class _StudentAttendanceReportEngineState
     );
   }
 
-  Widget _reportToggle() {
+  Widget _toggle() {
     return Row(
       children: [
         Expanded(
@@ -186,10 +181,11 @@ class _StudentAttendanceReportEngineState
 
   Widget _stdTile(String std) {
     return Card(
+      margin: const EdgeInsets.only(bottom: 10),
       child: ExpansionTile(
         title: Text("STD $std",
-            style: const TextStyle(
-                fontWeight: FontWeight.bold, color: navy)),
+            style:
+                const TextStyle(fontWeight: FontWeight.bold, color: navy)),
         children: ["A", "B", "C"]
             .map((div) => _divisionBlock(std, div))
             .toList(),
@@ -197,9 +193,30 @@ class _StudentAttendanceReportEngineState
     );
   }
 
+  /* ================= DIVISION BLOCK ================= */
+
   Widget _divisionBlock(String std, String div) {
     final key = "$std-$div";
     final students = _cache[key];
+
+    if (students != null && !isMonthly) {
+      students.sort((a, b) {
+        int order(String s) {
+          switch (s) {
+            case "absent":
+              return 0;
+            case "late":
+              return 1;
+            case "present":
+              return 2;
+            default:
+              return 3;
+          }
+        }
+
+        return order(a["status"]).compareTo(order(b["status"]));
+      });
+    }
 
     return Padding(
       padding: const EdgeInsets.all(8),
@@ -209,43 +226,239 @@ class _StudentAttendanceReportEngineState
           InkWell(
               onTap: () => loadStudents(std, div),
               child: Text("DIV $div",
-                  style: const TextStyle(fontWeight: FontWeight.bold))),
+                  style:
+                      const TextStyle(fontWeight: FontWeight.bold))),
 
           const SizedBox(height: 6),
 
           if (_loading.contains(key))
             const CircularProgressIndicator(strokeWidth: 2),
 
-          if (students != null && students.isNotEmpty)
-            ...students.map((s) {
-              final percent =
-                  double.tryParse(s["percentage"]?.toString() ?? "0") ?? 0;
-              final low = isMonthly && percent < 75;
+          if (students != null) ...[
+            isMonthly
+                ? _monthlySummary(students)
+                : _dailySummary(students),
 
-              return Container(
-                margin: const EdgeInsets.symmetric(vertical: 4),
-                padding: const EdgeInsets.all(8),
-                decoration: low
-                    ? BoxDecoration(
-                        color: Colors.red.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(6))
-                    : null,
-                child: Row(
-                  children: [
-                    SizedBox(
-                        width: 30,
-                        child: Text(s["rollNo"].toString())),
-                    Expanded(
-                      child: Text(s["name"]),
-                    ),
-                    if (!isMonthly)
-                      _statusIcon(s["status"] ?? ""),
-                    if (isMonthly)
-                      Text("${percent.toStringAsFixed(1)}%"),
-                  ],
-                ),
-              );
-            }),
+            if (isMonthly) _monthlyCharts(students),
+
+            if (!isMonthly) _smartEntryPanel(students),
+
+            ...students.map((s) => _studentRow(s)),
+          ]
+        ],
+      ),
+    );
+  }
+
+  /* ================= DAILY SUMMARY ================= */
+
+  Widget _dailySummary(List students) {
+    int total = students.length;
+    int present =
+        students.where((s) => s["status"] == "present").length;
+    int absent =
+        students.where((s) => s["status"] == "absent").length;
+    int late =
+        students.where((s) => s["status"] == "late").length;
+
+    double percent =
+        total == 0 ? 0 : (present / total) * 100;
+
+    return _summaryBox(
+        "Class Daily Summary",
+        [
+          "Total: $total",
+          "Present: $present",
+          "Absent: $absent",
+          "Late: $late",
+          "Attendance: ${percent.toStringAsFixed(2)}%"
+        ],
+        Colors.green);
+  }
+
+  /* ================= MONTHLY SUMMARY ================= */
+
+  Widget _monthlySummary(List students) {
+    double avg = 0;
+    int below75 = 0;
+
+    for (var s in students) {
+      double p =
+          double.tryParse(s["percentage"]?.toString() ?? "0") ?? 0;
+      avg += p;
+      if (p < 75) below75++;
+    }
+
+    if (students.isNotEmpty) avg /= students.length;
+
+    return _summaryBox(
+        "Class Monthly Summary",
+        [
+          "Total Students: ${students.length}",
+          "Average Attendance: ${avg.toStringAsFixed(2)}%",
+          "Below 75%: $below75 Students"
+        ],
+        Colors.blue);
+  }
+
+  Widget _summaryBox(
+      String title, List<String> lines, Color color) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style:
+                  const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          ...lines.map((e) => Text(e)),
+        ],
+      ),
+    );
+  }
+
+  /* ================= MONTHLY CHARTS ================= */
+
+  Widget _monthlyCharts(List students) {
+    int totalPresent = students.fold<int>(
+        0, (sum, s) => sum + (s["presentDays"] ?? 0));
+    int totalAbsent = students.fold<int>(
+        0, (sum, s) => sum + (s["absentDays"] ?? 0));
+    int totalLate = students.fold<int>(
+        0, (sum, s) => sum + (s["lateDays"] ?? 0));
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 220,
+          child: PieChart(PieChartData(sections: [
+            PieChartSectionData(
+                value: totalPresent.toDouble(),
+                color: Colors.green,
+                title: "Present"),
+            PieChartSectionData(
+                value: totalAbsent.toDouble(),
+                color: Colors.red,
+                title: "Absent"),
+            PieChartSectionData(
+                value: totalLate.toDouble(),
+                color: Colors.orange,
+                title: "Late"),
+          ])),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 220,
+          child: LineChart(LineChartData(
+              lineBarsData: [
+                LineChartBarData(
+                    spots: List.generate(students.length,
+                        (i) {
+                      final p =
+                          double.tryParse(students[i]
+                                  ["percentage"]
+                                  ?.toString() ??
+                              "0") ??
+                              0;
+                      return FlSpot(
+                          (i + 1).toDouble(), p);
+                    }),
+                    isCurved: true,
+                    dotData:
+                        FlDotData(show: true))
+              ])),
+        )
+      ],
+    );
+  }
+
+  /* ================= SMART ENTRY ================= */
+
+  Widget _smartEntryPanel(List students) {
+    final absentees = students
+        .where((s) => s["status"] == "absent")
+        .toList();
+
+    if (absentees.isEmpty) {
+      return const SizedBox();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+          color: Colors.red.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(6)),
+      child: Column(
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
+        children: [
+          const Text("Absent Students",
+              style: TextStyle(
+                  fontWeight: FontWeight.bold)),
+          const SizedBox(height: 6),
+          ...absentees.map((s) {
+            final name = s["name"];
+            return Row(
+              children: [
+                Expanded(child: Text(name)),
+                IconButton(
+                  icon: const Icon(
+                      Icons.copy_outlined,
+                      size: 16),
+                  onPressed: () {
+                    Clipboard.setData(
+                        ClipboardData(text: name));
+                  },
+                )
+              ],
+            );
+          })
+        ],
+      ),
+    );
+  }
+
+  /* ================= STUDENT ROW ================= */
+
+  Widget _studentRow(Map s) {
+    final percent =
+        double.tryParse(s["percentage"]
+                ?.toString() ??
+            "0") ??
+            0;
+    final low =
+        isMonthly && percent < 75;
+
+    return Container(
+      margin:
+          const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.all(8),
+      decoration: low
+          ? BoxDecoration(
+              color: Colors.red
+                  .withOpacity(0.08),
+              borderRadius:
+                  BorderRadius.circular(6))
+          : null,
+      child: Row(
+        children: [
+          SizedBox(
+              width: 30,
+              child:
+                  Text(s["rollNo"].toString())),
+          Expanded(child: Text(s["name"])),
+          if (!isMonthly)
+            _statusIcon(s["status"]),
+          if (isMonthly)
+            Text("${percent.toStringAsFixed(1)}%"),
         ],
       ),
     );
@@ -254,11 +467,16 @@ class _StudentAttendanceReportEngineState
   Widget _statusIcon(String status) {
     switch (status) {
       case "present":
-        return const Icon(Icons.check_circle, color: Colors.green);
+        return const Icon(
+            Icons.check_circle,
+            color: Colors.green);
       case "absent":
-        return const Icon(Icons.cancel, color: Colors.red);
+        return const Icon(Icons.cancel,
+            color: Colors.red);
       case "late":
-        return const Icon(Icons.access_time, color: Colors.orange);
+        return const Icon(
+            Icons.access_time,
+            color: Colors.orange);
       default:
         return const SizedBox();
     }
