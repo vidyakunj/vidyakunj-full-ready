@@ -22,7 +22,6 @@ class StudentAttendanceReportEngine extends StatefulWidget {
 
 class _StudentAttendanceReportEngineState
     extends State<StudentAttendanceReportEngine> {
-
   static const Color navy = Color(0xFF0D1B2A);
 
   DateTime selectedDate = DateTime.now();
@@ -43,7 +42,6 @@ class _StudentAttendanceReportEngineState
 
   Future<void> loadStudents(String std, String div) async {
     final key = "$std-$div";
-
     if (isMonthly && (fromDate == null || toDate == null)) return;
     if (_cache.containsKey(key)) return;
 
@@ -60,15 +58,13 @@ class _StudentAttendanceReportEngineState
             "${toDate!.year}-${toDate!.month.toString().padLeft(2, '0')}-${toDate!.day.toString().padLeft(2, '0')}";
 
         url = Uri.parse(
-          "$SERVER_URL/attendance/monthly-list?std=$std&div=$div&from=$from&to=$to",
-        );
+            "$SERVER_URL/attendance/monthly-list?std=$std&div=$div&from=$from&to=$to");
       } else {
         final dateStr =
             "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
 
         url = Uri.parse(
-          "$SERVER_URL/attendance/list?std=$std&div=$div&date=$dateStr",
-        );
+            "$SERVER_URL/attendance/list?std=$std&div=$div&date=$dateStr");
       }
 
       final res = await http.get(url);
@@ -79,28 +75,9 @@ class _StudentAttendanceReportEngineState
           _cache[key] = data["students"] ?? [];
         });
       }
-    } catch (e) {
-      debugPrint("Load students error: $e");
-    }
+    } catch (_) {}
 
     setState(() => _loading.remove(key));
-  }
-
-  Future<void> pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: selectedDate,
-      firstDate: DateTime(2023),
-      lastDate: DateTime.now(),
-    );
-
-    if (picked != null) {
-      setState(() {
-        selectedDate = picked;
-        _cache.clear();
-        _loading.clear();
-      });
-    }
   }
 
   @override
@@ -110,25 +87,19 @@ class _StudentAttendanceReportEngineState
         backgroundColor: navy,
         title: Text(widget.title),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.calendar_today),
-            onPressed: isMonthly ? null : pickDate,
-          ),
-        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(12),
         children: [
-          _reportTypeToggle(),
+          _reportToggle(),
           isMonthly ? _fromToBanner() : _dateBanner(),
-          ...widget.stdList.map((std) => stdTile(std)),
+          ...widget.stdList.map((std) => _stdTile(std)),
         ],
       ),
     );
   }
 
-  Widget _reportTypeToggle() {
+  Widget _reportToggle() {
     return Row(
       children: [
         Expanded(
@@ -136,11 +107,10 @@ class _StudentAttendanceReportEngineState
             title: const Text("Daily"),
             value: false,
             groupValue: isMonthly,
-            onChanged: (v) {
+            onChanged: (_) {
               setState(() {
                 isMonthly = false;
                 _cache.clear();
-                _loading.clear();
               });
             },
           ),
@@ -150,11 +120,10 @@ class _StudentAttendanceReportEngineState
             title: const Text("Monthly"),
             value: true,
             groupValue: isMonthly,
-            onChanged: (v) {
+            onChanged: (_) {
               setState(() {
                 isMonthly = true;
                 _cache.clear();
-                _loading.clear();
               });
             },
           ),
@@ -164,40 +133,24 @@ class _StudentAttendanceReportEngineState
   }
 
   Widget _dateBanner() {
-    final dateStr =
-        "${selectedDate.day.toString().padLeft(2, '0')}-"
-        "${selectedDate.month.toString().padLeft(2, '0')}-"
-        "${selectedDate.year}";
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Text(
-        "Date: $dateStr",
-        style: const TextStyle(
-          fontWeight: FontWeight.bold,
-          color: navy,
-        ),
-      ),
-    );
+    final d =
+        "${selectedDate.day}-${selectedDate.month}-${selectedDate.year}";
+    return Text("Date: $d",
+        style: const TextStyle(fontWeight: FontWeight.bold));
   }
 
   Widget _fromToBanner() {
-    String format(DateTime d) =>
-        "${d.day.toString().padLeft(2, '0')}-"
-        "${d.month.toString().padLeft(2, '0')}-"
-        "${d.year}";
-
+    String f(DateTime d) => "${d.day}-${d.month}-${d.year}";
     return Row(
       children: [
         Expanded(
           child: ElevatedButton(
             onPressed: () async {
               final picked = await showDatePicker(
-                context: context,
-                initialDate: fromDate ?? DateTime.now(),
-                firstDate: DateTime(2023),
-                lastDate: DateTime.now(),
-              );
+                  context: context,
+                  initialDate: fromDate ?? DateTime.now(),
+                  firstDate: DateTime(2023),
+                  lastDate: DateTime.now());
               if (picked != null) {
                 setState(() {
                   fromDate = picked;
@@ -205,7 +158,7 @@ class _StudentAttendanceReportEngineState
                 });
               }
             },
-            child: Text(fromDate == null ? "From Date" : format(fromDate!)),
+            child: Text(fromDate == null ? "From Date" : f(fromDate!)),
           ),
         ),
         const SizedBox(width: 8),
@@ -213,11 +166,10 @@ class _StudentAttendanceReportEngineState
           child: ElevatedButton(
             onPressed: () async {
               final picked = await showDatePicker(
-                context: context,
-                initialDate: toDate ?? DateTime.now(),
-                firstDate: DateTime(2023),
-                lastDate: DateTime.now(),
-              );
+                  context: context,
+                  initialDate: toDate ?? DateTime.now(),
+                  firstDate: DateTime(2023),
+                  lastDate: DateTime.now());
               if (picked != null) {
                 setState(() {
                   toDate = picked;
@@ -225,26 +177,21 @@ class _StudentAttendanceReportEngineState
                 });
               }
             },
-            child: Text(toDate == null ? "To Date" : format(toDate!)),
+            child: Text(toDate == null ? "To Date" : f(toDate!)),
           ),
         ),
       ],
     );
   }
 
-  Widget stdTile(String std) {
+  Widget _stdTile(String std) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 10),
       child: ExpansionTile(
-        title: Text(
-          'STD $std',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: navy,
-          ),
-        ),
-        children: ['A', 'B', 'C']
-            .map<Widget>((div) => _divisionBlock(std, div))
+        title: Text("STD $std",
+            style: const TextStyle(
+                fontWeight: FontWeight.bold, color: navy)),
+        children: ["A", "B", "C"]
+            .map((div) => _divisionBlock(std, div))
             .toList(),
       ),
     );
@@ -260,28 +207,60 @@ class _StudentAttendanceReportEngineState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           InkWell(
-            onTap: () => loadStudents(std, div),
-            child: Text(
-              "DIV $div",
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
+              onTap: () => loadStudents(std, div),
+              child: Text("DIV $div",
+                  style: const TextStyle(fontWeight: FontWeight.bold))),
+
           const SizedBox(height: 6),
+
           if (_loading.contains(key))
-            const CircularProgressIndicator(),
-          if (students != null)
-            ...students.map<Widget>(
-              (s) => ListTile(
-                title: Text(s["name"]),
-                subtitle: isMonthly
-                    ? Text("Attendance: ${s["percentage"] ?? "0"}%")
-                    : Text("Status: ${s["status"]}"),
-              ),
-            ),
+            const CircularProgressIndicator(strokeWidth: 2),
+
+          if (students != null && students.isNotEmpty)
+            ...students.map((s) {
+              final percent =
+                  double.tryParse(s["percentage"]?.toString() ?? "0") ?? 0;
+              final low = isMonthly && percent < 75;
+
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.all(8),
+                decoration: low
+                    ? BoxDecoration(
+                        color: Colors.red.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(6))
+                    : null,
+                child: Row(
+                  children: [
+                    SizedBox(
+                        width: 30,
+                        child: Text(s["rollNo"].toString())),
+                    Expanded(
+                      child: Text(s["name"]),
+                    ),
+                    if (!isMonthly)
+                      _statusIcon(s["status"] ?? ""),
+                    if (isMonthly)
+                      Text("${percent.toStringAsFixed(1)}%"),
+                  ],
+                ),
+              );
+            }),
         ],
       ),
     );
+  }
+
+  Widget _statusIcon(String status) {
+    switch (status) {
+      case "present":
+        return const Icon(Icons.check_circle, color: Colors.green);
+      case "absent":
+        return const Icon(Icons.cancel, color: Colors.red);
+      case "late":
+        return const Icon(Icons.access_time, color: Colors.orange);
+      default:
+        return const SizedBox();
+    }
   }
 }
