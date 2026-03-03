@@ -297,7 +297,6 @@ for (const r of records) {
    // }
 //}
 
-
     res.json({
       summary: {
         total,
@@ -332,9 +331,8 @@ app.get("/attendance/primary-section-summary", async (req, res) => {
       const stdStr = std.toString();
 
       // Get divisions in ascending order
-      const divisions = await Student
-        .distinct("div", { std: stdStr })
-        .sort();
+      // Primary section always has 4 fixed divisions
+      const divisions = ["A", "B", "C", "D"];
 
       for (const div of divisions) {
         const total = await Student.countDocuments({ std: stdStr, div });
