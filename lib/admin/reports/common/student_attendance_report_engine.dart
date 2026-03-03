@@ -327,13 +327,20 @@ class _StudentAttendanceReportEngineState
   /* ================= MONTHLY CHARTS ================= */
 
   Widget _monthlyCharts(List students) {
-    int totalPresent = students.fold<int>(
-        0, (sum, s) => sum + (s["presentDays"] ?? 0));
-    int totalAbsent = students.fold<int>(
-        0, (sum, s) => sum + (s["absentDays"] ?? 0));
-    int totalLate = students.fold<int>(
-        0, (sum, s) => sum + (s["lateDays"] ?? 0));
+int totalPresent = students.fold<int>(
+  0,
+  (sum, s) => sum + ((s["presentDays"] ?? 0) as num).toInt(),
+);
 
+int totalAbsent = students.fold<int>(
+  0,
+  (sum, s) => sum + ((s["absentDays"] ?? 0) as num).toInt(),
+);
+
+int totalLate = students.fold<int>(
+  0,
+  (sum, s) => sum + ((s["lateDays"] ?? 0) as num).toInt(),
+);
     return Column(
       children: [
         SizedBox(
