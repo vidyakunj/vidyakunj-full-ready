@@ -243,48 +243,91 @@ class _StudentAttendanceReportEngineState
 
         if (!isMonthly) _smartEntryPanel(students),
 
-        // 🔴 BELOW 75% PANEL
-        if (isMonthly)
-          Builder(
-            builder: (_) {
-              final lowStudents = students.where((s) {
-                final percent =
-                    double.tryParse(s["percentage"]?.toString() ?? "0") ?? 0;
-                return percent < 75;
-              }).toList();
+        // 🔴 ATTENDANCE RISK PANEL
+if (isMonthly)
+  Builder(
+    builder: (_) {
 
-              if (lowStudents.isEmpty) {
-                return const SizedBox();
-              }
+      final critical = students.where((s) {
+        final percent =
+            double.tryParse(s["percentage"]?.toString() ?? "0") ?? 0;
+        return percent < 50;
+      }).toList();
 
-              return Card(
-                color: Colors.red.withOpacity(0.08),
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ExpansionTile(
-                  title: Text(
-                    "⚠ Students Below 75% (${lowStudents.length})",
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, color: Colors.red),
-                  ),
-                  children: lowStudents.map((s) {
-                    final p = double.tryParse(
-                            s["percentage"]?.toString() ?? "0") ??
-                        0;
+      final warning = students.where((s) {
+        final percent =
+            double.tryParse(s["percentage"]?.toString() ?? "0") ?? 0;
+        return percent >= 50 && percent < 75;
+      }).toList();
 
-                    return ListTile(
-                      title: Text(s["name"]),
-                      trailing: Text("${p.toStringAsFixed(1)}%"),
-                    );
-                  }).toList(),
-                ),
-              );
-            },
+      if (critical.isEmpty && warning.isEmpty) {
+        return const SizedBox();
+      }
+
+      return Card(
+        color: Colors.red.withOpacity(0.08),
+        margin: const EdgeInsets.only(bottom: 8),
+        child: ExpansionTile(
+          title: const Text(
+            "⚠ Attendance Risk Students",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.red,
+            ),
           ),
+          children: [
 
-        ...students.map((s) => _studentRow(s)),
-      ],
-    ],
+            if (critical.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.all(8),
+                child: Text(
+                  "🔴 Critical (<50%) — ${critical.length}",
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red),
+                ),
+              ),
+
+            ...critical.map((s) {
+              final p =
+                  double.tryParse(s["percentage"]?.toString() ?? "0") ?? 0;
+
+              return ListTile(
+                title: Text(s["name"]),
+                trailing: Text("${p.toStringAsFixed(1)}%"),
+              );
+            }),
+
+            if (warning.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.all(8),
+                child: Text(
+                  "🟠 Warning (50–74%) — ${warning.length}",
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange),
+                ),
+              ),
+
+            ...warning.map((s) {
+              final p =
+                  double.tryParse(s["percentage"]?.toString() ?? "0") ?? 0;
+
+              return ListTile(
+                title: Text(s["name"]),
+                trailing: Text("${p.toStringAsFixed(1)}%"),
+              );
+            }),
+          ],
+        ),
+      );
+    },
   ),
+
+...students.map((s) => _studentRow(s)),
+],
+],
+),
 );
 }
   /* ================= DAILY SUMMARY ================= */
