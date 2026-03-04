@@ -232,24 +232,62 @@ class _StudentAttendanceReportEngineState
           const SizedBox(height: 6),
 
           if (_loading.contains(key))
-            const CircularProgressIndicator(strokeWidth: 2),
+  const CircularProgressIndicator(strokeWidth: 2),
 
-          if (students != null) ...[
-            isMonthly
-                ? _monthlySummary(students)
-                : _dailySummary(students),
+if (students != null) ...[
+  isMonthly
+      ? _monthlySummary(students)
+      : _dailySummary(students),
 
-            if (isMonthly) _monthlyCharts(students),
+  if (isMonthly) _monthlyCharts(students),
 
-            if (!isMonthly) _smartEntryPanel(students),
+  if (!isMonthly) _smartEntryPanel(students),
 
-            ...students.map((s) => _studentRow(s)),
-          ]
-        ],
-      ),
-    );
-  }
+  /* ================= BELOW 75% PANEL ================= */
 
+  if (isMonthly) ...[
+    Builder(
+      builder: (_) {
+        final lowStudents = students.where((s) {
+          final percent =
+              double.tryParse(s["percentage"]?.toString() ?? "0") ?? 0;
+          return percent < 75;
+        }).toList();
+
+        if (lowStudents.isEmpty) {
+          return const SizedBox();
+        }
+
+        return Card(
+          color: Colors.red.withOpacity(0.08),
+          margin: const EdgeInsets.only(bottom: 8),
+          child: ExpansionTile(
+            title: Text(
+              "⚠ Students Below 75% (${lowStudents.length})",
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.red,
+              ),
+            ),
+            children: lowStudents.map((s) {
+              final p =
+                  double.tryParse(s["percentage"]?.toString() ?? "0") ?? 0;
+
+              return ListTile(
+                title: Text(s["name"]),
+                trailing: Text("${p.toStringAsFixed(1)}%"),
+              );
+            }).toList(),
+          ),
+        );
+      },
+    ),
+  ],
+
+  /* ================= STUDENT LIST ================= */
+
+  ...students.map((s) => _studentRow(s)),
+],
   /* ================= DAILY SUMMARY ================= */
 
   Widget _dailySummary(List students) {
