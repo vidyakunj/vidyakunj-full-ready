@@ -286,6 +286,7 @@ class _StudentAttendanceReportEngineState
     ],
   ),
 );
+}
   /* ================= DAILY SUMMARY ================= */
 
   Widget _dailySummary(List students) {
